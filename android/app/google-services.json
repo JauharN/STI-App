@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "950170060318",
+    "project_id": "stiapp-8a5a4",
+    "storage_bucket": "stiapp-8a5a4.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:950170060318:android:1e9b175f44bc9dc03b100f",
+        "android_client_info": {
+          "package_name": "com.jnac.sti_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHOg_FYPWQdMkrIpwbm1aWXBxfT57QAgQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
