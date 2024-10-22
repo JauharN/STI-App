@@ -1,3 +1,3 @@
 # sti_app
 
-A new Flutter project.
+Flutter projek by Jauhar Nafis
