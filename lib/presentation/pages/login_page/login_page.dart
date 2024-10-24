@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sti_app/presentation/pages/main_page/main_page.dart';
 import 'package:sti_app/presentation/providers/usecases/login_provider.dart';
 
-import '../../../domain/usecase/login/login.dart';
+import '../../../domain/usecase/authentication/login/login.dart';
 
 class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});

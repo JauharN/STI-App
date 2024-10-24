@@ -98,9 +98,43 @@ class FirebaseProgramRepository implements ProgramRepository {
   }
 
   @override
-  Future<Result<List<Program>>> getProgramsByUserId(String userId) {
-    // TODO: implement getProgramsByUserId
-    throw UnimplementedError();
+  Future<Result<List<Program>>> getProgramsByUserId(String userId) async {
+    try {
+      // Pertama ambil data user untuk mendapatkan program IDs yang diikuti
+      DocumentSnapshot<Map<String, dynamic>> userDoc =
+          await _firestore.collection('users').doc(userId).get();
+
+      if (!userDoc.exists) {
+        return const Result.failed('User not found');
+      }
+
+      // Ambil array program IDs dari dokumen user
+      List<String> programIds =
+          List<String>.from(userDoc.data()?['programs'] ?? []);
+
+      if (programIds.isEmpty) {
+        return const Result.failed('User has no enrolled programs');
+      }
+
+      // Ambil data program berdasarkan program IDs
+      List<Program> programs = [];
+      for (String programId in programIds) {
+        DocumentSnapshot<Map<String, dynamic>> programDoc =
+            await _firestore.collection('programs').doc(programId).get();
+
+        if (programDoc.exists) {
+          programs.add(Program.fromJson(programDoc.data()!));
+        }
+      }
+
+      if (programs.isNotEmpty) {
+        return Result.success(programs);
+      } else {
+        return const Result.failed('No programs found');
+      }
+    } on FirebaseException catch (e) {
+      return Result.failed(e.message ?? 'Failed to get user programs');
+    }
   }
 
   @override

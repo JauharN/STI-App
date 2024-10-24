@@ -2,8 +2,8 @@ import 'package:sti_app/data/repositories/authentication.dart';
 import 'package:sti_app/data/repositories/user_repository.dart';
 import 'package:sti_app/domain/usecase/usecase.dart';
 
-import '../../entities/result.dart';
-import '../../entities/user.dart';
+import '../../../entities/result.dart';
+import '../../../entities/user.dart';
 
 part 'login_params.dart';
 
