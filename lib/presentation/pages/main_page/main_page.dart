@@ -1,13 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sti_app/presentation/providers/router/router_provider.dart';
+import 'package:sti_app/presentation/providers/user_data/user_data_provider.dart';
 
-import '../../../domain/entities/user.dart';
-
-class MainPage extends StatelessWidget {
-  final User user;
-  const MainPage({super.key, required this.user});
+class MainPage extends ConsumerStatefulWidget {
+  const MainPage({
+    super.key,
+  });
 
   @override
+  ConsumerState<MainPage> createState() => _MainPageState();
+}
+
+class _MainPageState extends ConsumerState<MainPage> {
+  @override
   Widget build(BuildContext context) {
+    ref.listen(
+      userDataProvider,
+      (previous, next) {
+        if (previous != null && next is AsyncData && next.value == null) {
+          ref.read(routerProvider).goNamed('login');
+        }
+      },
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Beranda STI'),
@@ -16,9 +32,18 @@ class MainPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Selamat datang, ${user.name}!'),
-            Text('Peran: ${user.role}'),
-            // Tambahkan widget lain sesuai kebutuhan STI
+            Text('Selamat datang, ${ref.watch(userDataProvider).when(
+                  data: (data) => data.toString(),
+                  error: (error, stackTrace) => '',
+                  loading: () => 'Loading',
+                )}!'),
+            // Text('Peran: ${widget.user.role}'),
+            ElevatedButton(
+              onPressed: () {
+                ref.read(userDataProvider.notifier).logout();
+              },
+              child: const Text('Logout'),
+            )
           ],
         ),
       ),

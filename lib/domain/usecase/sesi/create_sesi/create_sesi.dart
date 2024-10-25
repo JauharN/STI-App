@@ -8,13 +8,11 @@ import '../../../entities/sesi.dart';
 class CreateSesi implements Usecase<Result<Sesi>, CreateSesiParams> {
   final SesiRepository _sesiRepository;
   final ProgramRepository _programRepository; // Untuk validasi program
-
   CreateSesi({
     required SesiRepository sesiRepository,
     required ProgramRepository programRepository,
   })  : _sesiRepository = sesiRepository,
         _programRepository = programRepository;
-
   @override
   Future<Result<Sesi>> call(CreateSesiParams params) async {
     try {
@@ -24,13 +22,11 @@ class CreateSesi implements Usecase<Result<Sesi>, CreateSesiParams> {
       if (!programResult.isSuccess) {
         return const Result.failed('Program tidak ditemukan');
       }
-
       // Validasi waktu
       if (params.waktuMulai.isAfter(params.waktuSelesai)) {
         return const Result.failed(
             'Waktu mulai tidak boleh lebih dari waktu selesai');
       }
-
       // Validasi waktu tidak overlap dengan sesi lain
       final existingSesi =
           await _sesiRepository.getSesiByProgramId(params.programId);
@@ -46,7 +42,6 @@ class CreateSesi implements Usecase<Result<Sesi>, CreateSesiParams> {
           }
         }
       }
-
       // Buat objek Sesi
       final sesi = Sesi(
         id: '', // ID akan di-generate oleh Firebase
@@ -57,7 +52,6 @@ class CreateSesi implements Usecase<Result<Sesi>, CreateSesiParams> {
         materi: params.materi,
         catatan: params.catatan,
       );
-
       // Simpan ke repository
       return _sesiRepository.createSesi(sesi);
     } catch (e) {
