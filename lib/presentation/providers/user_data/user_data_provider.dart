@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/entities/result.dart';
 import '../../../domain/usecase/authentication/login/login.dart';
@@ -31,7 +32,10 @@ class UserData extends _$UserData {
   }
 
   // Method untuk login
-  Future<void> login({required String email, required String password}) async {
+  Future<void> login(
+      {required String email,
+      required String password,
+      bool rememberMe = false}) async {
     // Set state loading
     state = const AsyncLoading();
 
@@ -47,10 +51,15 @@ class UserData extends _$UserData {
     // Handle hasil login
     switch (result) {
       case Success(value: final user):
-        // Jika sukses, update state dengan data user
+        // Simpan ke SharedPreferences jika rememberMe true
+        if (rememberMe) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isLoggedIn', true);
+          await prefs.setString('userEmail', email);
+          await prefs.setString('userPassword', password);
+        }
         state = AsyncData(user);
       case Failed(:final message):
-        // Jika gagal, set error dan kembalikan state ke null
         state = AsyncError(FlutterError(message), StackTrace.current);
         state = const AsyncData(null);
     }

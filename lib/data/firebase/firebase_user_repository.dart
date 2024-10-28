@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path/path.dart';
 import 'package:sti_app/data/repositories/user_repository.dart';
@@ -202,6 +203,16 @@ class FirebaseUserRepository implements UserRepository {
       }
     } on FirebaseException catch (e) {
       return Result.failed(e.message ?? 'Failed to upload profile picture');
+    }
+  }
+
+  @override
+  Future<Result<void>> resetPassword(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      return const Result.success(null);
+    } catch (e) {
+      return Result.failed(e.toString());
     }
   }
 }

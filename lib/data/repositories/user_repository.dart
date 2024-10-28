@@ -19,6 +19,8 @@ abstract interface class UserRepository {
     required User user,
   });
 
+  Future<Result<void>> resetPassword(String email);
+
   Future<Result<User>> uploadProfilePicture({
     required User user,
     required File imageFile,

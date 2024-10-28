@@ -60,4 +60,10 @@ class DummyUserRepository implements UserRepository {
     // TODO: implement uploadProfilePicture
     throw UnimplementedError();
   }
+
+  @override
+  Future<Result<void>> resetPassword(String email) {
+    // TODO: implement resetPassword
+    throw UnimplementedError();
+  }
 }

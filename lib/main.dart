@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'firebase_options.dart';
+import 'presentation/misc/constants.dart';
 import 'presentation/providers/router/router_provider.dart';
 
 void main() async {
@@ -24,6 +25,7 @@ class MainApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
       routeInformationParser: ref.watch(routerProvider).routeInformationParser,
       routeInformationProvider:
           ref.watch(routerProvider).routeInformationProvider,

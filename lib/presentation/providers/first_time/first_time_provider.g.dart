@@ -1,24 +1,25 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'user_data_provider.dart';
+part of 'first_time_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$userDataHash() => r'b471d881b3bf517ab25c05471b903c9905d8b067';
+String _$firstTimeHash() => r'9336741fc81bfb85a7f80a9369cdd19c1b1a3879';
 
-/// See also [UserData].
-@ProviderFor(UserData)
-final userDataProvider = AsyncNotifierProvider<UserData, User?>.internal(
-  UserData.new,
-  name: r'userDataProvider',
+/// See also [FirstTime].
+@ProviderFor(FirstTime)
+final firstTimeProvider =
+    AutoDisposeAsyncNotifierProvider<FirstTime, bool>.internal(
+  FirstTime.new,
+  name: r'firstTimeProvider',
   debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$userDataHash,
+      const bool.fromEnvironment('dart.vm.product') ? null : _$firstTimeHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$UserData = AsyncNotifier<User?>;
+typedef _$FirstTime = AutoDisposeAsyncNotifier<bool>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
