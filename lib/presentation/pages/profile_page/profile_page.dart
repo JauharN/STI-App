@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../misc/constants.dart';
 import '../../misc/methods.dart';
 import '../../providers/user_data/user_data_provider.dart';
+
 import 'methods/profile_item.dart';
 import 'methods/user_info.dart';
 

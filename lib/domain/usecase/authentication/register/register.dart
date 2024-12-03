@@ -28,6 +28,9 @@ class Register implements Usecase<Result<User>, RegisterParams> {
         name: params.name,
         role: params.role,
         photoUrl: params.photoUrl,
+        phoneNumber: params.phoneNumber,
+        address: params.address,
+        dateOfBirth: params.dateOfBirth,
       );
       if (userResult.isSuccess) {
         return Result.success(userResult.resultValue!);

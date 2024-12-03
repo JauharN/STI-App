@@ -71,6 +71,9 @@ class UserData extends _$UserData {
     required String password,
     required String name,
     required String role, // 'admin' atau 'santri'
+    String? phoneNumber,
+    String? address,
+    DateTime? dateOfBirth,
     String? photoUrl,
   }) async {
     // Set state loading
@@ -85,6 +88,9 @@ class UserData extends _$UserData {
       email: email,
       password: password,
       role: role,
+      phoneNumber: phoneNumber,
+      address: address,
+      dateOfBirth: dateOfBirth,
       photoUrl: photoUrl,
     ));
 

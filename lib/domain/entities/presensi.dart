@@ -11,6 +11,7 @@ class Presensi with _$Presensi {
     required String programId, // 'TAHFIDZ', 'GMM', 'IFIS'
     required DateTime tanggal,
     required String status,
+    required int pertemuanKe,
     String? keterangan,
     DateTime? createdAt,
     DateTime? updatedAt,

@@ -14,7 +14,6 @@ class FirebaseUserRepository implements UserRepository {
   FirebaseUserRepository({FirebaseFirestore? firebaseFirestore})
       : _firebaseFirestore = firebaseFirestore ?? FirebaseFirestore.instance;
 
-  // 1. Membuat user baru
   @override
   Future<Result<User>> createUser({
     required String uid,
@@ -22,33 +21,54 @@ class FirebaseUserRepository implements UserRepository {
     required String name,
     required String role,
     String? photoUrl,
+    String? phoneNumber,
+    String? address,
+    DateTime? dateOfBirth,
   }) async {
     try {
       CollectionReference<Map<String, dynamic>> users =
-          _firebaseFirestore.collection('users');
+      _firebaseFirestore.collection('users');
 
-      // Sesuaikan dengan struktur User entity
-      await users.doc(uid).set({
+      // Tambahkan validasi
+      if (email.isEmpty || name.isEmpty || role.isEmpty) {
+        return const Result.failed('Required fields cannot be empty');
+      }
+
+      // Sesuaikan dengan struktur User entity dengan tambahan field
+      final userData = {
         'uid': uid,
         'email': email,
         'name': name,
         'role': role,
         'photoUrl': photoUrl,
-        'phoneNumber': null,
-        'dateOfBirth': null,
-        'address': null,
-      });
+        'phoneNumber': phoneNumber,
+        'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
+        'address': address,
+        'programs': [], // Array kosong untuk daftar program yang diikuti
+        'createdAt': FieldValue.serverTimestamp(), // Waktu pembuatan user
+        'updatedAt': FieldValue.serverTimestamp(), // Waktu update terakhir
+      };
 
-      DocumentSnapshot<Map<String, dynamic>> result =
-          await users.doc(uid).get();
+      await users.doc(uid).set(userData);
+
+      DocumentSnapshot<Map<String, dynamic>> result = await users.doc(uid).get();
 
       if (result.exists) {
-        return Result.success(User.fromJson(result.data()!));
+        // Konversi Timestamp ke DateTime saat membuat User object
+        final data = result.data()!;
+        if (data['dateOfBirth'] != null) {
+          final timestamp = data['dateOfBirth'] as Timestamp;
+          data['dateOfBirth'] = timestamp.toDate();
+        }
+        return Result.success(User.fromJson(data));
       } else {
         return const Result.failed('Failed to create user');
       }
+
     } on FirebaseException catch (e) {
       return Result.failed(e.message ?? 'Failed to create user');
+    } catch (e) {
+      return Result.failed('Unexpected error: ${e.toString()}');
     }
   }
 
@@ -213,6 +233,29 @@ class FirebaseUserRepository implements UserRepository {
       return const Result.success(null);
     } catch (e) {
       return Result.failed(e.toString());
+    }
+  }
+
+  @override
+  Future<Result<List<User>>> getSantriByProgramId(String programId) async {
+    try {
+      // Ambil semua user dengan role santri yang mengikuti program ini
+      final querySnapshot = await _firebaseFirestore
+          .collection('users')
+          .where('role', isEqualTo: 'santri')
+          .where('programs', arrayContains: programId)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final santriList =
+            querySnapshot.docs.map((doc) => User.fromJson(doc.data())).toList();
+        return Result.success(santriList);
+      } else {
+        return const Result.success(
+            []); // Return empty list jika tidak ada santri
+      }
+    } catch (e) {
+      return Result.failed('Failed to get santri list: ${e.toString()}');
     }
   }
 }

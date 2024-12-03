@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../misc/constants.dart';
 
@@ -12,6 +13,8 @@ class STITextField extends StatelessWidget {
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
   final bool enabled;
+  final int? maxLines;
+  final List<TextInputFormatter>? inputFormatters;
 
   const STITextField({
     super.key,
@@ -24,6 +27,8 @@ class STITextField extends StatelessWidget {
     this.suffixIcon,
     this.validator,
     this.enabled = true,
+    this.maxLines = 1,
+    this.inputFormatters,
   });
 
   @override
@@ -45,6 +50,8 @@ class STITextField extends StatelessWidget {
         keyboardType: keyboardType,
         enabled: enabled,
         validator: validator,
+        maxLines: maxLines,
+        inputFormatters: inputFormatters,
         style: const TextStyle(
           color: AppColors.neutral800,
           fontFamily: 'Poppins',

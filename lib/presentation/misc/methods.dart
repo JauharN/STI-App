@@ -56,3 +56,6 @@ Color getPresensiStatusColor(String status) {
 bool isValidEmail(String email) {
   return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
 }
+
+// untuk build runner
+// dart run build_runner watch -d

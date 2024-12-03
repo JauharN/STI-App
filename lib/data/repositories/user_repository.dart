@@ -9,6 +9,9 @@ abstract interface class UserRepository {
     required String name,
     required String role, // 'santri' atau 'admin'
     String? photoUrl,
+    String? phoneNumber,
+    String? address,
+    DateTime? dateOfBirth,
   });
 
   Future<Result<User>> getUser({
@@ -36,4 +39,6 @@ abstract interface class UserRepository {
   Future<Result<List<String>>> getUserPrograms({
     required String uid,
   });
+
+  Future<Result<List<User>>> getSantriByProgramId(String programId);
 }

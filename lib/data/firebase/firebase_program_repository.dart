@@ -12,18 +12,15 @@ class FirebaseProgramRepository implements ProgramRepository {
   @override
   Future<Result<Program>> createProgram(Program program) async {
     try {
-      // Validasi tipe program
-      if (!['TAHFIDZ', 'GMM', 'IFIS'].contains(program.nama)) {
-        return const Result.failed('Invalid program name');
-      }
-
+      // Gunakan nama program sebagai document ID
       DocumentReference<Map<String, dynamic>> documentReference =
-          _firestore.collection('programs').doc();
+          _firestore.collection('program').doc(program.nama);
 
       final programData = {
         ...program.toJson(),
-        'id': documentReference.id,
+        // Hapus 'id' karena kita gunakan nama program sebagai ID
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       };
 
       await documentReference.set(programData);
@@ -45,7 +42,7 @@ class FirebaseProgramRepository implements ProgramRepository {
   Future<Result<void>> deleteProgram(String programId) async {
     try {
       DocumentReference<Map<String, dynamic>> documentReference =
-          _firestore.doc('programs/$programId');
+          _firestore.doc('program/$programId');
 
       await documentReference.delete();
 
@@ -66,7 +63,7 @@ class FirebaseProgramRepository implements ProgramRepository {
   Future<Result<List<Program>>> getAllPrograms() async {
     try {
       QuerySnapshot<Map<String, dynamic>> querySnapshot =
-          await _firestore.collection('programs').get();
+          await _firestore.collection('program').get();
 
       if (querySnapshot.docs.isNotEmpty) {
         List<Program> programs = querySnapshot.docs
@@ -84,16 +81,33 @@ class FirebaseProgramRepository implements ProgramRepository {
   @override
   Future<Result<Program>> getProgramById(String programId) async {
     try {
-      DocumentSnapshot<Map<String, dynamic>> doc =
-          await _firestore.collection('programs').doc(programId).get();
+      DocumentSnapshot<Map<String, dynamic>> doc = await _firestore
+          .collection('program') // pastikan nama collection benar
+          .doc(programId)
+          .get();
 
       if (doc.exists) {
-        return Result.success(Program.fromJson(doc.data()!));
+        // Validasi data
+        final data = doc.data()!;
+        if (data['id'] == null ||
+            data['nama'] == null ||
+            data['deskripsi'] == null ||
+            data['jadwal'] == null) {
+          return const Result.failed('Invalid program data');
+        }
+
+        // Pastikan jadwal adalah List<String>
+        if (data['jadwal'] is List) {
+          data['jadwal'] =
+              (data['jadwal'] as List).map((e) => e.toString()).toList();
+        }
+
+        return Result.success(Program.fromJson(data));
       } else {
         return const Result.failed('Program not found');
       }
-    } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to get program');
+    } catch (e) {
+      return Result.failed('Failed to get program: ${e.toString()}');
     }
   }
 

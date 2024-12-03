@@ -26,6 +26,7 @@ mixin _$Presensi {
       throw _privateConstructorUsedError; // 'TAHFIDZ', 'GMM', 'IFIS'
   DateTime get tanggal => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
+  int get pertemuanKe => throw _privateConstructorUsedError;
   String? get keterangan => throw _privateConstructorUsedError;
   DateTime? get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
@@ -51,6 +52,7 @@ abstract class $PresensiCopyWith<$Res> {
       String programId,
       DateTime tanggal,
       String status,
+      int pertemuanKe,
       String? keterangan,
       DateTime? createdAt,
       DateTime? updatedAt});
@@ -76,6 +78,7 @@ class _$PresensiCopyWithImpl<$Res, $Val extends Presensi>
     Object? programId = null,
     Object? tanggal = null,
     Object? status = null,
+    Object? pertemuanKe = null,
     Object? keterangan = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
@@ -101,6 +104,10 @@ class _$PresensiCopyWithImpl<$Res, $Val extends Presensi>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as String,
+      pertemuanKe: null == pertemuanKe
+          ? _value.pertemuanKe
+          : pertemuanKe // ignore: cast_nullable_to_non_nullable
+              as int,
       keterangan: freezed == keterangan
           ? _value.keterangan
           : keterangan // ignore: cast_nullable_to_non_nullable
@@ -131,6 +138,7 @@ abstract class _$$PresensiImplCopyWith<$Res>
       String programId,
       DateTime tanggal,
       String status,
+      int pertemuanKe,
       String? keterangan,
       DateTime? createdAt,
       DateTime? updatedAt});
@@ -154,6 +162,7 @@ class __$$PresensiImplCopyWithImpl<$Res>
     Object? programId = null,
     Object? tanggal = null,
     Object? status = null,
+    Object? pertemuanKe = null,
     Object? keterangan = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
@@ -179,6 +188,10 @@ class __$$PresensiImplCopyWithImpl<$Res>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as String,
+      pertemuanKe: null == pertemuanKe
+          ? _value.pertemuanKe
+          : pertemuanKe // ignore: cast_nullable_to_non_nullable
+              as int,
       keterangan: freezed == keterangan
           ? _value.keterangan
           : keterangan // ignore: cast_nullable_to_non_nullable
@@ -204,6 +217,7 @@ class _$PresensiImpl implements _Presensi {
       required this.programId,
       required this.tanggal,
       required this.status,
+      required this.pertemuanKe,
       this.keterangan,
       this.createdAt,
       this.updatedAt});
@@ -223,6 +237,8 @@ class _$PresensiImpl implements _Presensi {
   @override
   final String status;
   @override
+  final int pertemuanKe;
+  @override
   final String? keterangan;
   @override
   final DateTime? createdAt;
@@ -231,7 +247,7 @@ class _$PresensiImpl implements _Presensi {
 
   @override
   String toString() {
-    return 'Presensi(id: $id, userId: $userId, programId: $programId, tanggal: $tanggal, status: $status, keterangan: $keterangan, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Presensi(id: $id, userId: $userId, programId: $programId, tanggal: $tanggal, status: $status, pertemuanKe: $pertemuanKe, keterangan: $keterangan, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -245,6 +261,8 @@ class _$PresensiImpl implements _Presensi {
                 other.programId == programId) &&
             (identical(other.tanggal, tanggal) || other.tanggal == tanggal) &&
             (identical(other.status, status) || other.status == status) &&
+            (identical(other.pertemuanKe, pertemuanKe) ||
+                other.pertemuanKe == pertemuanKe) &&
             (identical(other.keterangan, keterangan) ||
                 other.keterangan == keterangan) &&
             (identical(other.createdAt, createdAt) ||
@@ -256,7 +274,7 @@ class _$PresensiImpl implements _Presensi {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, userId, programId, tanggal,
-      status, keterangan, createdAt, updatedAt);
+      status, pertemuanKe, keterangan, createdAt, updatedAt);
 
   /// Create a copy of Presensi
   /// with the given fields replaced by the non-null parameter values.
@@ -281,6 +299,7 @@ abstract class _Presensi implements Presensi {
       required final String programId,
       required final DateTime tanggal,
       required final String status,
+      required final int pertemuanKe,
       final String? keterangan,
       final DateTime? createdAt,
       final DateTime? updatedAt}) = _$PresensiImpl;
@@ -298,6 +317,8 @@ abstract class _Presensi implements Presensi {
   DateTime get tanggal;
   @override
   String get status;
+  @override
+  int get pertemuanKe;
   @override
   String? get keterangan;
   @override

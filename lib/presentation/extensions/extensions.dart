@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/entities/presensi/presensi_status.dart';
 import '../misc/constants.dart';
 
 extension BuildContextExtension on BuildContext {
@@ -104,5 +105,20 @@ extension DateTimeExtension on DateTime {
 
   DateTime get dateOnly {
     return DateTime(year, month, day);
+  }
+}
+
+extension PresensiStatusX on PresensiStatus {
+  String get label {
+    switch (this) {
+      case PresensiStatus.hadir:
+        return 'Hadir';
+      case PresensiStatus.sakit:
+        return 'Sakit';
+      case PresensiStatus.izin:
+        return 'Izin';
+      case PresensiStatus.alpha:
+        return 'Alpha';
+    }
   }
 }
