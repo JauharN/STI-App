@@ -10,6 +10,7 @@ import '../../../../domain/entities/presensi/santri_presensi.dart';
 import '../../../misc/constants.dart';
 import '../../../providers/presensi/input_presensi_provider.dart';
 import '../../../providers/presensi/santri_list_provider.dart';
+import '../../../providers/repositories/presensi_repository/presensi_repository_provider.dart';
 import '../../../widgets/presensi/santri_presensi_card_widget.dart';
 
 class InputPresensiPage extends ConsumerStatefulWidget {
@@ -25,19 +26,28 @@ class InputPresensiPage extends ConsumerStatefulWidget {
 }
 
 class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
+  // Constants
   static const int maxPertemuan = 8;
+
   // Controllers
   final materiController = TextEditingController();
   final catatanController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
 
   // State variables
   DateTime selectedDate = DateTime.now();
   int pertemuanKe = 1;
   bool isSubmitting = false;
 
-  // Map untuk menyimpan status presensi santri
+  // Maps untuk menyimpan status presensi santri
   final Map<String, PresensiStatus> santriStatus = {};
   final Map<String, String> santriKeterangan = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeDefaults();
+  }
 
   @override
   void dispose() {
@@ -46,10 +56,127 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
     super.dispose();
   }
 
-  // 2. Method untuk menampilkan preview
+  // Initialize default values
+  void _initializeDefaults() {
+    final santriList = ref.read(santriListProvider(widget.programId));
+    // Set status default HADIR untuk semua santri
+    santriList.whenData((list) {
+      for (var santri in list) {
+        santriStatus[santri.uid] = PresensiStatus.hadir;
+      }
+    });
+  }
+
+  // Validation methods
+  Future<bool> _validatePertemuan() async {
+    final existingPertemuan = await ref
+        .read(presensiRepositoryProvider)
+        .getPresensiPertemuan(
+            programId: widget.programId, pertemuanKe: pertemuanKe);
+
+    if (existingPertemuan.isSuccess) {
+      if (mounted) {
+        context.showErrorSnackBar('Pertemuan ke-$pertemuanKe sudah ada');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> _validateForm() async {
+    if (!formKey.currentState!.validate()) return false;
+    if (materiController.text.isEmpty) {
+      context.showErrorSnackBar('Materi tidak boleh kosong');
+      return false;
+    }
+    return await _validatePertemuan();
+  }
+
+  // Submit methods
+  Future<void> _confirmSubmit(List<SantriPresensi> daftarHadir) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Submit'),
+        content:
+            const Text('Pastikan data yang diinput sudah benar. Lanjutkan?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _submitPresensi(daftarHadir);
+    }
+  }
+
+  Future<void> _submitPresensi(List<SantriPresensi> daftarHadir) async {
+    if (isSubmitting) return;
+
+    setState(() => isSubmitting = true);
+
+    try {
+      // Validasi
+      if (!await _validateForm()) {
+        setState(() => isSubmitting = false);
+        return;
+      }
+
+      // Submit
+      await ref.read(inputPresensiControllerProvider.notifier).submitPresensi(
+            programId: widget.programId,
+            pertemuanKe: pertemuanKe,
+            tanggal: selectedDate,
+            materi: materiController.text,
+            catatan: catatanController.text,
+            daftarHadir: daftarHadir,
+          );
+
+      if (mounted) {
+        _showSuccessDialog();
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showErrorSnackBar(e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isSubmitting = false);
+      }
+    }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Berhasil'),
+        content: const Text('Data presensi berhasil disimpan'),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.pop(); // Kembali ke halaman sebelumnya
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Preview dialog
   void _showPreviewDialog() {
     // Persiapkan data preview
-    final List<SantriPresensi> daftarHadir = ref
+    final daftarHadir = ref
             .read(santriListProvider(widget.programId))
             .valueOrNull
             ?.map((santri) => SantriPresensi(
@@ -117,66 +244,9 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
     );
   }
 
-  // Submit dengan validasi
-  Future<void> _submitPresensi(List<SantriPresensi> daftarHadir) async {
-    if (isSubmitting) return;
-    setState(() => isSubmitting = true);
-
-    try {
-      // Validasi
-      if (!ref.read(isValidPresensiInputProvider(
-        programId: widget.programId,
-        pertemuanKe: pertemuanKe,
-        materi: materiController.text,
-        daftarHadir: daftarHadir,
-      ))) {
-        throw Exception('Mohon lengkapi semua data');
-      }
-
-      // Submit
-      await ref.read(inputPresensiControllerProvider.notifier).submitPresensi(
-            programId: widget.programId,
-            pertemuanKe: pertemuanKe,
-            tanggal: selectedDate,
-            materi: materiController.text,
-            catatan: catatanController.text,
-            daftarHadir: daftarHadir,
-          );
-
-      if (mounted) {
-        context.showSuccessSnackBar('Presensi berhasil disimpan');
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        context.showErrorSnackBar(e.toString());
-      }
-    } finally {
-      if (mounted) {
-        setState(() => isSubmitting = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final santriListAsync = ref.watch(santriListProvider(widget.programId));
-    final inputController = ref.watch(inputPresensiControllerProvider);
-
-    ref.listen(
-      inputPresensiControllerProvider,
-      (previous, next) {
-        next.whenOrNull(
-          error: (error, stackTrace) {
-            context.showErrorSnackBar(error.toString());
-          },
-          data: (_) {
-            context.showSuccessSnackBar('Presensi berhasil disimpan');
-            Navigator.pop(context);
-          },
-        );
-      },
-    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -190,51 +260,67 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Info Program Section
-            _buildProgramInfo(),
+      body: Form(
+        key: formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Info Program Section
+              _buildProgramInfo(),
+              const SizedBox(height: 24),
 
-            const SizedBox(height: 24),
+              // Form Input Section
+              _buildPresensiForm(),
+              const SizedBox(height: 24),
 
-            // Form Input Section
-            _buildPresensiForm(),
-
-            const SizedBox(height: 24),
-
-            // Daftar Santri Section
-            Text(
-              'Daftar Santri',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+              // Daftar Santri Section
+              Text(
+                'Daftar Santri',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            santriListAsync.when(
-              data: (santriList) => _buildSantriList(santriList),
-              loading: () => const Center(
-                child: CircularProgressIndicator(),
-              ),
-              error: (error, stack) => Center(
-                child: Text(
-                  'Error: ${error.toString()}',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: AppColors.error,
+              // Santri List with loading and error handling
+              santriListAsync.when(
+                data: (santriList) => _buildSantriList(santriList),
+                loading: () => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+                error: (error, stack) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: AppColors.error,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error: ${error.toString()}',
+                        style: const TextStyle(color: AppColors.error),
+                      ),
+                      ElevatedButton(
+                        onPressed: () =>
+                            ref.refresh(santriListProvider(widget.programId)),
+                        child: const Text('Coba Lagi'),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
-            // Submit Button
-            _buildSubmitButton(),
-          ],
+              // Submit Button
+              _buildSubmitButton(),
+            ],
+          ),
         ),
       ),
     );
@@ -316,18 +402,24 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
         const SizedBox(height: 16),
 
         // Materi
-        TextField(
+        TextFormField(
           controller: materiController,
           decoration: const InputDecoration(
             labelText: 'Materi',
             border: OutlineInputBorder(),
           ),
-          maxLines: 2,
+          maxLines: 3,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Materi tidak boleh kosong';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: 16),
 
         // Catatan
-        TextField(
+        TextFormField(
           controller: catatanController,
           decoration: const InputDecoration(
             labelText: 'Catatan',
@@ -340,6 +432,12 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
   }
 
   Widget _buildSantriList(List<User> santriList) {
+    if (santriList.isEmpty) {
+      return const Center(
+        child: Text('Tidak ada santri yang terdaftar'),
+      );
+    }
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),

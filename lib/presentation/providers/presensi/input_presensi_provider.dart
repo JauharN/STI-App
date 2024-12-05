@@ -1,5 +1,3 @@
-// File: lib/presentation/providers/presensi/input_presensi_provider.dart
-
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sti_app/domain/entities/presensi/presensi_pertemuan.dart';
 import 'package:sti_app/domain/entities/presensi/santri_presensi.dart';
