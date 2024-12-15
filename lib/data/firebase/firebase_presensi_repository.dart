@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:sti_app/domain/entities/presensi/detail_presensi.dart';
 import 'package:sti_app/domain/entities/presensi/presensi_pertemuan.dart';
+import 'package:sti_app/domain/entities/presensi/presensi_statistics_data.dart';
 import 'package:sti_app/domain/entities/presensi/presensi_status.dart';
 import 'package:sti_app/domain/entities/presensi/presensi_summary.dart';
 import 'package:sti_app/domain/entities/presensi/santri_presensi.dart';
 import 'package:sti_app/domain/entities/result.dart';
+import '../../domain/entities/presensi/santri_statistics.dart';
 import '../repositories/presensi_repository.dart';
 
 class FirebasePresensiRepository implements PresensiRepository {
@@ -14,57 +17,6 @@ class FirebasePresensiRepository implements PresensiRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   // HELPER METHODS
-
-  /// Memvalidasi data presensi sebelum operasi create/update
-  Result<void> _validatePresensiData(PresensiPertemuan presensi) {
-    // Validasi program ID
-    if (!['TAHFIDZ', 'GMM', 'IFIS'].contains(presensi.programId)) {
-      return const Result.failed('Invalid program ID');
-    }
-
-    // Validasi daftar hadir tidak kosong
-    if (presensi.daftarHadir.isEmpty) {
-      return const Result.failed('Daftar hadir tidak boleh kosong');
-    }
-
-    // Validasi nomor pertemuan positif
-    if (presensi.pertemuanKe <= 0) {
-      return const Result.failed('Nomor pertemuan harus positif');
-    }
-
-    return const Result.success(null);
-  }
-
-  /// Menghitung summary dari daftar hadir
-  PresensiSummary _generateSummary(List<SantriPresensi> daftarHadir) {
-    int hadir = 0, sakit = 0, izin = 0, alpha = 0;
-
-    for (var santri in daftarHadir) {
-      switch (santri.status) {
-        case PresensiStatus.hadir:
-          hadir++;
-          break;
-        case PresensiStatus.sakit:
-          sakit++;
-          break;
-        case PresensiStatus.izin:
-          izin++;
-          break;
-        case PresensiStatus.alpha:
-          alpha++;
-          break;
-      }
-    }
-
-    return PresensiSummary(
-        totalSantri: daftarHadir.length,
-        hadir: hadir,
-        sakit: sakit,
-        izin: izin,
-        alpha: alpha,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now());
-  }
 
   Future<bool> _isPertemuanExists(String programId, int pertemuanKe) async {
     final snapshot = await _firestore
@@ -103,6 +55,13 @@ class FirebasePresensiRepository implements PresensiRepository {
         return const Result.failed('Daftar hadir tidak boleh kosong');
       }
 
+      // Validasi summary
+      if (presensiPertemuan.summary.totalSantri !=
+          presensiPertemuan.daftarHadir.length) {
+        return const Result.failed(
+            'Data summary tidak sesuai dengan daftar hadir');
+      }
+
       // Proses create
       DocumentReference<Map<String, dynamic>> documentReference =
           _firestore.collection('presensi_pertemuan').doc();
@@ -117,11 +76,16 @@ class FirebasePresensiRepository implements PresensiRepository {
             .toJson(),
       };
 
-      // Gunakan transaction untuk atomic operation
-      await _firestore.runTransaction((transaction) async {
-        transaction.set(documentReference, presensiData);
-      });
+      // Gunakan writeBatch untuk atomic operation yang lebih efisien
+      final batch = _firestore.batch();
 
+      // Set data presensi
+      batch.set(documentReference, presensiData);
+
+      // Commit batch
+      await batch.commit();
+
+      // Verifikasi hasil
       final result = await documentReference.get();
       if (result.exists) {
         return Result.success(PresensiPertemuan.fromJson(result.data()!));
@@ -341,5 +305,160 @@ class FirebasePresensiRepository implements PresensiRepository {
     } catch (e) {
       return Result.failed('Error getting presensi summary: ${e.toString()}');
     }
+  }
+
+  @override
+  Future<Result<PresensiPertemuan>> getPresensiById(String id) async {
+    try {
+      final doc =
+          await _firestore.collection('presensi_pertemuan').doc(id).get();
+
+      if (!doc.exists) {
+        return const Failed('Presensi tidak ditemukan');
+      }
+
+      return Success(PresensiPertemuan.fromJson(doc.data()!));
+    } catch (e) {
+      return Failed(e.toString());
+    }
+  }
+
+  @override
+  Future<Result<PresensiStatisticsData>> getPresensiStatistics({
+    required String programId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      // Buat query dasar
+      Query<Map<String, dynamic>> query = _firestore
+          .collection('presensi_pertemuan')
+          .where('programId', isEqualTo: programId);
+
+      // Tambahkan filter tanggal jika ada
+      if (startDate != null) {
+        query = query.where('tanggal', isGreaterThanOrEqualTo: startDate);
+      }
+      if (endDate != null) {
+        query = query.where('tanggal', isLessThanOrEqualTo: endDate);
+      }
+
+      // Ambil data presensi
+      final presensiDocs = await query.get();
+      final presensiList = presensiDocs.docs
+          .map((doc) => PresensiPertemuan.fromJson(doc.data()))
+          .toList();
+
+      if (presensiList.isEmpty) {
+        return Result.success(PresensiStatisticsData(
+          programId: programId,
+          totalPertemuan: 0,
+          totalSantri: 0,
+          trendKehadiran: {},
+          totalByStatus: {},
+          santriStats: [],
+          lastUpdated: DateTime.now(),
+        ));
+      }
+
+      // Calculate statistics
+      final totalPertemuan = presensiList.length;
+      final totalSantri = presensiList.first.summary.totalSantri;
+
+      // Calculate trend kehadiran
+      final trendKehadiran = _calculateTrendKehadiran(presensiList);
+
+      // Calculate total by status
+      final totalByStatus = _calculateTotalByStatus(presensiList);
+
+      // Calculate santri statistics
+      final santriStats = await _calculateSantriStatistics(presensiList);
+
+      final statisticsData = PresensiStatisticsData(
+        programId: programId,
+        totalPertemuan: totalPertemuan,
+        totalSantri: totalSantri,
+        trendKehadiran: trendKehadiran,
+        totalByStatus: totalByStatus,
+        santriStats: santriStats,
+        lastUpdated: DateTime.now(),
+      );
+
+      return Result.success(statisticsData);
+    } catch (e) {
+      return Result.failed('Gagal mengambil statistik: ${e.toString()}');
+    }
+  }
+
+// Helper methods untuk kalkulasi
+  Map<String, double> _calculateTrendKehadiran(
+      List<PresensiPertemuan> presensiList) {
+    final Map<String, double> trend = {};
+    for (var presensi in presensiList) {
+      final date = DateFormat('yyyy-MM-dd').format(presensi.tanggal);
+      trend[date] =
+          (presensi.summary.hadir / presensi.summary.totalSantri) * 100;
+    }
+    return trend;
+  }
+
+  Map<PresensiStatus, int> _calculateTotalByStatus(
+      List<PresensiPertemuan> presensiList) {
+    final Map<PresensiStatus, int> totalByStatus = {};
+    for (var presensi in presensiList) {
+      for (var santri in presensi.daftarHadir) {
+        totalByStatus.update(
+          santri.status,
+          (value) => value + 1,
+          ifAbsent: () => 1,
+        );
+      }
+    }
+    return totalByStatus;
+  }
+
+  Future<List<SantriStatistics>> _calculateSantriStatistics(
+      List<PresensiPertemuan> presensiList) async {
+    final Map<String, Map<String, dynamic>> santriStatsMap = {};
+
+    // Initialize stats for each santri
+    for (var presensi in presensiList) {
+      for (var santri in presensi.daftarHadir) {
+        if (!santriStatsMap.containsKey(santri.santriId)) {
+          santriStatsMap[santri.santriId] = {
+            'santriName': santri.santriName,
+            'totalKehadiran': 0,
+            'statusCount': <PresensiStatus, int>{},
+          };
+        }
+
+        // Update status count
+        santriStatsMap[santri.santriId]!['statusCount'].update(
+          santri.status,
+          (value) => value + 1,
+          ifAbsent: () => 1,
+        );
+
+        // Update total kehadiran
+        if (santri.status == PresensiStatus.hadir) {
+          santriStatsMap[santri.santriId]!['totalKehadiran'] =
+              santriStatsMap[santri.santriId]!['totalKehadiran']! + 1;
+        }
+      }
+    }
+
+    // Convert to list of SantriStatistics
+    return santriStatsMap.entries.map((entry) {
+      final stats = entry.value;
+      return SantriStatistics(
+        santriId: entry.key,
+        santriName: stats['santriName'],
+        totalKehadiran: stats['totalKehadiran'],
+        totalPertemuan: presensiList.length,
+        statusCount: stats['statusCount'],
+        persentaseKehadiran:
+            (stats['totalKehadiran'] / presensiList.length) * 100,
+      );
+    }).toList();
   }
 }

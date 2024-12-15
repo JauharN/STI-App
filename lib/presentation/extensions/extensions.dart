@@ -108,17 +108,17 @@ extension DateTimeExtension on DateTime {
   }
 }
 
-extension PresensiStatusX on PresensiStatus {
-  String get label {
+extension PresensiStatusPresentation on PresensiStatus {
+  Color get statusColor {
     switch (this) {
       case PresensiStatus.hadir:
-        return 'Hadir';
+        return AppColors.success;
       case PresensiStatus.sakit:
-        return 'Sakit';
+        return AppColors.warning;
       case PresensiStatus.izin:
-        return 'Izin';
+        return Colors.blue;
       case PresensiStatus.alpha:
-        return 'Alpha';
+        return AppColors.error;
     }
   }
 }

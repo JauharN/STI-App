@@ -27,7 +27,7 @@ class FirebaseUserRepository implements UserRepository {
   }) async {
     try {
       CollectionReference<Map<String, dynamic>> users =
-      _firebaseFirestore.collection('users');
+          _firebaseFirestore.collection('users');
 
       // Tambahkan validasi
       if (email.isEmpty || name.isEmpty || role.isEmpty) {
@@ -42,7 +42,8 @@ class FirebaseUserRepository implements UserRepository {
         'role': role,
         'photoUrl': photoUrl,
         'phoneNumber': phoneNumber,
-        'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
+        'dateOfBirth':
+            dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
         'address': address,
         'programs': [], // Array kosong untuk daftar program yang diikuti
         'createdAt': FieldValue.serverTimestamp(), // Waktu pembuatan user
@@ -51,7 +52,8 @@ class FirebaseUserRepository implements UserRepository {
 
       await users.doc(uid).set(userData);
 
-      DocumentSnapshot<Map<String, dynamic>> result = await users.doc(uid).get();
+      DocumentSnapshot<Map<String, dynamic>> result =
+          await users.doc(uid).get();
 
       if (result.exists) {
         // Konversi Timestamp ke DateTime saat membuat User object
@@ -64,7 +66,6 @@ class FirebaseUserRepository implements UserRepository {
       } else {
         return const Result.failed('Failed to create user');
       }
-
     } on FirebaseException catch (e) {
       return Result.failed(e.message ?? 'Failed to create user');
     } catch (e) {
@@ -256,6 +257,48 @@ class FirebaseUserRepository implements UserRepository {
       }
     } catch (e) {
       return Result.failed('Failed to get santri list: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Result<void>> deleteUser(String uid) async {
+    try {
+      await _firebaseFirestore.collection('users').doc(uid).delete();
+      return const Result.success(null);
+    } on FirebaseException catch (e) {
+      return Result.failed(e.message ?? 'Failed to delete user');
+    }
+  }
+
+  @override
+  Future<Result<void>> removeUserFromProgram({
+    required String uid,
+    required String programId,
+  }) async {
+    try {
+      await _firebaseFirestore.collection('users').doc(uid).update({
+        'programs': FieldValue.arrayRemove([programId])
+      });
+      return const Result.success(null);
+    } on FirebaseException catch (e) {
+      return Result.failed(e.message ?? 'Failed to remove user from program');
+    }
+  }
+
+  @override
+  Future<Result<List<User>>> getUsersByRole({required String role}) async {
+    try {
+      final querySnapshot = await _firebaseFirestore
+          .collection('users')
+          .where('role', isEqualTo: role)
+          .get();
+
+      final users =
+          querySnapshot.docs.map((doc) => User.fromJson(doc.data())).toList();
+
+      return Result.success(users);
+    } on FirebaseException catch (e) {
+      return Result.failed(e.message ?? 'Failed to get users by role');
     }
   }
 }

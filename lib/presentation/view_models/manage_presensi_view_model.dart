@@ -1,5 +1,3 @@
-// presentation/view_models/presensi/manage_presensi_view_model.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/presensi/presensi_summary.dart';
@@ -43,6 +41,7 @@ class ManagePresensiViewModel extends StateNotifier<PresensiState> {
     required int pertemuanKe,
     required DateTime tanggal,
     required List<SantriPresensi> daftarHadir,
+    required PresensiSummary summary,
     String? materi,
     String? catatan,
   }) async {
@@ -55,6 +54,7 @@ class ManagePresensiViewModel extends StateNotifier<PresensiState> {
       daftarHadir: daftarHadir,
       materi: materi,
       catatan: catatan,
+      summary: summary,
     );
 
     final result = await createPresensi(params);

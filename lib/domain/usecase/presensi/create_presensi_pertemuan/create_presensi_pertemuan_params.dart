@@ -5,6 +5,7 @@ class CreatePresensiPertemuanParams {
   final int pertemuanKe;
   final DateTime tanggal;
   final List<SantriPresensi> daftarHadir;
+  final PresensiSummary summary;
   final String? materi;
   final String? catatan;
 
@@ -13,6 +14,7 @@ class CreatePresensiPertemuanParams {
     required this.pertemuanKe,
     required this.tanggal,
     required this.daftarHadir,
+    required this.summary,
     this.materi,
     this.catatan,
   });

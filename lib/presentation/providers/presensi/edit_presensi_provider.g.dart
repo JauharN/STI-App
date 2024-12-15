@@ -1,13 +1,12 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'presensi_statistics_provider.dart';
+part of 'edit_presensi_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$presensiStatisticsHash() =>
-    r'fb9c54c750212adf5e8cfaf852542c5393f79e46';
+String _$editPresensiDataHash() => r'b10598b62c6a85452b695a76a288b5530e0f8783';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -30,40 +29,33 @@ class _SystemHash {
   }
 }
 
-abstract class _$PresensiStatistics
-    extends BuildlessAutoDisposeAsyncNotifier<PresensiStatisticsData> {
-  late final String programId;
+/// See also [editPresensiData].
+@ProviderFor(editPresensiData)
+const editPresensiDataProvider = EditPresensiDataFamily();
 
-  FutureOr<PresensiStatisticsData> build(
+/// See also [editPresensiData].
+class EditPresensiDataFamily extends Family<AsyncValue<PresensiPertemuan>> {
+  /// See also [editPresensiData].
+  const EditPresensiDataFamily();
+
+  /// See also [editPresensiData].
+  EditPresensiDataProvider call(
     String programId,
-  );
-}
-
-/// See also [PresensiStatistics].
-@ProviderFor(PresensiStatistics)
-const presensiStatisticsProvider = PresensiStatisticsFamily();
-
-/// See also [PresensiStatistics].
-class PresensiStatisticsFamily
-    extends Family<AsyncValue<PresensiStatisticsData>> {
-  /// See also [PresensiStatistics].
-  const PresensiStatisticsFamily();
-
-  /// See also [PresensiStatistics].
-  PresensiStatisticsProvider call(
-    String programId,
+    String presensiId,
   ) {
-    return PresensiStatisticsProvider(
+    return EditPresensiDataProvider(
       programId,
+      presensiId,
     );
   }
 
   @override
-  PresensiStatisticsProvider getProviderOverride(
-    covariant PresensiStatisticsProvider provider,
+  EditPresensiDataProvider getProviderOverride(
+    covariant EditPresensiDataProvider provider,
   ) {
     return call(
       provider.programId,
+      provider.presensiId,
     );
   }
 
@@ -79,30 +71,36 @@ class PresensiStatisticsFamily
       _allTransitiveDependencies;
 
   @override
-  String? get name => r'presensiStatisticsProvider';
+  String? get name => r'editPresensiDataProvider';
 }
 
-/// See also [PresensiStatistics].
-class PresensiStatisticsProvider extends AutoDisposeAsyncNotifierProviderImpl<
-    PresensiStatistics, PresensiStatisticsData> {
-  /// See also [PresensiStatistics].
-  PresensiStatisticsProvider(
+/// See also [editPresensiData].
+class EditPresensiDataProvider
+    extends AutoDisposeFutureProvider<PresensiPertemuan> {
+  /// See also [editPresensiData].
+  EditPresensiDataProvider(
     String programId,
+    String presensiId,
   ) : this._internal(
-          () => PresensiStatistics()..programId = programId,
-          from: presensiStatisticsProvider,
-          name: r'presensiStatisticsProvider',
+          (ref) => editPresensiData(
+            ref as EditPresensiDataRef,
+            programId,
+            presensiId,
+          ),
+          from: editPresensiDataProvider,
+          name: r'editPresensiDataProvider',
           debugGetCreateSourceHash:
               const bool.fromEnvironment('dart.vm.product')
                   ? null
-                  : _$presensiStatisticsHash,
-          dependencies: PresensiStatisticsFamily._dependencies,
+                  : _$editPresensiDataHash,
+          dependencies: EditPresensiDataFamily._dependencies,
           allTransitiveDependencies:
-              PresensiStatisticsFamily._allTransitiveDependencies,
+              EditPresensiDataFamily._allTransitiveDependencies,
           programId: programId,
+          presensiId: presensiId,
         );
 
-  PresensiStatisticsProvider._internal(
+  EditPresensiDataProvider._internal(
     super._createNotifier, {
     required super.name,
     required super.dependencies,
@@ -110,68 +108,70 @@ class PresensiStatisticsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     required super.debugGetCreateSourceHash,
     required super.from,
     required this.programId,
+    required this.presensiId,
   }) : super.internal();
 
   final String programId;
+  final String presensiId;
 
   @override
-  FutureOr<PresensiStatisticsData> runNotifierBuild(
-    covariant PresensiStatistics notifier,
+  Override overrideWith(
+    FutureOr<PresensiPertemuan> Function(EditPresensiDataRef provider) create,
   ) {
-    return notifier.build(
-      programId,
-    );
-  }
-
-  @override
-  Override overrideWith(PresensiStatistics Function() create) {
     return ProviderOverride(
       origin: this,
-      override: PresensiStatisticsProvider._internal(
-        () => create()..programId = programId,
+      override: EditPresensiDataProvider._internal(
+        (ref) => create(ref as EditPresensiDataRef),
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
         programId: programId,
+        presensiId: presensiId,
       ),
     );
   }
 
   @override
-  AutoDisposeAsyncNotifierProviderElement<PresensiStatistics,
-      PresensiStatisticsData> createElement() {
-    return _PresensiStatisticsProviderElement(this);
+  AutoDisposeFutureProviderElement<PresensiPertemuan> createElement() {
+    return _EditPresensiDataProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is PresensiStatisticsProvider && other.programId == programId;
+    return other is EditPresensiDataProvider &&
+        other.programId == programId &&
+        other.presensiId == presensiId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, programId.hashCode);
+    hash = _SystemHash.combine(hash, presensiId.hashCode);
 
     return _SystemHash.finish(hash);
   }
 }
 
-mixin PresensiStatisticsRef
-    on AutoDisposeAsyncNotifierProviderRef<PresensiStatisticsData> {
+mixin EditPresensiDataRef on AutoDisposeFutureProviderRef<PresensiPertemuan> {
   /// The parameter `programId` of this provider.
   String get programId;
+
+  /// The parameter `presensiId` of this provider.
+  String get presensiId;
 }
 
-class _PresensiStatisticsProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<PresensiStatistics,
-        PresensiStatisticsData> with PresensiStatisticsRef {
-  _PresensiStatisticsProviderElement(super.provider);
+class _EditPresensiDataProviderElement
+    extends AutoDisposeFutureProviderElement<PresensiPertemuan>
+    with EditPresensiDataRef {
+  _EditPresensiDataProviderElement(super.provider);
 
   @override
-  String get programId => (origin as PresensiStatisticsProvider).programId;
+  String get programId => (origin as EditPresensiDataProvider).programId;
+  @override
+  String get presensiId => (origin as EditPresensiDataProvider).presensiId;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

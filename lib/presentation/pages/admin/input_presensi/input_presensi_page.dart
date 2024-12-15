@@ -10,7 +10,6 @@ import '../../../../domain/entities/presensi/santri_presensi.dart';
 import '../../../misc/constants.dart';
 import '../../../providers/presensi/input_presensi_provider.dart';
 import '../../../providers/presensi/santri_list_provider.dart';
-import '../../../providers/repositories/presensi_repository/presensi_repository_provider.dart';
 import '../../../widgets/presensi/santri_presensi_card_widget.dart';
 
 class InputPresensiPage extends ConsumerStatefulWidget {
@@ -26,15 +25,13 @@ class InputPresensiPage extends ConsumerStatefulWidget {
 }
 
 class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
-  // Constants
-  static const int maxPertemuan = 8;
-
   // Controllers
   final materiController = TextEditingController();
   final catatanController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
   // State variables
+  static const int maxPertemuan = 8;
   DateTime selectedDate = DateTime.now();
   int pertemuanKe = 1;
   bool isSubmitting = false;
@@ -56,10 +53,9 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
     super.dispose();
   }
 
-  // Initialize default values
+  // Initialize methods
   void _initializeDefaults() {
     final santriList = ref.read(santriListProvider(widget.programId));
-    // Set status default HADIR untuk semua santri
     santriList.whenData((list) {
       for (var santri in list) {
         santriStatus[santri.uid] = PresensiStatus.hadir;
@@ -68,38 +64,48 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
   }
 
   // Validation methods
-  Future<bool> _validatePertemuan() async {
-    final existingPertemuan = await ref
-        .read(presensiRepositoryProvider)
-        .getPresensiPertemuan(
-            programId: widget.programId, pertemuanKe: pertemuanKe);
-
-    if (existingPertemuan.isSuccess) {
-      if (mounted) {
-        context.showErrorSnackBar('Pertemuan ke-$pertemuanKe sudah ada');
-      }
-      return false;
-    }
-    return true;
-  }
-
-  Future<bool> _validateForm() async {
+  bool _validateForm() {
     if (!formKey.currentState!.validate()) return false;
+
     if (materiController.text.isEmpty) {
       context.showErrorSnackBar('Materi tidak boleh kosong');
       return false;
     }
-    return await _validatePertemuan();
+
+    if (selectedDate.isAfter(DateTime.now())) {
+      context.showErrorSnackBar('Tanggal tidak boleh lebih dari hari ini');
+      return false;
+    }
+
+    return true;
   }
 
-  // Submit methods
+  // Action methods
   Future<void> _confirmSubmit(List<SantriPresensi> daftarHadir) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Konfirmasi Submit'),
-        content:
-            const Text('Pastikan data yang diinput sudah benar. Lanjutkan?'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                  'Tanggal: ${DateFormat('dd MMMM yyyy').format(selectedDate)}'),
+              Text('Pertemuan ke-$pertemuanKe'),
+              Text('Materi: ${materiController.text}'),
+              if (catatanController.text.isNotEmpty)
+                Text('Catatan: ${catatanController.text}'),
+              const Divider(),
+              const Text('Daftar Hadir:'),
+              ...daftarHadir.map((santri) => Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Text('${santri.santriName}: ${santri.status.label}'
+                        '${santri.keterangan?.isNotEmpty == true ? " (${santri.keterangan})" : ""}'),
+                  )),
+            ],
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -119,18 +125,11 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
   }
 
   Future<void> _submitPresensi(List<SantriPresensi> daftarHadir) async {
-    if (isSubmitting) return;
+    if (!_validateForm()) return;
 
     setState(() => isSubmitting = true);
 
     try {
-      // Validasi
-      if (!await _validateForm()) {
-        setState(() => isSubmitting = false);
-        return;
-      }
-
-      // Submit
       await ref.read(inputPresensiControllerProvider.notifier).submitPresensi(
             programId: widget.programId,
             pertemuanKe: pertemuanKe,
@@ -141,7 +140,8 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
           );
 
       if (mounted) {
-        _showSuccessDialog();
+        context.showSuccessSnackBar('Presensi berhasil disimpan');
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -154,112 +154,14 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
     }
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Berhasil'),
-        content: const Text('Data presensi berhasil disimpan'),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.pop(); // Kembali ke halaman sebelumnya
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Preview dialog
-  void _showPreviewDialog() {
-    // Persiapkan data preview
-    final daftarHadir = ref
-            .read(santriListProvider(widget.programId))
-            .valueOrNull
-            ?.map((santri) => SantriPresensi(
-                  santriId: santri.uid,
-                  santriName: santri.name,
-                  status: santriStatus[santri.uid] ?? PresensiStatus.hadir,
-                  keterangan: santriKeterangan[santri.uid] ?? '',
-                ))
-            .toList() ??
-        [];
-
-    // Validasi sebelum preview
-    if (!ref.read(isValidPresensiInputProvider(
-      programId: widget.programId,
-      pertemuanKe: pertemuanKe,
-      materi: materiController.text,
-      daftarHadir: daftarHadir,
-    ))) {
-      context.showSnackBar('Mohon lengkapi semua data');
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Preview Presensi'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                  'Tanggal: ${DateFormat('dd MMMM yyyy').format(selectedDate)}'),
-              Text('Pertemuan ke-$pertemuanKe'),
-              Text('Materi: ${materiController.text}'),
-              if (catatanController.text.isNotEmpty)
-                Text('Catatan: ${catatanController.text}'),
-              const Divider(),
-              const Text('Rekap Kehadiran:'),
-              ...daftarHadir
-                  .map((santri) => Padding(
-                        padding: const EdgeInsets.only(left: 16),
-                        child: Text(
-                            '${santri.santriName}: ${santri.status.name.toUpperCase()}'
-                            '${santri.keterangan?.isNotEmpty == true ? " (${santri.keterangan})" : ""}'),
-                      ))
-                  .toList(),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Edit'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _submitPresensi(daftarHadir);
-            },
-            child: const Text('Konfirmasi'),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // Build methods
   @override
   Widget build(BuildContext context) {
     final santriListAsync = ref.watch(santriListProvider(widget.programId));
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          'Input Presensi',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _buildAppBar(),
       body: Form(
         key: formKey,
         child: SingleChildScrollView(
@@ -267,62 +169,30 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Info Program Section
               _buildProgramInfo(),
               const SizedBox(height: 24),
-
-              // Form Input Section
               _buildPresensiForm(),
               const SizedBox(height: 24),
-
-              // Daftar Santri Section
-              Text(
-                'Daftar Santri',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Santri List with loading and error handling
-              santriListAsync.when(
-                data: (santriList) => _buildSantriList(santriList),
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                error: (error, stack) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        color: AppColors.error,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error: ${error.toString()}',
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                      ElevatedButton(
-                        onPressed: () =>
-                            ref.refresh(santriListProvider(widget.programId)),
-                        child: const Text('Coba Lagi'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
+              _buildSantriSection(santriListAsync),
               const SizedBox(height: 32),
-
-              // Submit Button
-              _buildSubmitButton(),
+              _buildSubmitButton(santriListAsync),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: Text(
+        'Input Presensi',
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      centerTitle: true,
     );
   }
 
@@ -351,148 +221,186 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Date Picker
-        InkWell(
-          onTap: () async {
-            final date = await showDatePicker(
-              context: context,
-              initialDate: selectedDate,
-              firstDate: DateTime(2024, 1, 1),
-              lastDate: DateTime.now(),
-            );
-            if (date != null) {
-              setState(() => selectedDate = date);
+        _buildDatePicker(),
+        const SizedBox(height: 16),
+        _buildPertemuanCounter(),
+        const SizedBox(height: 16),
+        _buildMateriInput(),
+        const SizedBox(height: 16),
+        _buildCatatanInput(),
+      ],
+    );
+  }
+
+  Widget _buildDatePicker() {
+    return InkWell(
+      onTap: () async {
+        final date = await showDatePicker(
+          context: context,
+          initialDate: selectedDate,
+          firstDate: DateTime(2024, 1, 1),
+          lastDate: DateTime.now(),
+        );
+        if (date != null) {
+          setState(() => selectedDate = date);
+        }
+      },
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Tanggal',
+          border: OutlineInputBorder(),
+        ),
+        child: Text(DateFormat('dd MMMM yyyy').format(selectedDate)),
+      ),
+    );
+  }
+
+  Widget _buildPertemuanCounter() {
+    return Row(
+      children: [
+        const Text('Pertemuan ke: '),
+        IconButton(
+          icon: const Icon(Icons.remove),
+          onPressed: () {
+            if (pertemuanKe > 1) {
+              setState(() => pertemuanKe--);
             }
           },
-          child: InputDecorator(
-            decoration: const InputDecoration(
-              labelText: 'Tanggal',
-              border: OutlineInputBorder(),
-            ),
-            child: Text(
-              DateFormat('dd MMMM yyyy').format(selectedDate),
-            ),
-          ),
         ),
-        const SizedBox(height: 16),
-
-        // Nomor Pertemuan
-        Row(
-          children: [
-            const Text('Pertemuan ke: '),
-            IconButton(
-              icon: const Icon(Icons.remove),
-              onPressed: () {
-                if (pertemuanKe > 1) {
-                  setState(() => pertemuanKe--);
-                }
-              },
-            ),
-            Text('$pertemuanKe'),
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () {
-                if (pertemuanKe < maxPertemuan) {
-                  setState(() => pertemuanKe++);
-                }
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Materi
-        TextFormField(
-          controller: materiController,
-          decoration: const InputDecoration(
-            labelText: 'Materi',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Materi tidak boleh kosong';
+        Text('$pertemuanKe'),
+        IconButton(
+          icon: const Icon(Icons.add),
+          onPressed: () {
+            if (pertemuanKe < maxPertemuan) {
+              setState(() => pertemuanKe++);
             }
-            return null;
           },
-        ),
-        const SizedBox(height: 16),
-
-        // Catatan
-        TextFormField(
-          controller: catatanController,
-          decoration: const InputDecoration(
-            labelText: 'Catatan',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 2,
         ),
       ],
     );
   }
 
-  Widget _buildSantriList(List<User> santriList) {
-    if (santriList.isEmpty) {
-      return const Center(
-        child: Text('Tidak ada santri yang terdaftar'),
-      );
-    }
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: santriList.length,
-      itemBuilder: (context, index) {
-        final santri = santriList[index];
-        return SantriPresensiCard(
-          santri: santri,
-          currentStatus:
-              santriStatus[santri.uid]?.name.toUpperCase() ?? 'HADIR',
-          keterangan: santriKeterangan[santri.uid] ?? '',
-          onStatusChanged: (status) {
-            setState(() {
-              santriStatus[santri.uid] = PresensiStatus.values
-                  .firstWhere((e) => e.name.toUpperCase() == status);
-            });
-          },
-          onKeteranganChanged: (keterangan) {
-            setState(() {
-              santriKeterangan[santri.uid] = keterangan;
-            });
-          },
-        );
+  Widget _buildMateriInput() {
+    return TextFormField(
+      controller: materiController,
+      decoration: const InputDecoration(
+        labelText: 'Materi',
+        border: OutlineInputBorder(),
+      ),
+      maxLines: 3,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Materi tidak boleh kosong';
+        }
+        return null;
       },
     );
   }
 
-  Widget _buildSubmitButton() {
-    return ElevatedButton(
-      onPressed: () => _showPreviewDialog(),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        minimumSize: const Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+  Widget _buildCatatanInput() {
+    return TextFormField(
+      controller: catatanController,
+      decoration: const InputDecoration(
+        labelText: 'Catatan',
+        border: OutlineInputBorder(),
       ),
-      child: ref.watch(inputPresensiControllerProvider).maybeWhen(
-            loading: () => const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            ),
-            orElse: () => Text(
-              'Preview & Simpan',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
+      maxLines: 2,
+    );
+  }
+
+  Widget _buildSantriSection(AsyncValue<List<User>> santriListAsync) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Daftar Santri',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildSantriList(santriListAsync),
+      ],
+    );
+  }
+
+  Widget _buildSantriList(AsyncValue<List<User>> santriListAsync) {
+    return santriListAsync.when(
+      data: (santriList) => ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: santriList.length,
+        itemBuilder: (context, index) {
+          final santri = santriList[index];
+          return SantriPresensiCard(
+            santri: santri,
+            currentStatus:
+                santriStatus[santri.uid]?.name.toUpperCase() ?? 'HADIR',
+            keterangan: santriKeterangan[santri.uid] ?? '',
+            onStatusChanged: (status) {
+              setState(() {
+                santriStatus[santri.uid] = PresensiStatus.values
+                    .firstWhere((e) => e.name.toUpperCase() == status);
+              });
+            },
+            onKeteranganChanged: (keterangan) {
+              setState(() {
+                santriKeterangan[santri.uid] = keterangan;
+              });
+            },
+          );
+        },
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
+        child: Text('Error: $error'),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton(AsyncValue<List<User>> santriListAsync) {
+    return santriListAsync.when(
+      data: (santriList) {
+        final daftarHadir = santriList
+            .map((santri) => SantriPresensi(
+                  santriId: santri.uid,
+                  santriName: santri.name,
+                  status: santriStatus[santri.uid] ?? PresensiStatus.hadir,
+                  keterangan: santriKeterangan[santri.uid] ?? '',
+                ))
+            .toList();
+
+        return ElevatedButton(
+          onPressed: isSubmitting ? null : () => _confirmSubmit(daftarHadir),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
+          child: isSubmitting
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(
+                  'Submit Presensi',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }

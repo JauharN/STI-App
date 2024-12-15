@@ -18,6 +18,10 @@ abstract interface class UserRepository {
     required String uid,
   });
 
+  Future<Result<List<User>>> getUsersByRole({
+    required String role,
+  });
+
   Future<Result<User>> updateUser({
     required User user,
   });
@@ -41,4 +45,9 @@ abstract interface class UserRepository {
   });
 
   Future<Result<List<User>>> getSantriByProgramId(String programId);
+  Future<Result<void>> deleteUser(String uid);
+  Future<Result<void>> removeUserFromProgram({
+    required String uid,
+    required String programId,
+  });
 }

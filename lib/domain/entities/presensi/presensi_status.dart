@@ -1,4 +1,3 @@
-// domain/entities/presensi/presensi_status.dart
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 @JsonEnum()
