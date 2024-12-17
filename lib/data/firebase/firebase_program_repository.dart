@@ -18,7 +18,6 @@ class FirebaseProgramRepository implements ProgramRepository {
 
       final programData = {
         ...program.toJson(),
-        // Hapus 'id' karena kita gunakan nama program sebagai ID
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };

@@ -188,4 +188,27 @@ class ManageSantriController extends _$ManageSantriController {
       );
     });
   }
+
+  Future<void> sortSantri(String sortBy) async {
+    state.whenData((currentState) {
+      currentState.whenOrNull(
+        loaded: (list) {
+          final sorted = [...list];
+          switch (sortBy) {
+            case 'name':
+              sorted.sort((a, b) => a.name.compareTo(b.name));
+            case 'program':
+              sorted.sort((a, b) => a.enrolledPrograms.length
+                  .compareTo(b.enrolledPrograms.length));
+            case 'status':
+              sorted.sort((a, b) {
+                if (a.isActive == b.isActive) return 0;
+                return a.isActive ? -1 : 1;
+              });
+          }
+          state = AsyncValue.data(ManageSantriState.loaded(sorted));
+        },
+      );
+    });
+  }
 }

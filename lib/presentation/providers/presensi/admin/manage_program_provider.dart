@@ -262,4 +262,35 @@ class ManageProgramController extends _$ManageProgramController {
       );
     });
   }
+
+  Future<void> sortPrograms(String sortType) async {
+    state.whenData((currentState) {
+      currentState.whenOrNull(
+        loaded: (list) {
+          final sorted = [...list];
+          switch (sortType) {
+            case 'newest':
+              sorted.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
+            case 'oldest':
+              sorted.sort((a, b) => a.createdAt!.compareTo(b.createdAt!));
+          }
+          state = AsyncValue.data(ManageProgramState.loaded(sorted));
+        },
+      );
+    });
+  }
+
+  Future<void> filterPrograms(String filterType) async {
+    state.whenData((currentState) {
+      currentState.whenOrNull(
+        loaded: (list) {
+          final filtered = switch (filterType) {
+            'has_teacher' => list.where((p) => p.teacherId != null).toList(),
+            _ => list,
+          };
+          state = AsyncValue.data(ManageProgramState.loaded(filtered));
+        },
+      );
+    });
+  }
 }

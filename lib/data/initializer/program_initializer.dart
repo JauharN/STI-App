@@ -25,7 +25,7 @@ class ProgramInitializer {
         pengajarId: null,
         pengajarName: null,
         kelas: 'Reguler',
-        totalPertemuan: 8, // Update ke 8 pertemuan
+        totalPertemuan: 8,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ),
