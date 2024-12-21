@@ -474,7 +474,7 @@ class _SantriFormDialogState extends ConsumerState<SantriFormDialog> {
           loading: () => const CircularProgressIndicator(),
           error: (error, stack) => Text(
             'Error: ${error.toString()}',
-            style: TextStyle(color: AppColors.error),
+            style: const TextStyle(color: AppColors.error),
           ),
         ),
       ],

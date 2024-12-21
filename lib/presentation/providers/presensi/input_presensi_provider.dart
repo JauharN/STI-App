@@ -5,6 +5,7 @@ import 'package:sti_app/domain/usecase/presensi/create_presensi_pertemuan/create
 import '../../../domain/entities/presensi/presensi_status.dart';
 import '../../../domain/entities/presensi/presensi_summary.dart';
 import '../../../domain/entities/presensi/presensi_pertemuan.dart';
+import '../repositories/user_repository/user_repository_provider.dart';
 import '../usecases/presensi/create_presensi_pertemuan_provider.dart';
 
 part 'input_presensi_provider.g.dart';
@@ -95,6 +96,42 @@ class InputPresensiController extends _$InputPresensiController {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
+  }
+
+  Future<void> bulkUpdatePresensi({
+    required String programId,
+    required List<String> santriIds,
+    required PresensiStatus status,
+    String? keterangan,
+    required int pertemuanKe, // Tambah ini
+  }) async {
+    state = const AsyncLoading();
+    try {
+      // Get santri details first
+      final userRepository = ref.read(userRepositoryProvider);
+      final daftarHadir = await Future.wait(
+        santriIds.map((id) async {
+          final user = await userRepository.getUser(uid: id);
+          return SantriPresensi(
+            santriId: id,
+            santriName: user.resultValue?.name ?? '', // Fix missing santriName
+            status: status,
+            keterangan: keterangan,
+          );
+        }),
+      );
+
+      await submitPresensi(
+        programId: programId,
+        pertemuanKe: pertemuanKe,
+        tanggal: DateTime.now(),
+        materi: 'Bulk Update',
+        daftarHadir: daftarHadir,
+        catatan: 'Bulk update presensi',
+      );
+    } catch (e, stack) {
+      state = AsyncError(e, stack);
+    }
   }
 }
 

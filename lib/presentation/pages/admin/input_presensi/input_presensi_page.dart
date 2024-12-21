@@ -10,6 +10,7 @@ import '../../../../domain/entities/presensi/santri_presensi.dart';
 import '../../../misc/constants.dart';
 import '../../../providers/presensi/input_presensi_provider.dart';
 import '../../../providers/presensi/santri_list_provider.dart';
+import '../../../widgets/presensi/bulk_action_bottom_sheet.dart';
 import '../../../widgets/presensi/santri_presensi_card_widget.dart';
 
 class InputPresensiPage extends ConsumerStatefulWidget {
@@ -35,6 +36,7 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
   DateTime selectedDate = DateTime.now();
   int pertemuanKe = 1;
   bool isSubmitting = false;
+  final Set<String> selectedSantriIds = {};
 
   // Maps untuk menyimpan status presensi santri
   final Map<String, PresensiStatus> santriStatus = {};
@@ -154,6 +156,22 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
     }
   }
 
+  void _showBulkAction() {
+    if (selectedSantriIds.isEmpty) {
+      context.showErrorSnackBar('Pilih santri terlebih dahulu');
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => BulkActionBottomSheet(
+        programId: widget.programId,
+        santriIds: selectedSantriIds.toList(),
+        pertemuanKe: pertemuanKe,
+      ),
+    );
+  }
+
   // Build methods
   @override
   Widget build(BuildContext context) {
@@ -180,6 +198,14 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
           ),
         ),
       ),
+      floatingActionButton: selectedSantriIds.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: _showBulkAction,
+              label: Text('Update ${selectedSantriIds.length} Santri'),
+              icon: const Icon(Icons.group_add),
+              backgroundColor: AppColors.primary,
+            )
+          : null,
     );
   }
 
@@ -333,22 +359,40 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
         itemCount: santriList.length,
         itemBuilder: (context, index) {
           final santri = santriList[index];
-          return SantriPresensiCard(
-            santri: santri,
-            currentStatus:
-                santriStatus[santri.uid]?.name.toUpperCase() ?? 'HADIR',
-            keterangan: santriKeterangan[santri.uid] ?? '',
-            onStatusChanged: (status) {
-              setState(() {
-                santriStatus[santri.uid] = PresensiStatus.values
-                    .firstWhere((e) => e.name.toUpperCase() == status);
-              });
-            },
-            onKeteranganChanged: (keterangan) {
-              setState(() {
-                santriKeterangan[santri.uid] = keterangan;
-              });
-            },
+          return Column(
+            children: [
+              CheckboxListTile(
+                value: selectedSantriIds.contains(santri.uid),
+                onChanged: (checked) {
+                  setState(() {
+                    if (checked ?? false) {
+                      selectedSantriIds.add(santri.uid);
+                    } else {
+                      selectedSantriIds.remove(santri.uid);
+                    }
+                  });
+                },
+                title: Text(santri.name),
+                subtitle: SantriPresensiCard(
+                  santri: santri,
+                  currentStatus:
+                      santriStatus[santri.uid]?.name.toUpperCase() ?? 'HADIR',
+                  keterangan: santriKeterangan[santri.uid] ?? '',
+                  onStatusChanged: (status) {
+                    setState(() {
+                      santriStatus[santri.uid] = PresensiStatus.values
+                          .firstWhere((e) => e.name.toUpperCase() == status);
+                    });
+                  },
+                  onKeteranganChanged: (keterangan) {
+                    setState(() {
+                      santriKeterangan[santri.uid] = keterangan;
+                    });
+                  },
+                ),
+              ),
+              const Divider(),
+            ],
           );
         },
       ),

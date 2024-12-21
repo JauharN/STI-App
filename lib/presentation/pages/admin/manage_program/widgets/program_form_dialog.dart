@@ -339,7 +339,7 @@ class _ProgramFormDialogState extends ConsumerState<ProgramFormDialog> {
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.person),
             ),
-            hint: Text('Pilih Pengajar'),
+            hint: const Text('Pilih Pengajar'),
             items: teachers
                 .map((teacher) => DropdownMenuItem(
                       value: teacher.uid,
@@ -359,7 +359,7 @@ class _ProgramFormDialogState extends ConsumerState<ProgramFormDialog> {
           loading: () => const CircularProgressIndicator(),
           error: (error, stack) => Text(
             'Error: ${error.toString()}',
-            style: TextStyle(color: AppColors.error),
+            style: const TextStyle(color: AppColors.error),
           ),
         ),
       ],

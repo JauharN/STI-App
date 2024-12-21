@@ -17,6 +17,8 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
   // State variables
   String searchQuery = '';
   bool isLoading = false;
+  String selectedFilter = '';
+  String selectedSort = '';
 
   // Controllers
   final searchController = TextEditingController();
@@ -35,14 +37,19 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
       appBar: _buildAppBar(),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
-        child: Column(
-          children: [
-            _buildSearchBar(),
-            _buildFilterSection(),
-            Expanded(
-              child: _buildProgramList(programAsync),
-            ),
-          ],
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _buildSearchBar(),
+              _buildFilterSection(),
+              SizedBox(
+                // Tambah ini
+                height: MediaQuery.of(context).size.height - 200,
+                child: _buildProgramList(programAsync),
+              ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: _buildAddButton(),
@@ -173,8 +180,12 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
                 // Filter by teacher
                 FilterChip(
                   label: const Text('Ada Pengajar'),
-                  selected: false, // Connect to state
+                  selected: selectedFilter == 'has_teacher', // Update ini
                   onSelected: (selected) {
+                    setState(() {
+                      selectedFilter =
+                          selected ? 'has_teacher' : ''; // Tambah ini
+                    });
                     _handleFilter('has_teacher');
                   },
                 ),
@@ -340,6 +351,7 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
   Widget _buildAddButton() {
     return FloatingActionButton(
       onPressed: _showAddProgramDialog,
+      backgroundColor: AppColors.primary,
       child: const Icon(Icons.add),
     );
   }
