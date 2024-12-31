@@ -1,33 +1,54 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/entities/result.dart';
+import '../../../domain/entities/user_management/activate_user.dart';
+import '../../../domain/entities/user_management/deactivate_user.dart';
 import '../../../domain/usecase/authentication/login/login.dart';
 import '../../../domain/usecase/authentication/register/register_params.dart';
 import '../../../domain/usecase/authentication/upload_profile_picture/upload_profile_picture_params.dart';
+import '../../../domain/usecase/user_management/update_user_role.dart/update_user_role.dart';
 import '../usecases/authentication/get_logged_user_id_provider.dart';
 import '../usecases/authentication/login_provider.dart';
 import '../usecases/authentication/logout_provider.dart';
 import '../usecases/authentication/register_provider.dart';
 import '../usecases/authentication/upload_profile_picture_provider.dart';
+import '../usecases/user_management/activate_user_provider.dart';
+import '../usecases/user_management/deactivate_user_provider.dart';
+import '../usecases/user_management/update_user_role_provider.dart';
 
 part 'user_data_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 class UserData extends _$UserData {
+  final _streamController = StreamController<User?>.broadcast();
+
+  Stream<User?> userStateStream() => _streamController.stream;
+
   @override
   Future<User?> build() async {
-    // Coba ambil user yang sedang login saat aplikasi dibuka
+    ref.onDispose(() {
+      _streamController.close();
+    });
+
     final getLoggedUserId = ref.read(getLoggedUserIdProvider);
     var userResult = await getLoggedUserId(null);
 
-    switch (userResult) {
-      case Success(value: final user):
-        return user;
-      case Failed(message: _):
-        return null;
+    final user = switch (userResult) {
+      Success(value: final user) => user,
+      Failed(message: _) => null,
+    };
+
+    _notifyStateChange(user);
+    return user;
+  }
+
+  void _notifyStateChange(User? user) {
+    if (!_streamController.isClosed) {
+      _streamController.add(user);
     }
   }
 
@@ -59,9 +80,12 @@ class UserData extends _$UserData {
           await prefs.setString('userPassword', password);
         }
         state = AsyncData(user);
+        _notifyStateChange(user);
+
       case Failed(:final message):
         state = AsyncError(FlutterError(message), StackTrace.current);
         state = const AsyncData(null);
+        _notifyStateChange(null);
     }
   }
 
@@ -70,39 +94,32 @@ class UserData extends _$UserData {
     required String email,
     required String password,
     required String name,
-    required String role, // 'admin' atau 'santri'
     String? phoneNumber,
     String? address,
     DateTime? dateOfBirth,
     String? photoUrl,
   }) async {
-    // Set state loading
     state = const AsyncLoading();
 
-    // Ambil register usecase dari provider
     final register = ref.read(registerProvider);
-
-    // Lakukan registrasi
     var result = await register(RegisterParams(
       name: name,
       email: email,
       password: password,
-      role: role,
       phoneNumber: phoneNumber,
       address: address,
       dateOfBirth: dateOfBirth,
       photoUrl: photoUrl,
     ));
 
-    // Handle hasil registrasi
     switch (result) {
       case Success(value: final user):
-        // Jika sukses, update state dengan data user
         state = AsyncData(user);
+        _notifyStateChange(user);
       case Failed(:final message):
-        // Jika gagal, set error dan kembalikan state ke null
         state = AsyncError(FlutterError(message), StackTrace.current);
         state = const AsyncData(null);
+        _notifyStateChange(null);
     }
   }
 
@@ -113,6 +130,7 @@ class UserData extends _$UserData {
 
     if (result case Success(value: final user)) {
       state = AsyncData(user);
+      _notifyStateChange(user);
     }
   }
 
@@ -125,10 +143,12 @@ class UserData extends _$UserData {
       case Success(value: _):
         // Jika sukses, set state ke null
         state = const AsyncData(null);
+        _notifyStateChange(null);
       case Failed(:final message):
         // Jika gagal, set error dan kembalikan state sebelumnya
         state = AsyncError(FlutterError(message), StackTrace.current);
         state = AsyncData(state.valueOrNull);
+        _notifyStateChange(state.valueOrNull);
     }
   }
 
@@ -156,10 +176,97 @@ class UserData extends _$UserData {
       case Success(value: final updatedUser):
         // Jika sukses, update state dengan data user yang baru
         state = AsyncData(updatedUser);
+        _notifyStateChange(updatedUser);
       case Failed(:final message):
         // Jika gagal, set error dan kembalikan state sebelumnya
         state = AsyncError(FlutterError(message), StackTrace.current);
         state = AsyncData(state.valueOrNull);
+        _notifyStateChange(state.valueOrNull);
+    }
+  }
+
+  Future<void> updateUserRole({
+    required String uid,
+    required UserRole newRole,
+  }) async {
+    state = const AsyncLoading();
+    final currentUser = state.valueOrNull;
+
+    if (currentUser == null) {
+      state = const AsyncData(null);
+      _notifyStateChange(null);
+      return;
+    }
+
+    final updateRole = ref.read(updateUserRoleProvider);
+    final result = await updateRole(UpdateUserRoleParams(
+      uid: uid,
+      newRole: newRole,
+      currentUserRole: currentUser.role,
+    ));
+
+    switch (result) {
+      case Success(:final value):
+        state = AsyncData(value);
+        _notifyStateChange(value);
+      case Failed(:final message):
+        state = AsyncError(FlutterError(message), StackTrace.current);
+        state = AsyncData(currentUser);
+        _notifyStateChange(currentUser);
+    }
+  }
+
+  Future<void> activateUser(String uid) async {
+    state = const AsyncLoading();
+    final currentUser = state.valueOrNull;
+
+    if (currentUser == null) {
+      state = const AsyncData(null);
+      _notifyStateChange(null);
+      return;
+    }
+
+    final activate = ref.read(activateUserProvider);
+    final result = await activate(ActivateUserParams(
+      uid: uid,
+      currentUserRole: currentUser.role,
+    ));
+
+    switch (result) {
+      case Success(:final value):
+        state = AsyncData(value);
+        _notifyStateChange(value);
+      case Failed(:final message):
+        state = AsyncError(FlutterError(message), StackTrace.current);
+        state = AsyncData(currentUser);
+        _notifyStateChange(currentUser);
+    }
+  }
+
+  Future<void> deactivateUser(String uid) async {
+    state = const AsyncLoading();
+    final currentUser = state.valueOrNull;
+
+    if (currentUser == null) {
+      state = const AsyncData(null);
+      _notifyStateChange(null);
+      return;
+    }
+
+    final deactivate = ref.read(deactivateUserProvider);
+    final result = await deactivate(DeactivateUserParams(
+      uid: uid,
+      currentUserRole: currentUser.role,
+    ));
+
+    switch (result) {
+      case Success(:final value):
+        state = AsyncData(value);
+        _notifyStateChange(value);
+      case Failed(:final message):
+        state = AsyncError(FlutterError(message), StackTrace.current);
+        state = AsyncData(currentUser);
+        _notifyStateChange(currentUser);
     }
   }
 }

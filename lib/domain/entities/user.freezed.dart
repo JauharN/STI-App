@@ -23,8 +23,8 @@ mixin _$User {
   String get uid => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
   String get email => throw _privateConstructorUsedError;
-  String get role =>
-      throw _privateConstructorUsedError; // 'santri' atau 'admin'
+  UserRole get role => throw _privateConstructorUsedError;
+  bool get isActive => throw _privateConstructorUsedError;
   String? get photoUrl => throw _privateConstructorUsedError;
   String? get phoneNumber => throw _privateConstructorUsedError;
   DateTime? get dateOfBirth => throw _privateConstructorUsedError;
@@ -48,7 +48,8 @@ abstract class $UserCopyWith<$Res> {
       {String uid,
       String name,
       String email,
-      String role,
+      UserRole role,
+      bool isActive,
       String? photoUrl,
       String? phoneNumber,
       DateTime? dateOfBirth,
@@ -74,6 +75,7 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
     Object? name = null,
     Object? email = null,
     Object? role = null,
+    Object? isActive = null,
     Object? photoUrl = freezed,
     Object? phoneNumber = freezed,
     Object? dateOfBirth = freezed,
@@ -95,7 +97,11 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
       role: null == role
           ? _value.role
           : role // ignore: cast_nullable_to_non_nullable
-              as String,
+              as UserRole,
+      isActive: null == isActive
+          ? _value.isActive
+          : isActive // ignore: cast_nullable_to_non_nullable
+              as bool,
       photoUrl: freezed == photoUrl
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
@@ -127,7 +133,8 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
       {String uid,
       String name,
       String email,
-      String role,
+      UserRole role,
+      bool isActive,
       String? photoUrl,
       String? phoneNumber,
       DateTime? dateOfBirth,
@@ -150,6 +157,7 @@ class __$$UserImplCopyWithImpl<$Res>
     Object? name = null,
     Object? email = null,
     Object? role = null,
+    Object? isActive = null,
     Object? photoUrl = freezed,
     Object? phoneNumber = freezed,
     Object? dateOfBirth = freezed,
@@ -171,7 +179,11 @@ class __$$UserImplCopyWithImpl<$Res>
       role: null == role
           ? _value.role
           : role // ignore: cast_nullable_to_non_nullable
-              as String,
+              as UserRole,
+      isActive: null == isActive
+          ? _value.isActive
+          : isActive // ignore: cast_nullable_to_non_nullable
+              as bool,
       photoUrl: freezed == photoUrl
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
@@ -199,7 +211,8 @@ class _$UserImpl implements _User {
       {required this.uid,
       required this.name,
       required this.email,
-      required this.role,
+      this.role = UserRole.santri,
+      this.isActive = true,
       this.photoUrl,
       this.phoneNumber,
       this.dateOfBirth,
@@ -215,8 +228,11 @@ class _$UserImpl implements _User {
   @override
   final String email;
   @override
-  final String role;
-// 'santri' atau 'admin'
+  @JsonKey()
+  final UserRole role;
+  @override
+  @JsonKey()
+  final bool isActive;
   @override
   final String? photoUrl;
   @override
@@ -228,7 +244,7 @@ class _$UserImpl implements _User {
 
   @override
   String toString() {
-    return 'User(uid: $uid, name: $name, email: $email, role: $role, photoUrl: $photoUrl, phoneNumber: $phoneNumber, dateOfBirth: $dateOfBirth, address: $address)';
+    return 'User(uid: $uid, name: $name, email: $email, role: $role, isActive: $isActive, photoUrl: $photoUrl, phoneNumber: $phoneNumber, dateOfBirth: $dateOfBirth, address: $address)';
   }
 
   @override
@@ -240,6 +256,8 @@ class _$UserImpl implements _User {
             (identical(other.name, name) || other.name == name) &&
             (identical(other.email, email) || other.email == email) &&
             (identical(other.role, role) || other.role == role) &&
+            (identical(other.isActive, isActive) ||
+                other.isActive == isActive) &&
             (identical(other.photoUrl, photoUrl) ||
                 other.photoUrl == photoUrl) &&
             (identical(other.phoneNumber, phoneNumber) ||
@@ -251,8 +269,8 @@ class _$UserImpl implements _User {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, uid, name, email, role, photoUrl,
-      phoneNumber, dateOfBirth, address);
+  int get hashCode => Object.hash(runtimeType, uid, name, email, role, isActive,
+      photoUrl, phoneNumber, dateOfBirth, address);
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.
@@ -275,7 +293,8 @@ abstract class _User implements User {
       {required final String uid,
       required final String name,
       required final String email,
-      required final String role,
+      final UserRole role,
+      final bool isActive,
       final String? photoUrl,
       final String? phoneNumber,
       final DateTime? dateOfBirth,
@@ -290,7 +309,9 @@ abstract class _User implements User {
   @override
   String get email;
   @override
-  String get role; // 'santri' atau 'admin'
+  UserRole get role;
+  @override
+  bool get isActive;
   @override
   String? get photoUrl;
   @override

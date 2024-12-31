@@ -26,7 +26,6 @@ class Register implements Usecase<Result<User>, RegisterParams> {
         uid: uidResult.resultValue!,
         email: params.email,
         name: params.name,
-        role: params.role,
         photoUrl: params.photoUrl,
         phoneNumber: params.phoneNumber,
         address: params.address,

@@ -1,12 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sti_app/presentation/extensions/extensions.dart';
+import '../../../domain/entities/user.dart';
 import '../../misc/constants.dart';
 import '../../misc/methods.dart';
 import '../../providers/router/router_provider.dart';
 import '../../providers/user_data/user_data_provider.dart';
 import '../../widgets/sti_text_field_widget.dart';
+
+class LoginConstants {
+  static const int maxRetries = 3;
+  static const int timeoutSeconds = 30;
+}
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -20,6 +28,37 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final passwordController = TextEditingController();
   bool rememberMe = false;
   bool obscurePassword = true;
+  bool isLoading = false;
+
+  Future<bool> _handleOperationWithRetry(
+    Future<void> Function() operation, {
+    int maxRetries = LoginConstants.maxRetries,
+    int timeoutSeconds = LoginConstants.timeoutSeconds,
+  }) async {
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        await operation().timeout(
+          Duration(seconds: timeoutSeconds),
+          onTimeout: () {
+            throw TimeoutException('Operation timed out');
+          },
+        );
+        return true;
+      } catch (e) {
+        retryCount++;
+        if (retryCount == maxRetries) {
+          if (mounted) {
+            context.showErrorSnackBar(
+                'Operation failed after $maxRetries attempts: ${e.toString()}');
+          }
+          return false;
+        }
+        await Future.delayed(Duration(seconds: retryCount));
+      }
+    }
+    return false;
+  }
 
   @override
   void dispose() {
@@ -28,26 +67,84 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
-  void _handleLogin() {
-    ref.read(userDataProvider.notifier).login(
-          email: emailController.text,
-          password: passwordController.text,
-          rememberMe: rememberMe,
-        );
+  bool _validateInputs() {
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+
+    if (emailController.text.isEmpty) {
+      context.showErrorSnackBar('Email tidak boleh kosong');
+      return false;
+    }
+    if (!emailRegex.hasMatch(emailController.text)) {
+      context.showErrorSnackBar('Format email tidak valid');
+      return false;
+    }
+    if (passwordController.text.isEmpty) {
+      context.showErrorSnackBar('Password tidak boleh kosong');
+      return false;
+    }
+    if (passwordController.text.length < 6) {
+      context.showErrorSnackBar('Password minimal 6 karakter');
+      return false;
+    }
+    return true;
+  }
+
+  void _handleRoleBasedRouting(UserRole? role) {
+    if (!mounted) return;
+
+    switch (role) {
+      case UserRole.superAdmin:
+        ref.read(routerProvider).goNamed('user-management');
+        break;
+      case UserRole.admin:
+        ref.read(routerProvider).goNamed('manage-presensi');
+        break;
+      case UserRole.santri:
+        ref.read(routerProvider).goNamed('main');
+        break;
+      default:
+        ref.read(routerProvider).goNamed('login');
+    }
+  }
+
+  void _handleLogin() async {
+    if (!_validateInputs()) return;
+
+    setState(() => isLoading = true);
+    try {
+      await ref.read(userDataProvider.notifier).login(
+            email: emailController.text,
+            password: passwordController.text,
+            rememberMe: rememberMe,
+          );
+
+      final userRole = ref.read(userDataProvider).value?.role;
+      _handleRoleBasedRouting(userRole);
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Listen to user data changes
     ref.listen(
       userDataProvider,
       (previous, next) {
-        if (next is AsyncData) {
-          if (next.value != null) {
-            ref.read(routerProvider).goNamed('main');
-          }
+        if (next is AsyncData && next.value != null) {
+          _handleRoleBasedRouting(next.value!.role);
         } else if (next is AsyncError) {
-          context.showSnackBar(next.error.toString());
+          final errorMessage = switch (next.error.toString()) {
+            String e when e.contains('wrong-password') =>
+              'Password yang Anda masukkan salah',
+            String e when e.contains('user-not-found') =>
+              'Email tidak terdaftar',
+            String e when e.contains('invalid-email') =>
+              'Format email tidak valid',
+            String e when e.contains('network-request-failed') =>
+              'Koneksi gagal. Periksa internet Anda',
+            _ => next.error.toString(),
+          };
+          context.showErrorSnackBar(errorMessage);
         }
       },
     );
@@ -270,6 +367,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                 ),
               ),
+              if (isLoading)
+                Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

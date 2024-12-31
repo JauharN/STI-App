@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,10 +11,18 @@ import 'package:sti_app/presentation/misc/constants.dart';
 import 'package:sti_app/presentation/misc/methods.dart';
 
 import '../../../../domain/entities/presensi/presensi_summary.dart';
+import '../../../../domain/entities/user.dart';
 import '../../../providers/presensi/manage_presensi_provider.dart';
 import '../../../providers/presensi/presensi_detail_provider.dart';
-// import '../../../providers/presensi/presensi_statistics_provider.dart';
 import '../../../providers/program/program_provider.dart';
+import '../../../providers/user_data/user_data_provider.dart';
+import '../../../widgets/sti_text_field_widget.dart';
+
+class ManagePresensiConstants {
+  static const int maxRetries = 3;
+  static const int timeoutSeconds = 30;
+  static const int filterDebounceMs = 500;
+}
 
 class ManagePresensiPage extends ConsumerStatefulWidget {
   final String programId;
@@ -30,11 +40,68 @@ class _ManagePresensiPageState extends ConsumerState<ManagePresensiPage> {
   DateTime? _selectedMonth;
   String _sortBy = 'newest'; // 'newest', 'oldest', 'pertemuan'
   final List<DateTime> _monthList = [];
+  bool isProcessing = false;
+  Timer? _filterDebounce;
+  final searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _initializeMonthList();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    _filterDebounce?.cancel();
+    super.dispose();
+  }
+
+  bool _canManagePresensi(UserRole? userRole) {
+    return userRole == UserRole.admin || userRole == UserRole.superAdmin;
+  }
+
+  Future<bool> _handleOperationWithRetry(
+    Future<void> Function() operation, {
+    int maxRetries = ManagePresensiConstants.maxRetries,
+    int timeoutSeconds = ManagePresensiConstants.timeoutSeconds,
+  }) async {
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        await operation().timeout(
+          Duration(seconds: timeoutSeconds),
+          onTimeout: () {
+            throw TimeoutException('Operation timed out');
+          },
+        );
+        return true; // Success case
+      } catch (e) {
+        retryCount++;
+        if (retryCount == maxRetries) {
+          if (mounted) {
+            context.showErrorSnackBar(
+                'Operation failed after $maxRetries attempts: ${e.toString()}');
+          }
+          return false; // Failure case after max retries
+        }
+        await Future.delayed(Duration(seconds: retryCount));
+      }
+    }
+    return false; // Fallback return
+  }
+
+  void _handleSearch(String query) {
+    _filterDebounce?.cancel();
+    _filterDebounce = Timer(
+        const Duration(milliseconds: ManagePresensiConstants.filterDebounceMs),
+        () {
+      setState(() {
+        _searchQuery = query.trim();
+        ref.refresh(managePresensiStateProvider(widget.programId));
+      });
+    });
   }
 
   // Generate list bulan untuk filter
@@ -49,13 +116,29 @@ class _ManagePresensiPageState extends ConsumerState<ManagePresensiPage> {
 
 // Method untuk filter by month
   List<PresensiPertemuan> _getFilteredList(List<PresensiPertemuan> list) {
-    if (_selectedMonth == null) return list;
+    var filtered = list;
 
-    return list
-        .where((presensi) =>
-            presensi.tanggal.year == _selectedMonth!.year &&
-            presensi.tanggal.month == _selectedMonth!.month)
-        .toList();
+    // Filter by month
+    if (_selectedMonth != null) {
+      filtered = filtered
+          .where((presensi) =>
+              presensi.tanggal.year == _selectedMonth!.year &&
+              presensi.tanggal.month == _selectedMonth!.month)
+          .toList();
+    }
+
+    // Filter by search
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered
+          .where((presensi) =>
+              presensi.materi
+                  ?.toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false || presensi.pertemuanKe.toString().contains(_searchQuery))
+          .toList();
+    }
+
+    return filtered;
   }
 
 // Method untuk sorting
@@ -82,8 +165,8 @@ class _ManagePresensiPageState extends ConsumerState<ManagePresensiPage> {
     return (total / list.length) * 100 / list.first.summary.totalSantri;
   }
 
-  Future<void> _confirmDelete(PresensiPertemuan presensi) async {
-    final confirm = await showDialog<bool>(
+  Future<bool> _confirmDelete(PresensiPertemuan presensi) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Konfirmasi Hapus'),
@@ -105,25 +188,33 @@ class _ManagePresensiPageState extends ConsumerState<ManagePresensiPage> {
       ),
     );
 
-    if (confirm == true) {
+    if (confirmed == true) {
       await _executeDelete(presensi);
+      return true;
     }
+    return false;
   }
 
 // Add delete execution method
   Future<void> _executeDelete(PresensiPertemuan presensi) async {
+    setState(() => isProcessing = true);
     try {
-      await ref
-          .read(managePresensiStateProvider(widget.programId).notifier)
-          .deletePresensi(presensi.id);
+      final success = await _handleOperationWithRetry(() async {
+        await ref
+            .read(managePresensiStateProvider(widget.programId).notifier)
+            .deletePresensi(presensi.id);
+      });
 
-      if (mounted) {
+      if (success && mounted) {
         context.showSuccessSnackBar('Data presensi berhasil dihapus');
+        ref.refresh(managePresensiStateProvider(widget.programId));
       }
     } catch (e) {
       if (mounted) {
         context.showErrorSnackBar(e.toString());
       }
+    } finally {
+      setState(() => isProcessing = false);
     }
   }
 
@@ -323,6 +414,13 @@ class _ManagePresensiPageState extends ConsumerState<ManagePresensiPage> {
               fontWeight: FontWeight.w600,
             ),
           ),
+          STITextField(
+            labelText: 'Cari Presensi',
+            onChanged: _handleSearch,
+            prefixIcon: const Icon(Icons.search),
+            controller: searchController,
+          ),
+          const SizedBox(height: 12),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -813,91 +911,120 @@ class _ManagePresensiPageState extends ConsumerState<ManagePresensiPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Check user role access
+    final userRole = ref.watch(userDataProvider).value?.role;
+    if (!_canManagePresensi(userRole)) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 64, color: AppColors.error),
+              const SizedBox(height: 16),
+              Text(
+                'Access Denied',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You don\'t have permission to manage presensi',
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppColors.neutral600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final presensiAsync =
         ref.watch(managePresensiStateProvider(widget.programId));
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: presensiAsync.when(
-        data: (presensiList) {
-          final filteredList = _getFilteredList(presensiList);
-          final sortedList = _getSortedList(filteredList);
+      body: Stack(
+        children: [
+          presensiAsync.when(
+            data: (presensiList) {
+              final filteredList = _getFilteredList(presensiList);
+              final sortedList = _getSortedList(filteredList);
 
-          return CustomScrollView(
-            slivers: [
-              // Custom App Bar
-              _buildAppBar(context),
-
-              // Main Content
-              SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Program Info
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: _buildProgramInfo(),
+              return CustomScrollView(
+                slivers: [
+                  _buildAppBar(context),
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: _buildProgramInfo(),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: _buildFilterSection(),
+                        ),
+                        _buildStatisticsSection(sortedList),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: _buildQuickActions(context),
+                        ),
+                        const SizedBox(height: 24),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: sortedList.isEmpty
+                              ? _buildEmptyState()
+                              : _buildPertemuanList(sortedList),
+                        ),
+                      ],
                     ),
-
-                    // Filter Section
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _buildFilterSection(),
-                    ),
-
-                    // Statistics Overview
-                    _buildStatisticsSection(sortedList),
-
-                    // Quick Actions
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _buildQuickActions(context),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Main Content - Presensi List or Empty State
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: sortedList.isEmpty
-                          ? _buildEmptyState()
-                          : _buildPertemuanList(sortedList),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              );
+            },
+            loading: () => const Center(
+              child: CircularProgressIndicator(
+                color: AppColors.primary,
               ),
-            ],
-          );
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(
-            color: AppColors.primary,
+            ),
+            error: (error, stack) => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: AppColors.error,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error: $error',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: AppColors.error,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => ref
+                        .refresh(managePresensiStateProvider(widget.programId)),
+                    child: const Text('Coba Lagi'),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                color: AppColors.error,
-                size: 48,
+          if (isProcessing)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(
+                child: CircularProgressIndicator(),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Error: $error',
-                style: GoogleFonts.plusJakartaSans(
-                  color: AppColors.error,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () =>
-                    ref.refresh(managePresensiStateProvider(widget.programId)),
-                child: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }

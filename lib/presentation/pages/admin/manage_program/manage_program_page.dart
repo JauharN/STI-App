@@ -1,11 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sti_app/presentation/extensions/extensions.dart';
 
+import '../../../../domain/entities/user.dart';
 import '../../../misc/constants.dart';
 import '../../../providers/presensi/admin/manage_program_provider.dart';
+import '../../../providers/user_data/user_data_provider.dart';
 import 'widgets/program_form_dialog.dart';
+
+class ManageProgramConstants {
+  static const int maxRetries = 3;
+  static const int timeoutSeconds = 30;
+  static const int searchDebounceMs = 500;
+}
 
 class ManageProgramPage extends ConsumerStatefulWidget {
   const ManageProgramPage({super.key});
@@ -19,18 +29,83 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
   bool isLoading = false;
   String selectedFilter = '';
   String selectedSort = '';
+  Timer? _searchDebounce;
+
+  bool _canManageProgram(UserRole? userRole) {
+    return userRole == UserRole.admin || userRole == UserRole.superAdmin;
+  }
 
   // Controllers
   final searchController = TextEditingController();
 
+  Future<bool> _handleOperationWithRetry(
+    Future<void> Function() operation, {
+    int maxRetries = ManageProgramConstants.maxRetries,
+    int timeoutSeconds = ManageProgramConstants.timeoutSeconds,
+  }) async {
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        await operation().timeout(
+          Duration(seconds: timeoutSeconds),
+          onTimeout: () {
+            throw TimeoutException('Operation timed out');
+          },
+        );
+        return true;
+      } catch (e) {
+        retryCount++;
+        if (retryCount == maxRetries) {
+          if (mounted) {
+            context.showErrorSnackBar(
+                'Operation failed after $maxRetries attempts: ${e.toString()}');
+          }
+          return false;
+        }
+        await Future.delayed(Duration(seconds: retryCount));
+      }
+    }
+    return false;
+  }
+
   @override
   void dispose() {
     searchController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final userRole = ref.watch(userDataProvider).value?.role;
+    if (!_canManageProgram(userRole)) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 64, color: AppColors.error),
+              const SizedBox(height: 16),
+              Text(
+                'Access Denied',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You don\'t have permission to manage programs',
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppColors.neutral600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final programAsync = ref.watch(manageProgramControllerProvider);
 
     return Scaffold(
@@ -425,13 +500,20 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
     );
 
     if (confirm == true) {
-      await ref
-          .read(manageProgramControllerProvider.notifier)
-          .deleteProgram(programId);
+      setState(() => isLoading = true);
+      try {
+        final success = await _handleOperationWithRetry(() async {
+          await ref
+              .read(manageProgramControllerProvider.notifier)
+              .deleteProgram(programId);
+        });
 
-      if (mounted) {
-        context.showSuccessSnackBar('Program berhasil dihapus');
-        ref.refresh(manageProgramControllerProvider);
+        if (success && mounted) {
+          context.showSuccessSnackBar('Program berhasil dihapus');
+          ref.refresh(manageProgramControllerProvider);
+        }
+      } finally {
+        setState(() => isLoading = false);
       }
     }
   }

@@ -12,9 +12,14 @@ class STITextField extends StatelessWidget {
   final Widget? prefixIcon;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
+  final void Function(String)? onChanged;
   final bool enabled;
   final int? maxLines;
+  final int? maxLength;
   final List<TextInputFormatter>? inputFormatters;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final Function(String)? onFieldSubmitted;
 
   const STITextField({
     super.key,
@@ -28,7 +33,12 @@ class STITextField extends StatelessWidget {
     this.validator,
     this.enabled = true,
     this.maxLines = 1,
+    this.maxLength = 1,
     this.inputFormatters,
+    this.onChanged,
+    this.focusNode,
+    this.textInputAction,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -50,7 +60,9 @@ class STITextField extends StatelessWidget {
         keyboardType: keyboardType,
         enabled: enabled,
         validator: validator,
+        onChanged: onChanged,
         maxLines: maxLines,
+        maxLength: maxLength,
         inputFormatters: inputFormatters,
         style: const TextStyle(
           color: AppColors.neutral800,

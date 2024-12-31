@@ -1,15 +1,25 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../domain/entities/presensi/santri_detail.dart';
+import '../../../../domain/entities/user.dart';
 import '../../../extensions/extensions.dart';
 import '../../../misc/constants.dart';
 import '../../../misc/methods.dart';
 import '../../../providers/presensi/admin/manage_santri_provider.dart';
 import '../../../providers/program/available_programs_provider.dart';
+import '../../../providers/user_data/user_data_provider.dart';
 import 'widgets/santri_form_dialog.dart';
+
+class ManageSantriConstants {
+  static const int maxRetries = 3;
+  static const int timeoutSeconds = 30;
+  static const int searchDebounceMs = 500;
+}
 
 class ManageSantriPage extends ConsumerStatefulWidget {
   const ManageSantriPage({super.key});
@@ -23,6 +33,42 @@ class _ManageSantriPageState extends ConsumerState<ManageSantriPage> {
   String filterProgram = 'all';
   String sortBy = 'name'; // name, program, status
   final searchController = TextEditingController();
+  Timer? _searchDebounce;
+  bool isProcessing = false;
+
+  bool _canManageSantri(UserRole? userRole) {
+    return userRole == UserRole.admin || userRole == UserRole.superAdmin;
+  }
+
+  Future<bool> _handleOperationWithRetry(
+    Future<void> Function() operation, {
+    int maxRetries = ManageSantriConstants.maxRetries,
+    int timeoutSeconds = ManageSantriConstants.timeoutSeconds,
+  }) async {
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        await operation().timeout(
+          Duration(seconds: timeoutSeconds),
+          onTimeout: () {
+            throw TimeoutException('Operation timed out');
+          },
+        );
+        return true;
+      } catch (e) {
+        retryCount++;
+        if (retryCount == maxRetries) {
+          if (mounted) {
+            context.showErrorSnackBar(
+                'Operation failed after $maxRetries attempts: ${e.toString()}');
+          }
+          return false;
+        }
+        await Future.delayed(Duration(seconds: retryCount));
+      }
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -45,7 +91,34 @@ class _ManageSantriPageState extends ConsumerState<ManageSantriPage> {
   @override
   Widget build(BuildContext context) {
     final santriListAsync = ref.watch(manageSantriControllerProvider);
-
+    final userRole = ref.watch(userDataProvider).value?.role;
+    if (!_canManageSantri(userRole)) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 64, color: AppColors.error),
+              const SizedBox(height: 16),
+              Text(
+                'Access Denied',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You don\'t have permission to manage santri',
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppColors.neutral600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -696,18 +769,24 @@ class _ManageSantriPageState extends ConsumerState<ManageSantriPage> {
     );
 
     if (result == true) {
-      if (mounted) {
-        final deleteResult = await ref
-            .read(manageSantriControllerProvider.notifier)
-            .deleteSantri(santriId);
+      setState(() => isProcessing = true);
+      try {
+        final success = await _handleOperationWithRetry(() async {
+          final deleteResult = await ref
+              .read(manageSantriControllerProvider.notifier)
+              .deleteSantri(santriId);
 
-        if (deleteResult.isSuccess) {
+          if (!deleteResult.isSuccess) {
+            throw Exception(deleteResult.errorMessage);
+          }
+        });
+
+        if (success && mounted) {
           context.showSuccessSnackBar('Santri berhasil dihapus');
-        } else {
-          context.showErrorSnackBar(
-            deleteResult.errorMessage ?? 'Gagal menghapus santri',
-          );
+          ref.refresh(manageSantriControllerProvider);
         }
+      } finally {
+        setState(() => isProcessing = false);
       }
     }
   }

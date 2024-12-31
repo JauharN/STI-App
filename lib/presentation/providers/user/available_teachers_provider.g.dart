@@ -6,7 +6,7 @@ part of 'available_teachers_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$availableTeachersHash() => r'bb13142591d1e227950580d61205431bd2aa3674';
+String _$availableTeachersHash() => r'afc347a0249a21d8e51035be176c9c79b7b0f5dd';
 
 /// See also [availableTeachers].
 @ProviderFor(availableTeachers)

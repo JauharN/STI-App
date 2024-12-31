@@ -62,7 +62,6 @@ class ManageSantriController extends _$ManageSantriController {
         uid: uid,
         email: email,
         name: name,
-        role: 'santri',
         photoUrl: photoUrl,
       );
 

@@ -57,7 +57,13 @@ List<Widget> userInfo(WidgetRef ref) => [
           borderRadius: BorderRadius.circular(100),
         ),
         child: Text(
-          ref.watch(userDataProvider).valueOrNull?.role.toUpperCase() ?? '',
+          ref
+                  .watch(userDataProvider)
+                  .valueOrNull
+                  ?.role
+                  .displayName
+                  .toUpperCase() ??
+              '',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 12,
             fontWeight: FontWeight.w500,
