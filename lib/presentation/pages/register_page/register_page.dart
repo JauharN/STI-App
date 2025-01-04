@@ -29,9 +29,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final addressController = TextEditingController();
 
   DateTime? selectedDate;
-  String selectedRole = 'santri';
   bool obscurePassword = true;
   bool obscureConfirmPassword = true;
+  bool isLoading = false;
 
   @override
   void dispose() {
@@ -58,6 +58,40 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     }
   }
 
+  Future<void> _registerUser() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final userProvider = ref.read(userDataProvider.notifier);
+      await userProvider.register(
+        name: nameController.text.trim(),
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+        phoneNumber: phoneController.text.trim(),
+        address: addressController.text.trim(),
+        dateOfBirth: selectedDate,
+      );
+
+      // Tampilkan pesan sukses dan arahkan ke halaman login
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Akun berhasil dibuat. Silakan login.')),
+      );
+      ref.read(routerProvider).goNamed('login');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registration failed: $e')),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   String? _validateRequired(String? value, String fieldName) {
     if (value == null || value.isEmpty) {
       return '$fieldName tidak boleh kosong';
@@ -69,7 +103,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     if (value == null || value.isEmpty) {
       return 'Email tidak boleh kosong';
     }
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}\$');
     if (!emailRegex.hasMatch(value)) {
       return 'Format email tidak valid';
     }
@@ -111,9 +145,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     ref.listen(
       userDataProvider,
       (previous, next) {
-        if (next is AsyncData && next.value != null) {
-          ref.read(routerProvider).goNamed('main');
-        } else if (next is AsyncError) {
+        if (next is AsyncError) {
           context.showSnackBar(next.error.toString());
         }
       },
@@ -247,9 +279,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       color: AppColors.neutral600),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      obscurePassword ? Icons.visibility : Icons.visibility_off,
-                      color: AppColors.neutral600,
-                    ),
+                        obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: AppColors.neutral600),
                     onPressed: () =>
                         setState(() => obscurePassword = !obscurePassword),
                   ),
@@ -266,11 +299,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       color: AppColors.neutral600),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      obscureConfirmPassword
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                      color: AppColors.neutral600,
-                    ),
+                        obscureConfirmPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: AppColors.neutral600),
                     onPressed: () => setState(
                         () => obscureConfirmPassword = !obscureConfirmPassword),
                   ),
@@ -279,51 +311,28 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 verticalSpace(32),
 
                 // Register Button
-                Consumer(
-                  builder: (context, ref, child) {
-                    final userState = ref.watch(userDataProvider);
-
-                    return ElevatedButton(
-                      onPressed: userState is AsyncLoading
-                          ? null
-                          : () {
-                              if (_formKey.currentState!.validate()) {
-                                ref.read(userDataProvider.notifier).register(
-                                      name: nameController.text,
-                                      email: emailController.text,
-                                      password: passwordController.text,
-                                      phoneNumber: phoneController.text,
-                                      address: addressController.text,
-                                      dateOfBirth: selectedDate,
-                                    );
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        minimumSize: const Size(double.infinity, 56),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                ElevatedButton(
+                  onPressed: isLoading ? null : _registerUser,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: isLoading
+                      ? const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        )
+                      : Text(
+                          'Daftar',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      child: userState is AsyncLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              'Daftar',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                    );
-                  },
                 ),
                 verticalSpace(16),
 
