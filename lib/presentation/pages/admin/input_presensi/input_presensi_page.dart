@@ -8,10 +8,10 @@ import 'package:sti_app/presentation/extensions/extensions.dart';
 
 import '../../../../domain/entities/presensi/santri_presensi.dart';
 import '../../../misc/constants.dart';
-import '../../../providers/presensi/input_presensi_provider.dart';
+import '../../../providers/presensi/admin/input_presensi_provider.dart';
 import '../../../providers/presensi/santri_list_provider.dart';
-import '../../../widgets/presensi/bulk_action_bottom_sheet.dart';
-import '../../../widgets/presensi/santri_presensi_card_widget.dart';
+import '../../../widgets/presensi_widget/bulk_action_bottom_sheet_widget.dart';
+import '../../../widgets/presensi_widget/santri_presensi_card_widget.dart';
 
 class InputPresensiPage extends ConsumerStatefulWidget {
   final String programId;

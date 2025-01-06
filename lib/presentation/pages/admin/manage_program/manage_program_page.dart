@@ -9,7 +9,7 @@ import '../../../../domain/entities/user.dart';
 import '../../../misc/constants.dart';
 import '../../../providers/presensi/admin/manage_program_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';
-import 'widgets/program_form_dialog.dart';
+import '../../../widgets/presensi_widget/program_form_dialog.dart';
 
 class ManageProgramConstants {
   static const int maxRetries = 3;

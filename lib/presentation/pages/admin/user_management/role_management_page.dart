@@ -11,7 +11,7 @@ import '../../../widgets/empty_state.dart';
 import '../../../widgets/error_state.dart';
 import '../../../widgets/loading_state.dart';
 import '../../../widgets/sti_text_field_widget.dart';
-import '../../../widgets/user_management/role_management_item_widget.dart';
+import '../../../widgets/user_management_widget/role_management_item_widget.dart';
 import '../../../extensions/extensions.dart';
 
 class RoleManagementPage extends ConsumerStatefulWidget {

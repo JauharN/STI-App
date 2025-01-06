@@ -13,7 +13,7 @@ import '../../../misc/methods.dart';
 import '../../../providers/presensi/admin/manage_santri_provider.dart';
 import '../../../providers/program/available_programs_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';
-import 'widgets/santri_form_dialog.dart';
+import '../../../widgets/presensi_widget/santri_form_dialog.dart';
 
 class ManageSantriConstants {
   static const int maxRetries = 3;

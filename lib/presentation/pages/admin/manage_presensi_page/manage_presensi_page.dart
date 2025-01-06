@@ -12,7 +12,7 @@ import 'package:sti_app/presentation/misc/methods.dart';
 
 import '../../../../domain/entities/presensi/presensi_summary.dart';
 import '../../../../domain/entities/user.dart';
-import '../../../providers/presensi/manage_presensi_provider.dart';
+import '../../../providers/presensi/admin/manage_presensi_provider.dart';
 import '../../../providers/presensi/presensi_detail_provider.dart';
 import '../../../providers/program/program_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';

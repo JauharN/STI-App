@@ -12,7 +12,7 @@ import '../../../widgets/empty_state.dart';
 import '../../../widgets/error_state.dart';
 import '../../../widgets/loading_state.dart';
 import '../../../widgets/sti_text_field_widget.dart';
-import '../../../widgets/user_management/user_list_item_widget.dart';
+import '../../../widgets/user_management_widget/user_list_item_widget.dart';
 
 class UserManagementPage extends ConsumerStatefulWidget {
   const UserManagementPage({super.key});

@@ -10,7 +10,7 @@ import '../../../domain/entities/user_management/deactivate_user.dart';
 import '../../../domain/usecase/authentication/login/login.dart';
 import '../../../domain/usecase/authentication/register/register_params.dart';
 import '../../../domain/usecase/authentication/upload_profile_picture/upload_profile_picture_params.dart';
-import '../../../domain/usecase/user_management/update_user_role.dart/update_user_role.dart';
+import '../../../domain/usecase/user_management/update_user_role/update_user_role.dart';
 import '../usecases/authentication/get_logged_user_id_provider.dart';
 import '../usecases/authentication/login_provider.dart';
 import '../usecases/authentication/logout_provider.dart';

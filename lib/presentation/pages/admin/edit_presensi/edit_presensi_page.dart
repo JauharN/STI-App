@@ -9,11 +9,11 @@ import 'package:sti_app/presentation/extensions/extensions.dart';
 
 import '../../../../domain/entities/presensi/santri_presensi.dart';
 import '../../../misc/constants.dart';
-import '../../../providers/presensi/edit_presensi_provider.dart';
+import '../../../providers/presensi/admin/edit_presensi_provider.dart';
 import '../../../providers/presensi/santri_list_provider.dart';
-import '../../../providers/presensi/update_presensi_provider.dart';
+import '../../../providers/presensi/admin/update_presensi_provider.dart';
 import '../../../providers/program/program_provider.dart';
-import '../../../widgets/presensi/santri_presensi_card_widget.dart';
+import '../../../widgets/presensi_widget/santri_presensi_card_widget.dart';
 
 class EditPresensiPage extends ConsumerStatefulWidget {
   final String programId;

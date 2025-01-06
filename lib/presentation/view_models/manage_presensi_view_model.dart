@@ -6,7 +6,7 @@ import '../../domain/usecase/presensi/create_presensi_pertemuan/create_presensi_
 import '../../domain/usecase/presensi/delete_presensi_pertemuan/delete_presensi_pertemuan.dart';
 import '../../domain/usecase/presensi/get_all_presensi_pertemuan/get_all_presensi_pertemuan.dart';
 import '../../domain/usecase/presensi/update_presensi_pertemuan/update_presensi_pertemuan.dart';
-import 'presensi_state.dart';
+import '../states/presensi_state.dart';
 
 class ManagePresensiViewModel extends StateNotifier<PresensiState> {
   final CreatePresensiPertemuan createPresensi;

@@ -1,7 +1,7 @@
 import '../../domain/entities/program.dart';
 import '../../domain/usecase/program/create_program/create_program.dart';
 import '../../domain/usecase/program/create_program/create_program_params.dart';
-import '../../presentation/utils/logger.dart';
+import '../../presentation/utils/logger_util.dart';
 import '../repositories/program_repository.dart';
 
 class ProgramInitializer {

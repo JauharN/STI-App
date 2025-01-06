@@ -407,22 +407,26 @@ class FirebaseUserRepository implements UserRepository {
   Future<Result<void>> resetPassword(String email) async {
     try {
       if (email.isEmpty) {
-        return const Result.failed('Email cannot be empty');
+        return const Result.failed('Email tidak boleh kosong');
       }
 
-      // Validate email format
       final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
       if (!emailRegex.hasMatch(email)) {
-        return const Result.failed('Invalid email format');
+        return const Result.failed('Format email tidak valid');
       }
 
-      // Send password reset email
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       return const Result.success(null);
     } on FirebaseAuthException catch (e) {
-      return Result.failed(e.message ?? 'Failed to send reset password email');
+      switch (e.code) {
+        case 'user-not-found':
+          return const Result.failed('Email tidak ditemukan');
+        default:
+          return Result.failed(
+              e.message ?? 'Gagal mengirim email reset password');
+      }
     } catch (e) {
-      return Result.failed('Unexpected error: ${e.toString()}');
+      return Result.failed('Kesalahan tidak terduga: ${e.toString()}');
     }
   }
 
