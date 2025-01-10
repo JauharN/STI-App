@@ -1,4 +1,3 @@
-// domain/entities/presensi_summary.dart
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../json_converters.dart';

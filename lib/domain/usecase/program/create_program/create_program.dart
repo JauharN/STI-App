@@ -1,8 +1,9 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
-import 'package:sti_app/domain/usecase/program/create_program/create_program_params.dart';
 import '../../../entities/result.dart';
 import '../../../entities/program.dart';
+
+part 'create_program_params.dart';
 
 class CreateProgram implements Usecase<Result<Program>, CreateProgramParams> {
   final ProgramRepository _programRepository;

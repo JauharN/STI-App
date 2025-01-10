@@ -1,7 +1,8 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/progres_hafalan_repository.dart';
-import 'package:sti_app/domain/usecase/progres_hafalan/delete_progres_hafalan/delete_progres_hafalan_params.dart';
 import '../../../entities/result.dart';
+
+part 'delete_progres_hafalan_params.dart';
 
 class DeleteProgresHafalan
     implements Usecase<Result<void>, DeleteProgresHafalanParams> {

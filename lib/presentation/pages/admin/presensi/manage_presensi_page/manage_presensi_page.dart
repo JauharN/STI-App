@@ -10,13 +10,13 @@ import 'package:sti_app/presentation/extensions/extensions.dart';
 import 'package:sti_app/presentation/misc/constants.dart';
 import 'package:sti_app/presentation/misc/methods.dart';
 
-import '../../../../domain/entities/presensi/presensi_summary.dart';
-import '../../../../domain/entities/user.dart';
-import '../../../providers/presensi/admin/manage_presensi_provider.dart';
-import '../../../providers/presensi/presensi_detail_provider.dart';
-import '../../../providers/program/program_provider.dart';
-import '../../../providers/user_data/user_data_provider.dart';
-import '../../../widgets/sti_text_field_widget.dart';
+import '../../../../../domain/entities/presensi/presensi_summary.dart';
+import '../../../../../domain/entities/user.dart';
+import '../../../../providers/presensi/admin/manage_presensi_provider.dart';
+import '../../../../providers/presensi/presensi_detail_provider.dart';
+import '../../../../providers/program/program_provider.dart';
+import '../../../../providers/user_data/user_data_provider.dart';
+import '../../../../widgets/sti_text_field_widget.dart';
 
 class ManagePresensiConstants {
   static const int maxRetries = 3;

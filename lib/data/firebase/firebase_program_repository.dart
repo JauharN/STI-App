@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:sti_app/data/repositories/program_repository.dart';
-import 'package:sti_app/domain/entities/program.dart';
-import 'package:sti_app/domain/entities/result.dart';
+import '../repositories/program_repository.dart';
+import '../../domain/entities/program.dart';
+import '../../domain/entities/result.dart';
 
 class FirebaseProgramRepository implements ProgramRepository {
   final FirebaseFirestore _firestore;

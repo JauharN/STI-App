@@ -8,5 +8,5 @@ part 'get_sesi_by_program_provider.g.dart';
 @riverpod
 GetSesiByProgram getSesiByProgram(GetSesiByProgramRef ref) => GetSesiByProgram(
       sesiRepository: ref.watch(sesiRepositoryProvider),
-      programRepository: ref.watch(programRepositoryProvider), // Tambahkan ini
+      programRepository: ref.watch(programRepositoryProvider),
     );

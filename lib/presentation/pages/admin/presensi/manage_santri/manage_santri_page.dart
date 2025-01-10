@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../domain/entities/presensi/santri_detail.dart';
-import '../../../../domain/entities/user.dart';
-import '../../../extensions/extensions.dart';
-import '../../../misc/constants.dart';
-import '../../../misc/methods.dart';
-import '../../../providers/presensi/admin/manage_santri_provider.dart';
-import '../../../providers/program/available_programs_provider.dart';
-import '../../../providers/user_data/user_data_provider.dart';
-import '../../../widgets/presensi_widget/santri_form_dialog.dart';
+import '../../../../../domain/entities/presensi/santri_detail.dart';
+import '../../../../../domain/entities/user.dart';
+import '../../../../extensions/extensions.dart';
+import '../../../../misc/constants.dart';
+import '../../../../misc/methods.dart';
+import '../../../../providers/presensi/admin/manage_santri_provider.dart';
+import '../../../../providers/program/available_programs_provider.dart';
+import '../../../../providers/user_data/user_data_provider.dart';
+import '../../../../widgets/presensi_widget/santri_form_dialog_widget.dart';
 
 class ManageSantriConstants {
   static const int maxRetries = 3;

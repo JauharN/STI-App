@@ -1,9 +1,10 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/sesi_repository.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
-import 'package:sti_app/domain/usecase/sesi/get_upcoming_sesi/get_upcoming_sesi_params.dart';
 import '../../../entities/result.dart';
 import '../../../entities/sesi.dart';
+
+part 'get_upcoming_sesi_params.dart';
 
 class GetUpcomingSesi
     implements Usecase<Result<List<Sesi>>, GetUpcomingSesiParams> {

@@ -1,8 +1,9 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
-import 'package:sti_app/domain/usecase/program/get_programs_by_user_id/get_programs_by_user_id_params.dart';
 import '../../../entities/result.dart';
 import '../../../entities/program.dart';
+
+part 'get_programs_by_user_id_params.dart';
 
 class GetProgramsByUserId
     implements Usecase<Result<List<Program>>, GetProgramsByUserIdParams> {

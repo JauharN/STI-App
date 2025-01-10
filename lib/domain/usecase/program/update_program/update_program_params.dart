@@ -1,4 +1,4 @@
-import '../../../entities/program.dart';
+part of 'update_program.dart';
 
 class UpdateProgramParams {
   // Program yang akan diupdate

@@ -1,4 +1,4 @@
-import '../../../entities/sesi.dart';
+part of 'update_sesi.dart';
 
 class UpdateSesiParams {
   // Data sesi yang akan diupdate

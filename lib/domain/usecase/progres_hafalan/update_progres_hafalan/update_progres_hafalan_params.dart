@@ -1,4 +1,4 @@
-import '../../../entities/progres_hafalan.dart';
+part of 'update_progres_hafalan.dart';
 
 class UpdateProgresHafalanParams {
   // Data progres hafalan yang akan diupdate

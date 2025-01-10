@@ -1,3 +1,5 @@
+part of 'create_progres_hafalan.dart';
+
 class CreateProgresHafalanParams {
   final String userId;
   final String programId; // 'TAHFIDZ' atau 'GMM'

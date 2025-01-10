@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../misc/constants.dart';
 import '../../misc/methods.dart';
 import '../../providers/user_data/user_data_provider.dart';
-import '../../widgets/presensi_widget/presensi_program_card.dart';
+import '../../widgets/presensi_widget/presensi_program_card_widget.dart';
 
 class PresensiPage extends ConsumerStatefulWidget {
   const PresensiPage({super.key});

@@ -1,3 +1,5 @@
+part of 'get_upcoming_sesi.dart';
+
 class GetUpcomingSesiParams {
   // ID program yang ingin dilihat sesi mendatangnya
   final String programId;

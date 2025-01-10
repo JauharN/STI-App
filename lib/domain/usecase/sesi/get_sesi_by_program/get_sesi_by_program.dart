@@ -1,9 +1,10 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/sesi_repository.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
-import 'package:sti_app/domain/usecase/sesi/get_sesi_by_program/get_sesi_by_program_params.dart';
 import '../../../entities/result.dart';
 import '../../../entities/sesi.dart';
+
+part 'get_sesi_by_program_params.dart';
 
 class GetSesiByProgram
     implements Usecase<Result<List<Sesi>>, GetSesiByProgramParams> {

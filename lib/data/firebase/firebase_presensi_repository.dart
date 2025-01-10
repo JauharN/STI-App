@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import 'package:sti_app/domain/entities/presensi/detail_presensi.dart';
-import 'package:sti_app/domain/entities/presensi/presensi_pertemuan.dart';
-import 'package:sti_app/domain/entities/presensi/presensi_statistics_data.dart';
-import 'package:sti_app/domain/entities/presensi/presensi_status.dart';
-import 'package:sti_app/domain/entities/presensi/presensi_summary.dart';
-import 'package:sti_app/domain/entities/presensi/santri_presensi.dart';
-import 'package:sti_app/domain/entities/result.dart';
+import '../../domain/entities/presensi/detail_presensi.dart';
+import '../../domain/entities/presensi/presensi_pertemuan.dart';
+import '../../domain/entities/presensi/presensi_statistics_data.dart';
+import '../../domain/entities/presensi/presensi_status.dart';
+import '../../domain/entities/presensi/presensi_summary.dart';
+import '../../domain/entities/presensi/santri_presensi.dart';
+import '../../domain/entities/result.dart';
 import '../../domain/entities/presensi/santri_statistics.dart';
 import '../repositories/presensi_repository.dart';
 

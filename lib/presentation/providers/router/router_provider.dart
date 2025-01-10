@@ -1,8 +1,8 @@
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../domain/entities/user.dart';
-import '../../pages/admin/input_presensi/input_presensi_page.dart';
-import '../../pages/admin/manage_presensi_page/manage_presensi_page.dart';
+import '../../pages/admin/presensi/input_presensi/input_presensi_page.dart';
+import '../../pages/admin/presensi/manage_presensi_page/manage_presensi_page.dart';
 import '../../pages/admin/user_management/role_management_page.dart';
 import '../../pages/admin/user_management/user_management_page.dart';
 import '../../pages/shared/forgot_password_page/forgot_password_page.dart';

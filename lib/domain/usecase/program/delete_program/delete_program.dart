@@ -1,7 +1,8 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
-import 'package:sti_app/domain/usecase/program/delete_program/delete_program_params.dart';
 import '../../../entities/result.dart';
+
+part 'delete_program_params.dart';
 
 class DeleteProgram implements Usecase<Result<void>, DeleteProgramParams> {
   final ProgramRepository _programRepository;

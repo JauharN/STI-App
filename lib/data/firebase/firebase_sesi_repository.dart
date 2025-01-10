@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:sti_app/data/repositories/sesi_repository.dart';
-import 'package:sti_app/domain/entities/result.dart';
-import 'package:sti_app/domain/entities/sesi.dart';
+import '../repositories/sesi_repository.dart';
+import '../../domain/entities/result.dart';
+import '../../domain/entities/sesi.dart';
 
 class FirebaseSesiRepository implements SesiRepository {
   final FirebaseFirestore _firestore;

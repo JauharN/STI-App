@@ -12,8 +12,8 @@ import '../../../misc/constants.dart';
 import '../../../providers/repositories/user_repository/user_repository_provider.dart';
 import '../../../providers/usecases/user_management/get_user_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';
-import '../../../widgets/error_state.dart';
-import '../../../widgets/loading_state.dart';
+import '../../../states/error_state.dart';
+import '../../../states/loading_state.dart';
 import '../../../widgets/sti_text_field_widget.dart';
 import '../../../widgets/user_management_widget/role_badge_widget.dart';
 

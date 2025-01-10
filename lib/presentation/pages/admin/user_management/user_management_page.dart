@@ -8,9 +8,9 @@ import '../../../../domain/entities/user.dart';
 import '../../../misc/constants.dart';
 import '../../../providers/usecases/user_management/get_users_by_role_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';
-import '../../../widgets/empty_state.dart';
-import '../../../widgets/error_state.dart';
-import '../../../widgets/loading_state.dart';
+import '../../../states/empty_state.dart';
+import '../../../states/error_state.dart';
+import '../../../states/loading_state.dart';
 import '../../../widgets/sti_text_field_widget.dart';
 import '../../../widgets/user_management_widget/user_list_item_widget.dart';
 

@@ -1,7 +1,8 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/sesi_repository.dart';
-import 'package:sti_app/domain/usecase/sesi/delete_sesi/delete_sesi_params.dart';
 import '../../../entities/result.dart';
+
+part 'delete_sesi_params.dart';
 
 class DeleteSesi implements Usecase<Result<void>, DeleteSesiParams> {
   final SesiRepository _sesiRepository;

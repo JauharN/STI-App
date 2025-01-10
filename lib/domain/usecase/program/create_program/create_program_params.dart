@@ -1,3 +1,5 @@
+part of 'create_program.dart';
+
 class CreateProgramParams {
   final String nama; // Harus salah satu dari: 'TAHFIDZ', 'GMM', 'IFIS'
   final String deskripsi;

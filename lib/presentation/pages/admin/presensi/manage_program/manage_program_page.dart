@@ -5,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sti_app/presentation/extensions/extensions.dart';
 
-import '../../../../domain/entities/user.dart';
-import '../../../misc/constants.dart';
-import '../../../providers/presensi/admin/manage_program_provider.dart';
-import '../../../providers/user_data/user_data_provider.dart';
-import '../../../widgets/presensi_widget/program_form_dialog.dart';
+import '../../../../../domain/entities/user.dart';
+import '../../../../misc/constants.dart';
+import '../../../../providers/presensi/admin/manage_program_provider.dart';
+import '../../../../providers/user_data/user_data_provider.dart';
+import '../../../../widgets/presensi_widget/program_form_dialog_widget.dart';
 
 class ManageProgramConstants {
   static const int maxRetries = 3;

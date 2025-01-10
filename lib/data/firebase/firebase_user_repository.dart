@@ -4,9 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path/path.dart';
-import 'package:sti_app/data/repositories/user_repository.dart';
-import 'package:sti_app/domain/entities/result.dart';
-import 'package:sti_app/domain/entities/user.dart';
+import '../repositories/user_repository.dart';
+import '../../domain/entities/result.dart';
+import '../../domain/entities/user.dart';
 
 class FirebaseUserRepository implements UserRepository {
   final FirebaseFirestore _firebaseFirestore;

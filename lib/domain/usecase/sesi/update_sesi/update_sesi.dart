@@ -1,9 +1,10 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/sesi_repository.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
-import 'package:sti_app/domain/usecase/sesi/update_sesi/update_sesi_params.dart';
 import '../../../entities/result.dart';
 import '../../../entities/sesi.dart';
+
+part 'update_sesi_params.dart';
 
 class UpdateSesi implements Usecase<Result<Sesi>, UpdateSesiParams> {
   final SesiRepository _sesiRepository;

@@ -1,8 +1,9 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/progres_hafalan_repository.dart';
-import 'package:sti_app/domain/usecase/progres_hafalan/update_progres_hafalan/update_progres_hafalan_params.dart';
 import '../../../entities/result.dart';
 import '../../../entities/progres_hafalan.dart';
+
+part 'update_progres_hafalan_params.dart';
 
 class UpdateProgresHafalan
     implements Usecase<Result<ProgresHafalan>, UpdateProgresHafalanParams> {

@@ -1,3 +1,5 @@
+part of 'create_sesi.dart';
+
 class CreateSesiParams {
   // Data untuk membuat sesi baru
   final String programId;
