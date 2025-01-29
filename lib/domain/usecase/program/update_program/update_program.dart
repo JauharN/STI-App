@@ -2,6 +2,7 @@ import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
 import '../../../entities/result.dart';
 import '../../../entities/program.dart';
+import '../../../entities/user.dart';
 
 part 'update_program_params.dart';
 
@@ -13,12 +14,19 @@ class UpdateProgram implements Usecase<Result<Program>, UpdateProgramParams> {
 
   @override
   Future<Result<Program>> call(UpdateProgramParams params) async {
+    // Validasi role pengguna
+    if (params.currentUserRole != UserRole.admin &&
+        params.currentUserRole != UserRole.superAdmin) {
+      return const Result.failed(
+          'Akses ditolak: Hanya admin atau superAdmin yang dapat memperbarui program.');
+    }
+
     // Validasi ID program
     if (params.program.id.isEmpty) {
       return const Result.failed('Program ID cannot be empty');
     }
 
-    // Validasi program harus salah satu dari program STI
+    // Validasi nama program
     if (!['TAHFIDZ', 'GMM', 'IFIS'].contains(params.program.nama)) {
       return const Result.failed(
           'Invalid program name. Must be TAHFIDZ, GMM, or IFIS');

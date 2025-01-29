@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../misc/constants.dart';
-import '../../../models/onboarding_content.dart';
+import '../../../models/onboarding_content_model.dart';
 import '../../../providers/first_time/first_time_provider.dart';
 import '../../../providers/router/router_provider.dart';
 import '../../../widgets/dot_indicator_widget.dart';

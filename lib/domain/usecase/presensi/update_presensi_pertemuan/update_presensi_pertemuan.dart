@@ -4,6 +4,7 @@ import 'package:sti_app/data/repositories/presensi_repository.dart';
 
 import '../../../entities/presensi/presensi_summary.dart';
 import '../../../entities/presensi/santri_presensi.dart';
+import '../../../entities/user.dart';
 import '../../usecase.dart';
 
 part 'update_presensi_pertemuan_params.dart';
@@ -20,6 +21,13 @@ class UpdatePresensiPertemuan
   @override
   Future<Result<PresensiPertemuan>> call(
       UpdatePresensiPertemuanParams params) async {
+    // Validasi role
+    if (params.currentUserRole != UserRole.admin &&
+        params.currentUserRole != UserRole.superAdmin) {
+      return const Result.failed(
+          'Akses ditolak: Hanya admin atau superAdmin yang dapat memperbarui presensi.');
+    }
+
     try {
       final presensiPertemuan = PresensiPertemuan(
         id: params.id,

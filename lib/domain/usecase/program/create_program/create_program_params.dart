@@ -5,11 +5,13 @@ class CreateProgramParams {
   final String deskripsi;
   final List<String> jadwal;
   final String? lokasi;
+  final UserRole currentUserRole;
 
   CreateProgramParams({
     required this.nama,
     required this.deskripsi,
     required this.jadwal,
+    required this.currentUserRole,
     this.lokasi,
   });
 }

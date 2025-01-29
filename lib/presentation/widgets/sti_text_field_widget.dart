@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import '../misc/constants.dart';
 
 class STITextField extends StatelessWidget {
@@ -33,7 +32,7 @@ class STITextField extends StatelessWidget {
     this.validator,
     this.enabled = true,
     this.maxLines = 1,
-    this.maxLength = 1,
+    this.maxLength,
     this.inputFormatters,
     this.onChanged,
     this.focusNode,
@@ -60,10 +59,18 @@ class STITextField extends StatelessWidget {
         keyboardType: keyboardType,
         enabled: enabled,
         validator: validator,
-        onChanged: onChanged,
+        onChanged: onChanged == null
+            ? null
+            : (value) {
+                debugPrint('Input: $value');
+                onChanged!(value);
+              },
+        focusNode: focusNode,
         maxLines: maxLines,
         maxLength: maxLength,
         inputFormatters: inputFormatters,
+        textInputAction: textInputAction,
+        onFieldSubmitted: onFieldSubmitted,
         style: const TextStyle(
           color: AppColors.neutral800,
           fontFamily: 'Poppins',

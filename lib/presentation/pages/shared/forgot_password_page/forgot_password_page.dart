@@ -30,54 +30,62 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   Future<void> _handleResetPassword() async {
     if (!formKey.currentState!.validate()) return;
 
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
-    final result =
-        await ref.read(resetPasswordProvider).call(emailController.text);
-
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
-
-      if (result.isSuccess) {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(
-              'Email Terkirim',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            content: Text(
-              'Instruksi reset password telah dikirim ke email Anda. Silakan cek inbox atau folder spam.',
-              style: GoogleFonts.plusJakartaSans(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  context.goNamed('login');
-                },
-                child: Text(
-                  'OK',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      } else {
-        context.showSnackBar(
-            result.errorMessage ?? 'Gagal mengirim email reset password');
+    try {
+      final result =
+          await ref.read(resetPasswordProvider).call(emailController.text);
+      if (mounted) {
+        if (result.isSuccess) {
+          _showSuccessDialog();
+        } else {
+          _handleErrorMessage(result.errorMessage!);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _handleErrorMessage(e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
       }
     }
+  }
+
+  void _handleErrorMessage(String error) {
+    String message = error;
+    if (error.contains('Too many attempts')) {
+      message = 'Terlalu banyak percobaan. Silakan coba beberapa saat lagi.';
+    } else if (error.contains('user-not-found')) {
+      message = 'Email tidak terdaftar';
+    }
+    context.showErrorSnackBar(message);
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Email Terkirim',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'Instruksi reset password telah dikirim ke email Anda.',
+          style: GoogleFonts.plusJakartaSans(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              context.goNamed('login');
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

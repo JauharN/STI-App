@@ -26,7 +26,7 @@ Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
       'uid': instance.uid,
       'name': instance.name,
       'email': instance.email,
-      'role': _$UserRoleEnumMap[instance.role]!,
+      'role': instance.role,
       'isActive': instance.isActive,
       'photoUrl': instance.photoUrl,
       'phoneNumber': instance.phoneNumber,

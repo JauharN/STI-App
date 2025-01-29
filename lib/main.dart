@@ -2,45 +2,52 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'config/firebase_app_check.dart';
+// import 'config/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'presentation/misc/constants.dart';
 import 'presentation/providers/program/program_initializer_provider.dart';
 import 'presentation/providers/router/router_provider.dart';
 
-void main() async {
+Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Initialize Firebase
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Initialize App Check
-    await FirebaseAppCheckConfig.initialize();
+    // try {
+    //   await FirebaseAppCheckConfig.initialize();
+    // } catch (e) {
+    //   debugPrint('Warning: App Check initialization failed: $e');
+    // }
 
-    // Set Firestore settings with persistence enabled
+    // Configure Firestore
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
       cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
     );
 
+    // Initialize provider container
     final container = ProviderContainer();
 
-    // Initialize programs if needed
-    if (!container.read(programInitializationStateProvider)) {
-      await container
-          .read(programInitializationStateProvider.notifier)
-          .initialize();
+    // Initialize programs with error handling
+    try {
+      if (!container.read(programInitializationStateProvider)) {
+        await container
+            .read(programInitializationStateProvider.notifier)
+            .initialize();
+      }
+    } catch (e) {
+      debugPrint('Warning: Program initialization failed: $e');
     }
 
     runApp(const ProviderScope(
       child: MainApp(),
     ));
   } catch (e, stack) {
-    debugPrint('Error initializing app: $e\n$stack');
+    debugPrint('Critical error initializing app: $e\n$stack');
+    // Consider showing error UI here
   }
 }
 

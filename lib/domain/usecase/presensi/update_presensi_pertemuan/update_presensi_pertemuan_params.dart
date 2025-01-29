@@ -9,6 +9,7 @@ class UpdatePresensiPertemuanParams {
   final PresensiSummary summary;
   final String? materi;
   final String? catatan;
+  final UserRole currentUserRole;
 
   UpdatePresensiPertemuanParams({
     required this.id,
@@ -17,6 +18,7 @@ class UpdatePresensiPertemuanParams {
     required this.tanggal,
     required this.daftarHadir,
     required this.summary,
+    required this.currentUserRole,
     this.materi,
     this.catatan,
   });

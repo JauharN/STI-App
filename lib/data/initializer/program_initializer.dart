@@ -2,6 +2,7 @@ import '../../domain/entities/program.dart';
 import '../../domain/usecase/program/create_program/create_program.dart';
 import '../../presentation/utils/logger_util.dart';
 import '../repositories/program_repository.dart';
+import '../../domain/entities/user.dart'; // Tambahkan import untuk UserRole
 
 class ProgramInitializer {
   final CreateProgram _createProgram;
@@ -73,6 +74,7 @@ class ProgramInitializer {
           deskripsi: program.deskripsi,
           jadwal: program.jadwal,
           lokasi: program.lokasi,
+          currentUserRole: UserRole.superAdmin,
         ),
       );
 

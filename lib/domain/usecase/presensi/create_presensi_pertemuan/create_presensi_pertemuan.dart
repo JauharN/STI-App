@@ -5,6 +5,7 @@ import 'package:sti_app/domain/entities/presensi/santri_presensi.dart';
 import 'package:sti_app/domain/entities/result.dart';
 import 'package:sti_app/data/repositories/presensi_repository.dart';
 
+import '../../../entities/user.dart';
 import '../../usecase.dart';
 
 part 'create_presensi_pertemuan_params.dart';
@@ -14,20 +15,31 @@ class CreatePresensiPertemuan
         Usecase<Result<PresensiPertemuan>, CreatePresensiPertemuanParams> {
   final PresensiRepository _presensiRepository;
 
-  CreatePresensiPertemuan({
-    required PresensiRepository presensiRepository,
-  }) : _presensiRepository = presensiRepository;
+  CreatePresensiPertemuan({required PresensiRepository presensiRepository})
+      : _presensiRepository = presensiRepository;
 
   @override
   Future<Result<PresensiPertemuan>> call(
       CreatePresensiPertemuanParams params) async {
+    // Validasi role
+    if (params.currentUserRole != UserRole.admin &&
+        params.currentUserRole != UserRole.superAdmin) {
+      return const Result.failed(
+          'Akses ditolak: Hanya admin atau superAdmin yang dapat membuat presensi.');
+    }
+
+    // Validasi daftar hadir
+    if (params.daftarHadir.isEmpty) {
+      return const Result.failed('Daftar hadir tidak boleh kosong.');
+    }
+
     try {
-      // Generate summary dari daftarHadir
+      // Generate summary dari daftar hadir
       final summary = _generateSummary(params.daftarHadir);
 
-      // Buat PresensiPertemuan baru dengan summary
+      // Buat objek presensi
       final presensiPertemuan = PresensiPertemuan(
-        id: '', // akan digenerate oleh Firebase
+        id: '', // ID akan di-generate oleh Firebase
         programId: params.programId,
         pertemuanKe: params.pertemuanKe,
         tanggal: params.tanggal,
@@ -37,10 +49,11 @@ class CreatePresensiPertemuan
         catatan: params.catatan,
       );
 
+      // Simpan ke repository
       return await _presensiRepository
           .createPresensiPertemuan(presensiPertemuan);
     } catch (e) {
-      return Result.failed(e.toString());
+      return Result.failed('Gagal membuat presensi: ${e.toString()}');
     }
   }
 
@@ -66,12 +79,13 @@ class CreatePresensiPertemuan
     }
 
     return PresensiSummary(
-        totalSantri: daftarHadir.length,
-        hadir: hadir,
-        sakit: sakit,
-        izin: izin,
-        alpha: alpha,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now());
+      totalSantri: daftarHadir.length,
+      hadir: hadir,
+      sakit: sakit,
+      izin: izin,
+      alpha: alpha,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
   }
 }

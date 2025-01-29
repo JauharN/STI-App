@@ -2,6 +2,7 @@ import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
 import '../../../entities/result.dart';
 import '../../../entities/program.dart';
+import '../../../entities/user.dart';
 
 part 'create_program_params.dart';
 
@@ -13,6 +14,13 @@ class CreateProgram implements Usecase<Result<Program>, CreateProgramParams> {
 
   @override
   Future<Result<Program>> call(CreateProgramParams params) async {
+    // Validasi role pengguna
+    if (params.currentUserRole != UserRole.admin &&
+        params.currentUserRole != UserRole.superAdmin) {
+      return const Result.failed(
+          'Akses ditolak: Hanya admin atau superAdmin yang dapat membuat program.');
+    }
+
     // Validasi nama program
     final validPrograms = ['TAHFIDZ', 'GMM', 'IFIS'];
     if (!validPrograms.contains(params.nama)) {

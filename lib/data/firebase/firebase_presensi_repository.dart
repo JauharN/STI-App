@@ -33,27 +33,44 @@ class FirebasePresensiRepository implements PresensiRepository {
   Future<Result<PresensiPertemuan>> createPresensiPertemuan(
       PresensiPertemuan presensiPertemuan) async {
     try {
+      // Logging validasi awal
+      print('[INFO] Memulai validasi untuk createPresensiPertemuan.');
+
+      // VALIDASI ROLE DAN LOGGING
+      // Jika Anda ingin menambahkan validasi role, tambahkan di sini (opsional).
+      // Jika tidak, pastikan logging menyertakan informasi proses validasi.
+
       // Validasi program
       if (!['TAHFIDZ', 'GMM', 'IFIS'].contains(presensiPertemuan.programId)) {
         return const Result.failed('Program ID tidak valid');
       }
 
+      print('[INFO] Program ID valid.');
+
       // Cek duplikasi pertemuan
       if (await _isPertemuanExists(
           presensiPertemuan.programId, presensiPertemuan.pertemuanKe)) {
+        print(
+            '[ERROR] Pertemuan ke-${presensiPertemuan.pertemuanKe} sudah ada.');
         return Result.failed(
             'Pertemuan ke-${presensiPertemuan.pertemuanKe} sudah ada');
       }
+
+      print('[INFO] Tidak ada duplikasi pertemuan.');
 
       // Validasi tanggal
       if (presensiPertemuan.tanggal.isAfter(DateTime.now())) {
         return const Result.failed('Tanggal tidak boleh di masa depan');
       }
 
+      print('[INFO] Tanggal valid.');
+
       // Validasi daftar hadir
       if (presensiPertemuan.daftarHadir.isEmpty) {
         return const Result.failed('Daftar hadir tidak boleh kosong');
       }
+
+      print('[INFO] Daftar hadir valid.');
 
       // Validasi summary
       if (presensiPertemuan.summary.totalSantri !=
@@ -61,6 +78,8 @@ class FirebasePresensiRepository implements PresensiRepository {
         return const Result.failed(
             'Data summary tidak sesuai dengan daftar hadir');
       }
+
+      print('[INFO] Summary valid.');
 
       // Proses create
       DocumentReference<Map<String, dynamic>> documentReference =
@@ -76,10 +95,11 @@ class FirebasePresensiRepository implements PresensiRepository {
             .toJson(),
       };
 
+      // Tambahkan log sebelum batch commit
+      print('[INFO] Menambahkan data ke batch Firebase.');
+
       // Gunakan writeBatch untuk atomic operation yang lebih efisien
       final batch = _firestore.batch();
-
-      // Set data presensi
       batch.set(documentReference, presensiData);
 
       // Commit batch
@@ -88,11 +108,14 @@ class FirebasePresensiRepository implements PresensiRepository {
       // Verifikasi hasil
       final result = await documentReference.get();
       if (result.exists) {
+        print('[SUCCESS] Presensi pertemuan berhasil dibuat.');
         return Result.success(PresensiPertemuan.fromJson(result.data()!));
       } else {
+        print('[ERROR] Gagal membuat presensi pertemuan.');
         return const Result.failed('Gagal membuat presensi pertemuan');
       }
     } catch (e) {
+      print('[ERROR] Error saat membuat presensi pertemuan: $e');
       return Result.failed('Error: ${e.toString()}');
     }
   }
@@ -148,10 +171,17 @@ class FirebasePresensiRepository implements PresensiRepository {
   Future<Result<PresensiPertemuan>> updatePresensiPertemuan(
       PresensiPertemuan presensiPertemuan) async {
     try {
+      print(
+          '[INFO] Memulai proses updatePresensiPertemuan untuk ID: ${presensiPertemuan.id}');
+
       // Basic validations
       if (!presensiPertemuan.isValid) {
+        print(
+            '[ERROR] Data presensi tidak valid: ${presensiPertemuan.toJson()}');
         return const Result.failed('Data presensi tidak valid');
       }
+
+      print('[INFO] Data presensi valid. Melanjutkan proses update.');
 
       final docRef =
           _firestore.collection('presensi_pertemuan').doc(presensiPertemuan.id);
@@ -164,19 +194,28 @@ class FirebasePresensiRepository implements PresensiRepository {
             .toJson(),
       };
 
+      // Logging data sebelum diupdate
+      print('[INFO] Data yang akan diupdate: $updateData');
+
       // Gunakan batch untuk update summary juga
       final batch = _firestore.batch();
       batch.update(docRef, updateData);
 
       await batch.commit();
 
+      print('[INFO] Batch commit selesai. Verifikasi hasil.');
+
       final result = await docRef.get();
       if (result.exists) {
+        print(
+            '[SUCCESS] Presensi pertemuan berhasil diperbarui untuk ID: ${presensiPertemuan.id}');
         return Result.success(PresensiPertemuan.fromJson(result.data()!));
       } else {
+        print('[ERROR] Presensi pertemuan tidak ditemukan setelah update.');
         return const Result.failed('Presensi pertemuan tidak ditemukan');
       }
     } catch (e) {
+      print('[ERROR] Error saat memperbarui presensi pertemuan: $e');
       return Result.failed('Error updating presensi: ${e.toString()}');
     }
   }
@@ -184,9 +223,20 @@ class FirebasePresensiRepository implements PresensiRepository {
   @override
   Future<Result<void>> deletePresensiPertemuan(String id) async {
     try {
-      await _firestore.collection('presensi_pertemuan').doc(id).delete();
+      print('[INFO] Memulai proses deletePresensiPertemuan.');
+
+      final docRef = _firestore.collection('presensi_pertemuan').doc(id);
+
+      // Gunakan batch untuk penghapusan
+      final batch = _firestore.batch();
+      batch.delete(docRef);
+
+      await batch.commit();
+
+      print('[SUCCESS] Presensi pertemuan dengan ID $id berhasil dihapus.');
       return const Result.success(null);
     } catch (e) {
+      print('[ERROR] Error saat menghapus presensi pertemuan: $e');
       return Result.failed('Error deleting presensi: ${e.toString()}');
     }
   }

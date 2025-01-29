@@ -2,15 +2,18 @@ import 'dart:async';
 import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/entities/result.dart';
 import '../../../domain/entities/user_management/activate_user.dart';
 import '../../../domain/entities/user_management/deactivate_user.dart';
 import '../../../domain/usecase/authentication/login/login.dart';
-import '../../../domain/usecase/authentication/register/register_params.dart';
+import '../../../domain/usecase/authentication/register/register.dart';
 import '../../../domain/usecase/authentication/upload_profile_picture/upload_profile_picture_params.dart';
 import '../../../domain/usecase/user_management/update_user_role/update_user_role.dart';
+import '../../utils/login_exception.dart';
+import '../../utils/rate_limit_exception.dart';
+import '../../utils/rate_limit_helper.dart';
+import '../../utils/storage_helper.dart';
 import '../usecases/authentication/get_logged_user_id_provider.dart';
 import '../usecases/authentication/login_provider.dart';
 import '../usecases/authentication/logout_provider.dart';
@@ -25,113 +28,251 @@ part 'user_data_provider.g.dart';
 @Riverpod(keepAlive: true)
 class UserData extends _$UserData {
   final _streamController = StreamController<User?>.broadcast();
+  late final RateLimitHelper _rateLimitHelper;
 
   Stream<User?> userStateStream() => _streamController.stream;
 
   @override
   Future<User?> build() async {
-    ref.onDispose(() {
-      _streamController.close();
-    });
+    try {
+      _rateLimitHelper = RateLimitHelper();
 
-    final getLoggedUserId = ref.read(getLoggedUserIdProvider);
-    var userResult = await getLoggedUserId(null);
+      ref.onDispose(() {
+        _streamController.close();
+      });
 
-    final user = switch (userResult) {
-      Success(value: final user) => user,
-      Failed(message: _) => null,
-    };
+      debugPrint('Initializing user data provider');
+      final getLoggedUserId = ref.read(getLoggedUserIdProvider);
+      var userResult = await getLoggedUserId(null);
 
-    _notifyStateChange(user);
-    return user;
+      final user = switch (userResult) {
+        Success(value: final user) => user,
+        Failed(message: _) => null,
+      };
+
+      _notifyStateChange(user);
+      return user;
+    } catch (e) {
+      debugPrint('Error initializing user data: $e');
+      return null;
+    }
   }
 
   void _notifyStateChange(User? user) {
-    if (!_streamController.isClosed) {
-      _streamController.add(user);
+    try {
+      if (!_streamController.isClosed) {
+        debugPrint('Notifying state change for user: ${user?.email}');
+        _streamController.add(user);
+      }
+    } catch (e) {
+      debugPrint('Error notifying state change: $e');
     }
   }
 
   // Method untuk login
-  Future<void> login(
-      {required String email,
-      required String password,
-      bool rememberMe = false}) async {
-    // Set state loading
-    state = const AsyncLoading();
+  Future<void> login({
+    required String email,
+    required String password,
+    bool rememberMe = false,
+  }) async {
+    try {
+      // Check rate limiting
+      if (_rateLimitHelper.isLimited) {
+        final remaining = _rateLimitHelper.remainingLimitTime;
+        throw RateLimitException(
+            'Terlalu banyak percobaan login. Silakan coba lagi dalam ${remaining?.inMinutes} menit.');
+      }
 
-    // Ambil login usecase dari provider
-    final login = ref.read(loginProvider);
+      // Set loading state
+      state = const AsyncLoading();
 
-    // Lakukan login
-    var result = await login(LoginParams(
-      email: email,
-      password: password,
-    ));
+      // Track attempt
+      await _rateLimitHelper.incrementAttempt();
 
-    // Handle hasil login
-    switch (result) {
-      case Success(value: final user):
-        // Simpan ke SharedPreferences jika rememberMe true
+      // Basic validation
+      if (email.trim().isEmpty || password.isEmpty) {
+        throw const FormatException('Email dan password harus diisi');
+      }
+
+      final login = ref.read(loginProvider);
+      var result = await login(LoginParams(
+        email: email.trim(),
+        password: password,
+      ));
+
+      // Handle result
+      if (result.isSuccess && result.resultValue != null) {
+        // Reset rate limit on success
+        await _rateLimitHelper.reset();
+
+        // Handle remember me
         if (rememberMe) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('isLoggedIn', true);
-          await prefs.setString('userEmail', email);
-          await prefs.setString('userPassword', password);
+          await StorageHelper.saveUserSession({
+            'email': email.trim(),
+            'password': password,
+            'isLoggedIn': true,
+            'lastLoginAt': DateTime.now().toIso8601String(),
+          });
         }
-        state = AsyncData(user);
-        _notifyStateChange(user);
 
-      case Failed(:final message):
-        state = AsyncError(FlutterError(message), StackTrace.current);
-        state = const AsyncData(null);
-        _notifyStateChange(null);
+        // Update state and notify
+        state = AsyncData(result.resultValue);
+        _notifyStateChange(result.resultValue);
+        debugPrint('Login successful for user: ${result.resultValue?.email}');
+      } else {
+        // Handle error case
+        debugPrint('Login failed: ${result.errorMessage}');
+        throw LoginException(result.errorMessage ?? 'Login gagal');
+      }
+    } on RateLimitException catch (e) {
+      debugPrint('Rate limit exceeded: ${e.message}');
+      state = AsyncError(FlutterError(e.message), StackTrace.current);
+      _notifyStateChange(null);
+      rethrow;
+    } on LoginException catch (e) {
+      debugPrint('Login error: ${e.message}');
+      state = AsyncError(FlutterError(e.message), StackTrace.current);
+      _notifyStateChange(null);
+    } catch (e) {
+      debugPrint('Unexpected error during login: $e');
+      state =
+          AsyncError(FlutterError(_formatErrorMessage(e)), StackTrace.current);
+      _notifyStateChange(null);
     }
   }
 
-  // Method untuk register
+// Helper untuk format error message
+  String _formatErrorMessage(Object error) {
+    final message = error.toString().toLowerCase();
+
+    if (message.contains('network-request-failed')) {
+      return 'Koneksi gagal. Periksa internet Anda.';
+    }
+    if (message.contains('user-not-found') ||
+        message.contains('wrong-password') ||
+        message.contains('invalid-credential')) {
+      return 'Email atau password salah';
+    }
+    if (message.contains('too-many-requests')) {
+      return 'Terlalu banyak percobaan. Silakan tunggu beberapa saat.';
+    }
+
+    return 'Terjadi kesalahan. Silakan coba lagi';
+  }
+
   Future<void> register({
     required String email,
     required String password,
     required String name,
+    required UserRole role, // Tetap terima role tapi akan override
     String? phoneNumber,
     String? address,
     DateTime? dateOfBirth,
     String? photoUrl,
   }) async {
-    state = const AsyncLoading();
+    try {
+      state = const AsyncLoading();
+      debugPrint('Starting registration for: ${email.trim()}');
 
-    final register = ref.read(registerProvider);
-    var result = await register(RegisterParams(
-      name: name,
-      email: email,
-      password: password,
-      phoneNumber: phoneNumber,
-      address: address,
-      dateOfBirth: dateOfBirth,
-      photoUrl: photoUrl,
-    ));
+      // Validasi input dasar
+      if (!_validateRegistrationInput(
+        email: email,
+        password: password,
+        name: name,
+      )) {
+        throw const FormatException(
+            'Please fill in all required fields correctly');
+      }
 
-    switch (result) {
-      case Success(value: final user):
-        state = AsyncData(user);
-        _notifyStateChange(user);
-      case Failed(:final message):
-        state = AsyncError(FlutterError(message), StackTrace.current);
-        state = const AsyncData(null);
+      final register = ref.read(registerProvider);
+      var result = await register(RegisterParams(
+        name: name.trim(),
+        email: email.trim(),
+        password: password,
+        role: UserRole.santri, // Force santri role
+        phoneNumber: phoneNumber?.trim(),
+        address: address?.trim(),
+        dateOfBirth: dateOfBirth,
+        photoUrl: photoUrl,
+      ));
+
+      if (result.isSuccess && result.resultValue != null) {
+        debugPrint(
+            'Registration successful for user: ${result.resultValue?.email}');
+        state = AsyncData(result.resultValue);
+        _notifyStateChange(result.resultValue);
+
+        // Reset form atau clear data jika perlu
+        _resetRegistrationData();
+      } else {
+        debugPrint('Registration failed: ${result.errorMessage}');
+        state = AsyncError(
+            FlutterError(result.errorMessage ?? 'Registration failed'),
+            StackTrace.current);
         _notifyStateChange(null);
+      }
+    } on FormatException catch (e) {
+      debugPrint('Validation error: ${e.message}');
+      state = AsyncError(FlutterError(e.message), StackTrace.current);
+      _notifyStateChange(null);
+    } catch (e) {
+      debugPrint('Unexpected error during registration: $e');
+      state = AsyncError(
+          FlutterError(_formatRegistrationError(e)), StackTrace.current);
+      _notifyStateChange(null);
     }
   }
 
-  // Method untuk refresh data user
-  Future<void> refreshUserData() async {
-    final getLoggedUserId = ref.read(getLoggedUserIdProvider);
-    var result = await getLoggedUserId(null);
-
-    if (result case Success(value: final user)) {
-      state = AsyncData(user);
-      _notifyStateChange(user);
+  bool _validateRegistrationInput({
+    required String email,
+    required String password,
+    required String name,
+  }) {
+    if (email.trim().isEmpty || password.isEmpty || name.trim().isEmpty) {
+      return false;
     }
+
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email.trim())) {
+      debugPrint('Invalid email format: $email');
+      return false;
+    }
+
+    if (password.length < 6) {
+      debugPrint('Password too short');
+      return false;
+    }
+
+    if (name.trim().length < 2) {
+      debugPrint('Name too short');
+      return false;
+    }
+
+    return true;
+  }
+
+  String _formatRegistrationError(Object error) {
+    final message = error.toString().toLowerCase();
+
+    if (message.contains('email-already-in-use')) {
+      return 'Email sudah terdaftar';
+    }
+    if (message.contains('invalid-email')) {
+      return 'Format email tidak valid';
+    }
+    if (message.contains('weak-password')) {
+      return 'Password terlalu lemah';
+    }
+    if (message.contains('network')) {
+      return 'Koneksi gagal. Periksa internet Anda';
+    }
+
+    return 'Terjadi kesalahan saat registrasi. Silakan coba lagi';
+  }
+
+  void _resetRegistrationData() {
+    // Reset any stored registration data if needed
+    debugPrint('Resetting registration data');
   }
 
   // Method untuk logout

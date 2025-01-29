@@ -15,6 +15,13 @@ class GetSantriByProgram
 
   @override
   Future<Result<List<User>>> call(GetSantriByProgramParams params) async {
+    // Validasi role pengguna
+    if (params.currentUserRole != UserRole.admin &&
+        params.currentUserRole != UserRole.superAdmin) {
+      return const Result.failed(
+          'Access denied: Only admin or superAdmin can view santri lists.');
+    }
+
     try {
       return await _userRepository.getSantriByProgramId(params.programId);
     } catch (e) {

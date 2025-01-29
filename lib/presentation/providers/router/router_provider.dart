@@ -1,10 +1,12 @@
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../domain/entities/user.dart';
+import '../../models/news_model.dart';
 import '../../pages/admin/presensi/input_presensi/input_presensi_page.dart';
 import '../../pages/admin/presensi/manage_presensi_page/manage_presensi_page.dart';
 import '../../pages/admin/user_management/role_management_page.dart';
 import '../../pages/admin/user_management/user_management_page.dart';
+import '../../pages/news_detail_page/news_detail_page.dart';
 import '../../pages/shared/forgot_password_page/forgot_password_page.dart';
 import '../../pages/shared/kontak_page/kontak_page.dart';
 import '../../pages/shared/login_page/login_page.dart';
@@ -70,6 +72,14 @@ Raw<GoRouter> router(RouterRef ref) => GoRouter(
           builder: (context, state) => const LokasiPage(),
         ),
         GoRoute(
+          path: '/news-detail',
+          name: 'news-detail',
+          builder: (context, state) {
+            final news = state.extra as News;
+            return NewsDetailPage(news: news);
+          },
+        ),
+        GoRoute(
           path: '/presensi-detail/:programId', // Gunakan parameter path
           name: 'presensi-detail',
           builder: (context, state) => PresensiDetailPage(
@@ -79,21 +89,34 @@ Raw<GoRouter> router(RouterRef ref) => GoRouter(
         GoRoute(
           path: '/manage-presensi/:programId',
           name: 'manage-presensi',
-          builder: (context, state) => ManagePresensiPage(
-            programId: state.pathParameters['programId'] ?? '',
-          ),
+          builder: (context, state) {
+            final userRole = ref.read(userDataProvider).value?.role;
+            if (userRole != UserRole.admin && userRole != UserRole.superAdmin) {
+              return const UnauthorizedPage();
+            }
+            return ManagePresensiPage(
+              programId: state.pathParameters['programId'] ?? '',
+            );
+          },
           routes: [
             GoRoute(
               path: 'input',
               name: 'input-presensi',
-              builder: (context, state) => InputPresensiPage(
-                programId: state.pathParameters['programId'] ?? '',
-              ),
+              builder: (context, state) {
+                final userRole = ref.read(userDataProvider).value?.role;
+                if (userRole != UserRole.admin &&
+                    userRole != UserRole.superAdmin) {
+                  return const UnauthorizedPage();
+                }
+                return InputPresensiPage(
+                  programId: state.pathParameters['programId'] ?? '',
+                );
+              },
             ),
           ],
         ),
         GoRoute(
-          path: 'statistics',
+          path: '/statistics',
           name: 'presensi-statistics',
           builder: (context, state) => PresensiStatisticsPage(
             programId: state.pathParameters['programId'] ?? '',
@@ -122,6 +145,6 @@ Raw<GoRouter> router(RouterRef ref) => GoRouter(
           },
         ),
       ],
-      initialLocation: '/splash_screen',
+      initialLocation: '/main',
       debugLogDiagnostics: false,
     );

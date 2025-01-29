@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../domain/entities/user.dart';
 import '../../misc/constants.dart';
 import '../../misc/methods.dart';
 import '../../providers/user_data/user_data_provider.dart';
@@ -18,7 +19,7 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(userDataProvider).valueOrNull;
-    final isAdmin = user?.role == 'admin';
+    final isAdmin = user?.role == UserRole.admin;
 
     return Scaffold(
       backgroundColor: AppColors.background,

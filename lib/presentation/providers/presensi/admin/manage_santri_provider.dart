@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../domain/entities/presensi/santri_detail.dart';
 import '../../../../domain/entities/result.dart';
+import '../../../../domain/entities/user.dart';
 import '../../../states/manage_santri_state.dart';
 import '../../repositories/user_repository/user_repository_provider.dart';
 
@@ -51,6 +52,7 @@ class ManageSantriController extends _$ManageSantriController {
     String? address,
     DateTime? dateOfBirth,
     List<String>? programIds,
+    UserRole role = UserRole.santri,
   }) async {
     state = const AsyncValue.loading();
 
@@ -58,11 +60,16 @@ class ManageSantriController extends _$ManageSantriController {
       final userRepository = ref.read(userRepositoryProvider);
       final uid = const Uuid().v4();
 
+      // Buat akun santri dengan parameter role
       final result = await userRepository.createUser(
         uid: uid,
         email: email,
         name: name,
         photoUrl: photoUrl,
+        phoneNumber: phoneNumber,
+        address: address,
+        dateOfBirth: dateOfBirth,
+        role: role, // Tambahkan role di sini
       );
 
       if (result.isSuccess && programIds != null) {

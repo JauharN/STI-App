@@ -8,6 +8,7 @@ abstract interface class UserRepository {
     required String uid,
     required String email,
     required String name,
+    required UserRole role,
     String? photoUrl,
     String? phoneNumber,
     String? address,

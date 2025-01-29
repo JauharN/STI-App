@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../misc/constants.dart';
+import '../../providers/news/news_provider.dart';
 import '../../providers/user_data/user_data_provider.dart';
 
 class BerandaPage extends ConsumerWidget {
@@ -79,7 +80,7 @@ class BerandaPage extends ConsumerWidget {
               child: Column(
                 children: [
                   _buildMenuSection(context),
-                  _buildRecentNews(),
+                  _buildRecentNews(context, ref),
                 ],
               ),
             ),
@@ -196,9 +197,9 @@ class BerandaPage extends ConsumerWidget {
         .toList();
   }
 
-  Widget _buildRecentNews() {
-    // Placeholder untuk news section
-    // Tambahkan konten news di sini
+  Widget _buildRecentNews(BuildContext context, WidgetRef ref) {
+    final newsList = ref.watch(newsListProvider);
+
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       child: Column(
@@ -213,7 +214,57 @@ class BerandaPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // Add news items here
+          Column(
+            children: newsList.map((news) {
+              return Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: news.imageUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            news.imageUrl!,
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.article,
+                          size: 50,
+                          color: AppColors.neutral600,
+                        ),
+                  title: Text(
+                    news.title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.neutral900,
+                    ),
+                  ),
+                  subtitle: Text(
+                    news.description,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: AppColors.neutral600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () {
+                    context.pushNamed(
+                      'news-detail',
+                      extra: news,
+                    );
+                  },
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );

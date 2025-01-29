@@ -1,8 +1,8 @@
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import '../repositories/user_repository.dart';
 import '../../domain/entities/result.dart';
@@ -19,12 +19,21 @@ class FirebaseUserRepository implements UserRepository {
     return role.toString().split('.').last;
   }
 
-  // Helper method untuk konversi String ke UserRole
   UserRole _stringToUserRole(String roleStr) {
-    return UserRole.values.firstWhere(
-      (role) => role.toString().split('.').last == roleStr,
-      orElse: () => UserRole.santri, // Default ke santri jika tidak valid
-    );
+    final normalizedRole = roleStr.trim().toLowerCase();
+    debugPrint('Converting role string: $normalizedRole');
+
+    switch (normalizedRole) {
+      case 'santri':
+        return UserRole.santri;
+      case 'admin':
+        return UserRole.admin;
+      case 'superadmin':
+        return UserRole.superAdmin;
+      default:
+        debugPrint('Invalid role encountered: $normalizedRole');
+        return UserRole.santri; // Default to santri for safety
+    }
   }
 
   @override
@@ -32,77 +41,116 @@ class FirebaseUserRepository implements UserRepository {
     required String uid,
     required String email,
     required String name,
+    required UserRole role,
     String? photoUrl,
     String? phoneNumber,
     String? address,
     DateTime? dateOfBirth,
   }) async {
     try {
-      CollectionReference<Map<String, dynamic>> users =
-          _firebaseFirestore.collection('users');
-
-      // Validasi field required
-      if (email.isEmpty || name.isEmpty) {
-        return const Result.failed('Required fields cannot be empty');
+      if (!_validateUserData(email: email, name: name)) {
+        debugPrint('Data validation failed');
+        return const Result.failed('Invalid user data provided');
       }
 
-      // Buat user data dengan role default SANTRI
       final userData = {
         'uid': uid,
-        'email': email,
-        'name': name,
-        'role': _userRoleToString(UserRole.santri), // Default role SANTRI
-        'isActive': true, // Default active
-        'photoUrl': photoUrl,
-        'phoneNumber': phoneNumber,
+        'email': email.trim().toLowerCase(),
+        'name': name.trim(),
+        'role': role.toJson(), // Menggunakan method toJson dari enum UserRole
+        'isActive': true,
+        'photoUrl': photoUrl?.trim(),
+        'phoneNumber': phoneNumber?.trim(),
+        'address': address?.trim(),
         'dateOfBirth':
             dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null,
-        'address': address,
-        'programs': [], // Array kosong untuk daftar program
+        'programs': <String>[],
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      // Create user document
-      await users.doc(uid).set(userData);
+      debugPrint('Attempting to create user with data: ${userData.toString()}');
 
-      // Get created user
-      DocumentSnapshot<Map<String, dynamic>> result =
-          await users.doc(uid).get();
+      // Reference ke dokumen user
+      final userRef = _firebaseFirestore.collection('users').doc(uid);
 
-      if (result.exists) {
-        final data = result.data()!;
+      // Cek existing user
+      final existingUser = await userRef.get();
+      if (existingUser.exists) {
+        debugPrint('User with UID $uid already exists');
+        return const Result.failed('User already exists');
+      }
 
-        // Convert Timestamp to DateTime
-        if (data['dateOfBirth'] != null) {
-          final timestamp = data['dateOfBirth'] as Timestamp;
-          data['dateOfBirth'] = timestamp.toDate();
+      // Gunakan transaction untuk atomic write
+      await _firebaseFirestore.runTransaction((transaction) async {
+        transaction.set(userRef, userData);
+      });
+
+      // Verifikasi data tersimpan
+      final savedDoc = await userRef.get();
+      if (!savedDoc.exists) {
+        debugPrint('Failed to verify user creation for UID: $uid');
+        return const Result.failed('Failed to verify user creation');
+      }
+
+      try {
+        final savedData = savedDoc.data()!;
+
+        // Handle dateOfBirth conversion
+        if (savedData['dateOfBirth'] != null) {
+          final timestamp = savedData['dateOfBirth'] as Timestamp;
+          savedData['dateOfBirth'] = timestamp.toDate();
         }
 
-        // Convert role string to enum
-        data['role'] = _stringToUserRole(data['role']);
-
-        return Result.success(User.fromJson(data));
-      } else {
-        return const Result.failed('Failed to create user');
+        final createdUser = User.fromJson(savedData);
+        debugPrint('Successfully created user with UID: $uid');
+        return Result.success(createdUser);
+      } catch (e) {
+        debugPrint('Error converting saved data to User object: $e');
+        return const Result.failed('Error creating user: Invalid data format');
       }
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to create user');
+      debugPrint('Firebase error creating user: ${e.message}');
+      return Result.failed('Failed to create user: ${e.message}');
     } catch (e) {
+      debugPrint('Unexpected error creating user: $e');
       return Result.failed('Unexpected error: ${e.toString()}');
     }
+  }
+
+  // Helper method untuk validasi data
+  bool _validateUserData({
+    required String email,
+    required String name,
+  }) {
+    if (email.trim().isEmpty || name.trim().isEmpty) {
+      debugPrint('Empty email or name');
+      return false;
+    }
+
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email.trim())) {
+      debugPrint('Invalid email format: $email');
+      return false;
+    }
+
+    if (name.trim().length < 2) {
+      debugPrint('Name too short');
+      return false;
+    }
+
+    return true;
   }
 
   // 2. Mendapatkan semua santri
   @override
   Future<Result<List<User>>> getAllSantri() async {
     try {
-      CollectionReference<Map<String, dynamic>> users =
-          _firebaseFirestore.collection('users');
-
-      QuerySnapshot<Map<String, dynamic>> querySnapshot = await users
-          .where('role', isEqualTo: _userRoleToString(UserRole.santri))
-          .get();
+      QuerySnapshot<Map<String, dynamic>> querySnapshot =
+          await _firebaseFirestore
+              .collection('users')
+              .where('role', isEqualTo: 'santri')
+              .get();
 
       if (querySnapshot.docs.isEmpty) {
         return const Result.success([]);
@@ -110,24 +158,18 @@ class FirebaseUserRepository implements UserRepository {
 
       List<User> santriList = querySnapshot.docs.map((doc) {
         final data = doc.data();
-
-        // Convert Timestamp to DateTime if exists
         if (data['dateOfBirth'] != null) {
           final timestamp = data['dateOfBirth'] as Timestamp;
           data['dateOfBirth'] = timestamp.toDate();
         }
-
-        // Role already filtered as santri
-        data['role'] = UserRole.santri;
-
+        data['role'] = _stringToUserRole(data['role']);
         return User.fromJson(data);
       }).toList();
 
       return Result.success(santriList);
-    } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to get santri list');
     } catch (e) {
-      return Result.failed('Unexpected error: ${e.toString()}');
+      debugPrint('Error getting santri list: $e');
+      return Result.failed('Failed to get santri list: ${e.toString()}');
     }
   }
 
@@ -136,33 +178,23 @@ class FirebaseUserRepository implements UserRepository {
     try {
       final querySnapshot = await _firebaseFirestore
           .collection('users')
-          .where('role', isEqualTo: _userRoleToString(role))
+          .where('role', isEqualTo: role.toString().split('.').last)
           .get();
-
-      if (querySnapshot.docs.isEmpty) {
-        return const Result.success([]); // Return empty list if no users found
-      }
 
       final users = querySnapshot.docs.map((doc) {
         final data = doc.data();
-
-        // Convert Timestamp to DateTime if exists
         if (data['dateOfBirth'] != null) {
           final timestamp = data['dateOfBirth'] as Timestamp;
           data['dateOfBirth'] = timestamp.toDate();
         }
-
-        // Convert role string to enum
         data['role'] = _stringToUserRole(data['role']);
-
         return User.fromJson(data);
       }).toList();
 
       return Result.success(users);
-    } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to get users by role');
     } catch (e) {
-      return Result.failed('Failed to get users by role: ${e.toString()}');
+      debugPrint('Error getting users by role: $e');
+      return Result.failed('Failed to get users: ${e.toString()}');
     }
   }
 
@@ -170,33 +202,27 @@ class FirebaseUserRepository implements UserRepository {
   @override
   Future<Result<User>> getUser({required String uid}) async {
     try {
-      DocumentReference<Map<String, dynamic>> documentReference =
-          _firebaseFirestore.doc('users/$uid');
-
       DocumentSnapshot<Map<String, dynamic>> result =
-          await documentReference.get();
+          await _firebaseFirestore.doc('users/$uid').get();
 
       if (result.exists) {
         final data = result.data()!;
+        debugPrint('Role retrieved from Firestore: ${data['role']}');
 
-        // Convert Timestamp to DateTime if exists
         if (data['dateOfBirth'] != null) {
           final timestamp = data['dateOfBirth'] as Timestamp;
           data['dateOfBirth'] = timestamp.toDate();
         }
 
-        // Convert role string to enum
-        data['role'] = _stringToUserRole(data['role']);
-
+        // Pastikan role string sesuai dengan @JsonValue
+        data['role'] = _stringToUserRole(data['role'] as String);
         User user = User.fromJson(data);
         return Result.success(user);
-      } else {
-        return const Result.failed('User not found');
       }
-    } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to get user data');
+      return const Result.failed('User not found');
     } catch (e) {
-      return Result.failed('Unexpected error: ${e.toString()}');
+      debugPrint('Error getting user: $e');
+      return Result.failed('Failed to get user: ${e.toString()}');
     }
   }
 
@@ -232,40 +258,41 @@ class FirebaseUserRepository implements UserRepository {
       DocumentReference<Map<String, dynamic>> documentReference =
           _firebaseFirestore.doc('users/${user.uid}');
 
+      debugPrint('Attempting to update user: ${user.uid}');
+
       // Get current user data first to check role changes
       DocumentSnapshot<Map<String, dynamic>> currentSnapshot =
           await documentReference.get();
 
       if (!currentSnapshot.exists) {
+        debugPrint('User not found: ${user.uid}');
         return const Result.failed('User not found');
       }
 
       // Get current user data and convert role
       final currentData = currentSnapshot.data()!;
       final currentRole = _stringToUserRole(currentData['role']);
+      debugPrint('Current role: $currentRole, New role: ${user.role}');
 
       // Convert user to JSON and prepare update data
       final updateData = user.toJson();
-
-      // Convert role to string for storage
       updateData['role'] = _userRoleToString(user.role);
 
-      // Convert DateTime to Timestamp for dateOfBirth if exists
       if (user.dateOfBirth != null) {
         updateData['dateOfBirth'] = Timestamp.fromDate(user.dateOfBirth!);
       }
-
-      // Add update timestamp
       updateData['updatedAt'] = FieldValue.serverTimestamp();
 
       // Prevent role downgrade from superAdmin to lower roles
       if (currentRole == UserRole.superAdmin &&
           user.role != UserRole.superAdmin) {
+        debugPrint('Attempted to downgrade superAdmin role');
         return const Result.failed('Cannot downgrade Super Admin role');
       }
 
       // Update the document
       await documentReference.update(updateData);
+      debugPrint('Document updated successfully');
 
       // Get updated document
       DocumentSnapshot<Map<String, dynamic>> result =
@@ -274,35 +301,34 @@ class FirebaseUserRepository implements UserRepository {
       if (result.exists) {
         final data = result.data()!;
 
-        // Convert Timestamp back to DateTime if exists
         if (data['dateOfBirth'] != null) {
           final timestamp = data['dateOfBirth'] as Timestamp;
           data['dateOfBirth'] = timestamp.toDate();
         }
 
-        // Convert role string back to enum
         data['role'] = _stringToUserRole(data['role']);
-
         User updatedUser = User.fromJson(data);
 
-        // Verify update was successful
         if (updatedUser != user) {
+          debugPrint('Update verification failed');
           return const Result.failed('Failed to verify user update');
         }
 
+        debugPrint('User updated successfully');
         return Result.success(updatedUser);
       } else {
+        debugPrint('Failed to get updated user data');
         return const Result.failed('Failed to get updated user data');
       }
     } on FirebaseException catch (e) {
+      debugPrint('Firebase error updating user: ${e.message}');
       return Result.failed(e.message ?? 'Failed to update user data');
     } catch (e) {
+      debugPrint('Unexpected error updating user: $e');
       return Result.failed(
           'Unexpected error while updating user: ${e.toString()}');
     }
   }
-
-  // Other methods will be implemented next...
 
   @override
   Future<Result<void>> updateUserProgram({
