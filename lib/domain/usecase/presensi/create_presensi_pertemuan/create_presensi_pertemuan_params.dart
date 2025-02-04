@@ -7,7 +7,8 @@ class CreatePresensiPertemuanParams {
   final List<SantriPresensi> daftarHadir;
   final String? materi;
   final String? catatan;
-  final UserRole currentUserRole;
+  final String currentUserRole;
+  final String userId;
 
   CreatePresensiPertemuanParams({
     required this.programId,
@@ -15,6 +16,7 @@ class CreatePresensiPertemuanParams {
     required this.tanggal,
     required this.daftarHadir,
     required this.currentUserRole,
+    required this.userId,
     this.materi,
     this.catatan,
   });

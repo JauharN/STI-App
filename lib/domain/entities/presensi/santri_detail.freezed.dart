@@ -247,8 +247,8 @@ class _$SantriDetailImpl implements _SantriDetail {
       this.address,
       this.isActive = true,
       this.dateOfBirth,
-      this.createdAt,
-      this.updatedAt})
+      this.createdAt = null,
+      this.updatedAt = null})
       : _enrolledPrograms = enrolledPrograms;
 
   factory _$SantriDetailImpl.fromJson(Map<String, dynamic> json) =>
@@ -281,8 +281,10 @@ class _$SantriDetailImpl implements _SantriDetail {
   @override
   final DateTime? dateOfBirth;
   @override
+  @JsonKey()
   final DateTime? createdAt;
   @override
+  @JsonKey()
   final DateTime? updatedAt;
 
   @override

@@ -6,7 +6,7 @@ part of 'update_presensi_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$updatePresensiHash() => r'c739398b94dfd1da1c342a5f193fb1d1a03792d7';
+String _$updatePresensiHash() => r'b42a97ecc28f57c34b419743987de13f59c3fe22';
 
 /// See also [UpdatePresensi].
 @ProviderFor(UpdatePresensi)

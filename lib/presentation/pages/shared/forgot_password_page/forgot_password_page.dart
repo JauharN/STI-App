@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sti_app/presentation/extensions/extensions.dart';
-
 import '../../../misc/constants.dart';
 import '../../../misc/methods.dart';
 import '../../../providers/usecases/authentication/reset_password_provider.dart';
@@ -33,8 +32,12 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     setState(() => isLoading = true);
 
     try {
+      debugPrint(
+          'Attempting password reset for: ${emailController.text.trim()}');
+
       final result =
           await ref.read(resetPasswordProvider).call(emailController.text);
+
       if (mounted) {
         if (result.isSuccess) {
           _showSuccessDialog();
@@ -46,6 +49,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
       if (mounted) {
         _handleErrorMessage(e.toString());
       }
+      debugPrint('Error during password reset: $e');
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
@@ -78,9 +82,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              context.goNamed('login');
-            },
+            onPressed: () => context.goNamed('login'),
             child: const Text('OK'),
           ),
         ],
@@ -96,10 +98,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: AppColors.neutral900,
-          ),
+          icon: const Icon(Icons.arrow_back, color: AppColors.neutral900),
           onPressed: () {
             if (Navigator.of(context).canPop()) {
               Navigator.of(context).pop();
@@ -114,77 +113,96 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           padding: const EdgeInsets.all(24),
           child: Form(
             key: formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Lupa Password?',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.neutral900,
-                  ),
-                ),
-                verticalSpace(8),
-                Text(
-                  'Masukkan email Anda untuk mendapatkan instruksi reset password',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    color: AppColors.neutral600,
-                  ),
-                ),
-                verticalSpace(32),
-                STITextField(
-                  labelText: 'Email',
-                  controller: emailController,
-                  prefixIcon: const Icon(Icons.email_outlined,
-                      color: AppColors.neutral600),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Email tidak boleh kosong';
-                    }
-                    final emailRegex =
-                        RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                    if (!emailRegex.hasMatch(value!)) {
-                      return 'Format email tidak valid';
-                    }
-                    return null;
-                  },
-                ),
-                verticalSpace(32),
-                ElevatedButton(
-                  onPressed: isLoading ? null : _handleResetPassword,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          'Reset Password',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-              ],
-            ),
+            child: _buildContent(),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader(),
+        verticalSpace(32),
+        _buildEmailField(),
+        verticalSpace(32),
+        _buildResetButton(),
+      ],
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Lupa Password?',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: AppColors.neutral900,
+          ),
+        ),
+        verticalSpace(8),
+        Text(
+          'Masukkan email Anda untuk mendapatkan instruksi reset password',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 16,
+            color: AppColors.neutral600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmailField() {
+    return STITextField(
+      labelText: 'Email',
+      controller: emailController,
+      prefixIcon: const Icon(Icons.email_outlined, color: AppColors.neutral600),
+      keyboardType: TextInputType.emailAddress,
+      validator: (value) {
+        if (value?.isEmpty ?? true) {
+          return 'Email tidak boleh kosong';
+        }
+        final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+        if (!emailRegex.hasMatch(value!)) {
+          return 'Format email tidak valid';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildResetButton() {
+    return ElevatedButton(
+      onPressed: isLoading ? null : _handleResetPassword,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        minimumSize: const Size(double.infinity, 56),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      child: isLoading
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : Text(
+              'Reset Password',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
     );
   }
 }

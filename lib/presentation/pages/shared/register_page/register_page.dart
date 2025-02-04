@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-
-import '../../../../domain/entities/user.dart';
 import '../../../extensions/extensions.dart';
 import '../../../misc/constants.dart';
 import '../../../misc/methods.dart';
@@ -42,7 +40,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool obscurePassword = true;
   bool obscureConfirmPassword = true;
   bool isLoading = false;
-  bool isRegistered = false; // Mencegah double snackbar
+  bool isRegistered = false;
 
   @override
   void dispose() {
@@ -123,7 +121,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   Future<void> _registerUser() async {
     if (!_formKey.currentState!.validate() || isLoading) return;
 
-    // Validasi tanggal lahir
     if (selectedDate == null) {
       context.showErrorSnackBar('Tanggal lahir harus diisi');
       return;
@@ -143,7 +140,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             email: emailController.text.trim(),
             password: passwordController.text,
             name: nameController.text.trim(),
-            role: UserRole.santri, // Explicit santri role
             phoneNumber: phoneController.text.trim(),
             address: addressController.text.trim(),
             dateOfBirth: selectedDate,
@@ -151,7 +147,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
       if (mounted && !isRegistered) {
         isRegistered = true;
-        // Navigate and show success message
         context.goNamed('login');
         Future.delayed(const Duration(milliseconds: 100), () {
           if (mounted) {
@@ -167,7 +162,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     } catch (e) {
       if (mounted && !isRegistered) {
         debugPrint('Registration error: $e');
-        // Special handling for UserRole error yang sebenarnya sukses
         if (e.toString().contains('UserRole')) {
           isRegistered = true;
           context.goNamed('login');
@@ -208,6 +202,20 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return 'Terjadi kesalahan. Silakan coba lagi.';
   }
 
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -232,215 +240,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Daftar Akun',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.neutral900,
-                    ),
-                  ),
-                  verticalSpace(8),
-                  Text(
-                    'Lengkapi data diri Anda',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      color: AppColors.neutral600,
-                    ),
-                  ),
+                  _buildHeader(),
                   verticalSpace(32),
-
-                  // Nama Field
-                  STITextField(
-                    key: const ValueKey('nama'),
-                    labelText: 'Nama Lengkap',
-                    controller: nameController,
-                    focusNode: nameFocusNode,
-                    textInputAction: TextInputAction.next,
-                    onFieldSubmitted: (_) => emailFocusNode.requestFocus(),
-                    validator: (value) => _validateRequired(value, 'Nama'),
-                    prefixIcon: const Icon(Icons.person_outline,
-                        color: AppColors.neutral600),
-                  ),
+                  _buildPersonalInfoFields(),
                   verticalSpace(16),
-
-                  // Email Field
-                  STITextField(
-                    key: const ValueKey('email'),
-                    labelText: 'Email',
-                    controller: emailController,
-                    focusNode: emailFocusNode,
-                    textInputAction: TextInputAction.next,
-                    onFieldSubmitted: (_) => phoneFocusNode.requestFocus(),
-                    validator: _validateEmail,
-                    prefixIcon: const Icon(Icons.email_outlined,
-                        color: AppColors.neutral600),
-                  ),
+                  _buildContactFields(),
                   verticalSpace(16),
-
-                  // Phone Field
-                  STITextField(
-                    key: const ValueKey('phone'),
-                    labelText: 'Nomor Telepon',
-                    controller: phoneController,
-                    focusNode: phoneFocusNode,
-                    textInputAction: TextInputAction.next,
-                    onFieldSubmitted: (_) => addressFocusNode.requestFocus(),
-                    validator: _validatePhone,
-                    prefixIcon: const Icon(Icons.phone_outlined,
-                        color: AppColors.neutral600),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(13),
-                    ],
-                  ),
-                  verticalSpace(16),
-
-                  // Date of Birth Field
-                  InkWell(
-                    onTap: () => _selectDate(context),
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Tanggal Lahir',
-                        prefixIcon: const Icon(Icons.calendar_today,
-                            color: AppColors.neutral600),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        selectedDate != null
-                            ? DateFormat('dd MMMM yyyy').format(selectedDate!)
-                            : 'Pilih tanggal lahir',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: selectedDate != null
-                              ? AppColors.neutral800
-                              : AppColors.neutral600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  verticalSpace(16),
-
-                  // Address Field
-                  STITextField(
-                    key: const ValueKey('address'),
-                    labelText: 'Alamat',
-                    controller: addressController,
-                    focusNode: addressFocusNode,
-                    maxLines: 2,
-                    textInputAction: TextInputAction.next,
-                    onFieldSubmitted: (_) => passwordFocusNode.requestFocus(),
-                    validator: (value) => _validateRequired(value, 'Alamat'),
-                    prefixIcon: const Icon(Icons.location_on_outlined,
-                        color: AppColors.neutral600),
-                  ),
-                  verticalSpace(16),
-
-                  // Password Field
-                  STITextField(
-                    key: const ValueKey('password'),
-                    labelText: 'Password',
-                    controller: passwordController,
-                    focusNode: passwordFocusNode,
-                    obscureText: obscurePassword,
-                    textInputAction: TextInputAction.next,
-                    onFieldSubmitted: (_) =>
-                        confirmPasswordFocusNode.requestFocus(),
-                    validator: _validatePassword,
-                    prefixIcon: const Icon(Icons.lock_outline,
-                        color: AppColors.neutral600),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: AppColors.neutral600,
-                      ),
-                      onPressed: () =>
-                          setState(() => obscurePassword = !obscurePassword),
-                    ),
-                  ),
-                  verticalSpace(16),
-
-                  // Confirm Password Field
-                  STITextField(
-                    key: const ValueKey('confirmPassword'),
-                    labelText: 'Konfirmasi Password',
-                    controller: confirmPasswordController,
-                    focusNode: confirmPasswordFocusNode,
-                    obscureText: obscureConfirmPassword,
-                    textInputAction: TextInputAction.done,
-                    validator: _validateConfirmPassword,
-                    prefixIcon: const Icon(Icons.lock_outline,
-                        color: AppColors.neutral600),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscureConfirmPassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: AppColors.neutral600,
-                      ),
-                      onPressed: () => setState(() =>
-                          obscureConfirmPassword = !obscureConfirmPassword),
-                    ),
-                  ),
+                  _buildPasswordFields(),
                   verticalSpace(32),
-
-                  // Register Button
-                  ElevatedButton(
-                    onPressed: isLoading ? null : _registerUser,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            'Daftar',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
+                  _buildRegisterButton(),
                   verticalSpace(16),
-
-                  // Login Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Sudah punya akun? ',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: AppColors.neutral600,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => context.canPop()
-                            ? Navigator.of(context).pop()
-                            : context.goNamed('login'),
-                        child: Text(
-                          'Masuk',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildLoginLink(),
                 ],
               ),
             ),
@@ -450,17 +260,222 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate ?? DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Daftar Akun',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: AppColors.neutral900,
+          ),
+        ),
+        verticalSpace(8),
+        Text(
+          'Lengkapi data diri Anda',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 16,
+            color: AppColors.neutral600,
+          ),
+        ),
+      ],
     );
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-      });
-    }
+  }
+
+  Widget _buildPersonalInfoFields() {
+    return Column(
+      children: [
+        STITextField(
+          key: const ValueKey('nama'),
+          labelText: 'Nama Lengkap',
+          controller: nameController,
+          focusNode: nameFocusNode,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => emailFocusNode.requestFocus(),
+          validator: (value) => _validateRequired(value, 'Nama'),
+          prefixIcon:
+              const Icon(Icons.person_outline, color: AppColors.neutral600),
+        ),
+        verticalSpace(16),
+        InkWell(
+          onTap: () => _selectDate(context),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Tanggal Lahir',
+              prefixIcon:
+                  const Icon(Icons.calendar_today, color: AppColors.neutral600),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              selectedDate != null
+                  ? DateFormat('dd MMMM yyyy').format(selectedDate!)
+                  : 'Pilih tanggal lahir',
+              style: GoogleFonts.plusJakartaSans(
+                color: selectedDate != null
+                    ? AppColors.neutral800
+                    : AppColors.neutral600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContactFields() {
+    return Column(
+      children: [
+        STITextField(
+          key: const ValueKey('email'),
+          labelText: 'Email',
+          controller: emailController,
+          focusNode: emailFocusNode,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => phoneFocusNode.requestFocus(),
+          validator: _validateEmail,
+          prefixIcon:
+              const Icon(Icons.email_outlined, color: AppColors.neutral600),
+        ),
+        verticalSpace(16),
+        STITextField(
+          key: const ValueKey('phone'),
+          labelText: 'Nomor Telepon',
+          controller: phoneController,
+          focusNode: phoneFocusNode,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => addressFocusNode.requestFocus(),
+          validator: _validatePhone,
+          prefixIcon:
+              const Icon(Icons.phone_outlined, color: AppColors.neutral600),
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(13),
+          ],
+        ),
+        verticalSpace(16),
+        STITextField(
+          key: const ValueKey('address'),
+          labelText: 'Alamat',
+          controller: addressController,
+          focusNode: addressFocusNode,
+          maxLines: 2,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => passwordFocusNode.requestFocus(),
+          validator: (value) => _validateRequired(value, 'Alamat'),
+          prefixIcon: const Icon(Icons.location_on_outlined,
+              color: AppColors.neutral600),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordFields() {
+    return Column(
+      children: [
+        STITextField(
+          key: const ValueKey('password'),
+          labelText: 'Password',
+          controller: passwordController,
+          focusNode: passwordFocusNode,
+          obscureText: obscurePassword,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) => confirmPasswordFocusNode.requestFocus(),
+          validator: _validatePassword,
+          prefixIcon:
+              const Icon(Icons.lock_outline, color: AppColors.neutral600),
+          suffixIcon: IconButton(
+            icon: Icon(
+              obscurePassword
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              color: AppColors.neutral600,
+            ),
+            onPressed: () => setState(() => obscurePassword = !obscurePassword),
+          ),
+        ),
+        verticalSpace(16),
+        STITextField(
+          key: const ValueKey('confirmPassword'),
+          labelText: 'Konfirmasi Password',
+          controller: confirmPasswordController,
+          focusNode: confirmPasswordFocusNode,
+          obscureText: obscureConfirmPassword,
+          textInputAction: TextInputAction.done,
+          validator: _validateConfirmPassword,
+          prefixIcon:
+              const Icon(Icons.lock_outline, color: AppColors.neutral600),
+          suffixIcon: IconButton(
+            icon: Icon(
+              obscureConfirmPassword
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              color: AppColors.neutral600,
+            ),
+            onPressed: () => setState(
+                () => obscureConfirmPassword = !obscureConfirmPassword),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    return ElevatedButton(
+      onPressed: isLoading ? null : _registerUser,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        minimumSize: const Size(double.infinity, 56),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      child: isLoading
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : Text(
+              'Daftar',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+    );
+  }
+
+  Widget _buildLoginLink() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Sudah punya akun? ',
+          style: GoogleFonts.plusJakartaSans(
+            color: AppColors.neutral600,
+          ),
+        ),
+        TextButton(
+          onPressed: () => context.canPop()
+              ? Navigator.of(context).pop()
+              : context.goNamed('login'),
+          child: Text(
+            'Masuk',
+            style: GoogleFonts.plusJakartaSans(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -16,12 +16,20 @@ class GetPresensiSummary
   @override
   Future<Result<PresensiSummary>> call(GetPresensiSummaryParams params) async {
     try {
+      // Validate access for santri
+      if (params.currentUserRole == 'santri' &&
+          params.userId != params.requestingUserId) {
+        return const Result.failed(
+            'Santri hanya dapat melihat ringkasan presensi mereka sendiri');
+      }
+
       return await _presensiRepository.getPresensiSummary(
         userId: params.userId,
         programId: params.programId,
       );
     } catch (e) {
-      return Result.failed(e.toString());
+      return Result.failed(
+          'Gagal mengambil ringkasan presensi: ${e.toString()}');
     }
   }
 }

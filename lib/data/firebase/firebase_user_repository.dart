@@ -14,34 +14,12 @@ class FirebaseUserRepository implements UserRepository {
   FirebaseUserRepository({FirebaseFirestore? firebaseFirestore})
       : _firebaseFirestore = firebaseFirestore ?? FirebaseFirestore.instance;
 
-  // Helper method untuk konversi UserRole ke String
-  String _userRoleToString(UserRole role) {
-    return role.toString().split('.').last;
-  }
-
-  UserRole _stringToUserRole(String roleStr) {
-    final normalizedRole = roleStr.trim().toLowerCase();
-    debugPrint('Converting role string: $normalizedRole');
-
-    switch (normalizedRole) {
-      case 'santri':
-        return UserRole.santri;
-      case 'admin':
-        return UserRole.admin;
-      case 'superadmin':
-        return UserRole.superAdmin;
-      default:
-        debugPrint('Invalid role encountered: $normalizedRole');
-        return UserRole.santri; // Default to santri for safety
-    }
-  }
-
   @override
   Future<Result<User>> createUser({
     required String uid,
     required String email,
     required String name,
-    required UserRole role,
+    required String role,
     String? photoUrl,
     String? phoneNumber,
     String? address,
@@ -53,11 +31,17 @@ class FirebaseUserRepository implements UserRepository {
         return const Result.failed('Invalid user data provided');
       }
 
+      // Validasi role
+      if (!User.isValidRole(role)) {
+        debugPrint('Invalid role provided: $role');
+        return const Result.failed('Invalid role value');
+      }
+
       final userData = {
         'uid': uid,
         'email': email.trim().toLowerCase(),
         'name': name.trim(),
-        'role': role.toJson(), // Menggunakan method toJson dari enum UserRole
+        'role': role,
         'isActive': true,
         'photoUrl': photoUrl?.trim(),
         'phoneNumber': phoneNumber?.trim(),
@@ -95,7 +79,6 @@ class FirebaseUserRepository implements UserRepository {
 
       try {
         final savedData = savedDoc.data()!;
-
         // Handle dateOfBirth conversion
         if (savedData['dateOfBirth'] != null) {
           final timestamp = savedData['dateOfBirth'] as Timestamp;
@@ -149,23 +132,33 @@ class FirebaseUserRepository implements UserRepository {
       QuerySnapshot<Map<String, dynamic>> querySnapshot =
           await _firebaseFirestore
               .collection('users')
-              .where('role', isEqualTo: 'santri')
+              .where('role',
+                  isEqualTo: 'santri') // Langsung menggunakan string 'santri'
               .get();
 
       if (querySnapshot.docs.isEmpty) {
+        debugPrint('No santri found in database');
         return const Result.success([]);
       }
 
       List<User> santriList = querySnapshot.docs.map((doc) {
         final data = doc.data();
+        // Handle date conversion
         if (data['dateOfBirth'] != null) {
           final timestamp = data['dateOfBirth'] as Timestamp;
           data['dateOfBirth'] = timestamp.toDate();
         }
-        data['role'] = _stringToUserRole(data['role']);
+
+        // Validasi role untuk keamanan
+        if (!User.isValidRole(data['role'])) {
+          debugPrint('Invalid role found for user: ${doc.id}');
+          throw const FormatException('Invalid role in database');
+        }
+
         return User.fromJson(data);
       }).toList();
 
+      debugPrint('Successfully retrieved ${santriList.length} santri');
       return Result.success(santriList);
     } catch (e) {
       debugPrint('Error getting santri list: $e');
@@ -174,23 +167,31 @@ class FirebaseUserRepository implements UserRepository {
   }
 
   @override
-  Future<Result<List<User>>> getUsersByRole({required UserRole role}) async {
+  Future<Result<List<User>>> getUsersByRole({required String role}) async {
     try {
+      // Validasi role
+      if (!User.isValidRole(role)) {
+        debugPrint('Invalid role parameter provided: $role');
+        return const Result.failed('Invalid role value');
+      }
+
       final querySnapshot = await _firebaseFirestore
           .collection('users')
-          .where('role', isEqualTo: role.toString().split('.').last)
+          .where('role', isEqualTo: role)
           .get();
 
       final users = querySnapshot.docs.map((doc) {
         final data = doc.data();
+
         if (data['dateOfBirth'] != null) {
           final timestamp = data['dateOfBirth'] as Timestamp;
           data['dateOfBirth'] = timestamp.toDate();
         }
-        data['role'] = _stringToUserRole(data['role']);
+
         return User.fromJson(data);
       }).toList();
 
+      debugPrint('Retrieved ${users.length} users with role: $role');
       return Result.success(users);
     } catch (e) {
       debugPrint('Error getting users by role: $e');
@@ -198,7 +199,6 @@ class FirebaseUserRepository implements UserRepository {
     }
   }
 
-  // 3. Mendapatkan user berdasarkan ID
   @override
   Future<Result<User>> getUser({required String uid}) async {
     try {
@@ -209,16 +209,21 @@ class FirebaseUserRepository implements UserRepository {
         final data = result.data()!;
         debugPrint('Role retrieved from Firestore: ${data['role']}');
 
+        // Validasi role
+        if (!User.isValidRole(data['role'])) {
+          debugPrint('Invalid role found in database: ${data['role']}');
+          return const Result.failed('Invalid role data in database');
+        }
+
         if (data['dateOfBirth'] != null) {
           final timestamp = data['dateOfBirth'] as Timestamp;
           data['dateOfBirth'] = timestamp.toDate();
         }
 
-        // Pastikan role string sesuai dengan @JsonValue
-        data['role'] = _stringToUserRole(data['role'] as String);
         User user = User.fromJson(data);
         return Result.success(user);
       }
+
       return const Result.failed('User not found');
     } catch (e) {
       debugPrint('Error getting user: $e');
@@ -269,23 +274,29 @@ class FirebaseUserRepository implements UserRepository {
         return const Result.failed('User not found');
       }
 
-      // Get current user data and convert role
+      // Get current user data and validate new role
       final currentData = currentSnapshot.data()!;
-      final currentRole = _stringToUserRole(currentData['role']);
+      final currentRole = currentData['role'] as String;
+
       debugPrint('Current role: $currentRole, New role: ${user.role}');
+
+      // Validate new role
+      if (!User.isValidRole(user.role)) {
+        debugPrint('Invalid new role provided: ${user.role}');
+        return const Result.failed('Invalid role value');
+      }
 
       // Convert user to JSON and prepare update data
       final updateData = user.toJson();
-      updateData['role'] = _userRoleToString(user.role);
 
       if (user.dateOfBirth != null) {
         updateData['dateOfBirth'] = Timestamp.fromDate(user.dateOfBirth!);
       }
+
       updateData['updatedAt'] = FieldValue.serverTimestamp();
 
       // Prevent role downgrade from superAdmin to lower roles
-      if (currentRole == UserRole.superAdmin &&
-          user.role != UserRole.superAdmin) {
+      if (currentRole == 'superAdmin' && user.role != 'superAdmin') {
         debugPrint('Attempted to downgrade superAdmin role');
         return const Result.failed('Cannot downgrade Super Admin role');
       }
@@ -306,7 +317,6 @@ class FirebaseUserRepository implements UserRepository {
           data['dateOfBirth'] = timestamp.toDate();
         }
 
-        data['role'] = _stringToUserRole(data['role']);
         User updatedUser = User.fromJson(data);
 
         if (updatedUser != user) {
@@ -344,13 +354,16 @@ class FirebaseUserRepository implements UserRepository {
           await documentReference.get();
 
       if (!userDoc.exists) {
+        debugPrint('User not found: $uid');
         return const Result.failed('User not found');
       }
 
       final userData = userDoc.data()!;
-      final userRole = _stringToUserRole(userData['role']);
+      final userRole = userData['role'] as String; // Langsung ambil string role
 
-      if (userRole != UserRole.santri) {
+      if (userRole != 'santri') {
+        // Langsung bandingkan string
+        debugPrint('Non-santri user attempted to join program: $uid');
         return const Result.failed('Only santri can be added to programs');
       }
 
@@ -367,15 +380,20 @@ class FirebaseUserRepository implements UserRepository {
       if (result.exists) {
         List<String> programs =
             List<String>.from(result.data()?['programs'] ?? []);
+
         if (programs.contains(programId)) {
+          debugPrint('Successfully added user $uid to program $programId');
           return const Result.success(null);
         }
       }
 
+      debugPrint('Failed to verify program update for user $uid');
       return const Result.failed('Failed to update user program');
     } on FirebaseException catch (e) {
+      debugPrint('Firebase error updating user program: ${e.message}');
       return Result.failed(e.message ?? 'Failed to update user program');
     } catch (e) {
+      debugPrint('Unexpected error: $e');
       return Result.failed('Unexpected error: ${e.toString()}');
     }
   }
@@ -389,6 +407,7 @@ class FirebaseUserRepository implements UserRepository {
     try {
       // Validate file existence
       if (!imageFile.existsSync()) {
+        debugPrint('Profile picture file not found');
         return const Result.failed('File not found');
       }
 
@@ -401,9 +420,11 @@ class FirebaseUserRepository implements UserRepository {
 
       // Upload file
       await reference.putFile(imageFile);
+      debugPrint('Profile picture uploaded successfully');
 
       // Get download URL
       String downloadUrl = await reference.getDownloadURL();
+      debugPrint('Got download URL: $downloadUrl');
 
       // Update user with new photo URL
       final updatedUser = user.copyWith(photoUrl: downloadUrl);
@@ -412,19 +433,23 @@ class FirebaseUserRepository implements UserRepository {
       final updateResult = await updateUser(user: updatedUser);
 
       if (updateResult.isSuccess) {
+        debugPrint('User profile picture updated successfully');
         return Result.success(updateResult.resultValue!);
       } else {
         // Try to delete uploaded image if user update fails
         try {
           await reference.delete();
+          debugPrint('Cleaned up uploaded image after failed update');
         } catch (_) {
-          // Ignore cleanup errors
+          debugPrint('Failed to cleanup uploaded image');
         }
         return Result.failed(updateResult.errorMessage!);
       }
     } on FirebaseException catch (e) {
+      debugPrint('Firebase error uploading profile picture: ${e.message}');
       return Result.failed(e.message ?? 'Failed to upload profile picture');
     } catch (e) {
+      debugPrint('Unexpected error: $e');
       return Result.failed('Unexpected error: ${e.toString()}');
     }
   }
@@ -442,8 +467,10 @@ class FirebaseUserRepository implements UserRepository {
       }
 
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      debugPrint('Password reset email sent to: $email');
       return const Result.success(null);
     } on FirebaseAuthException catch (e) {
+      debugPrint('Firebase Auth error on password reset: ${e.code}');
       switch (e.code) {
         case 'user-not-found':
           return const Result.failed('Email tidak ditemukan');
@@ -452,6 +479,7 @@ class FirebaseUserRepository implements UserRepository {
               e.message ?? 'Gagal mengirim email reset password');
       }
     } catch (e) {
+      debugPrint('Error in reset password: $e');
       return Result.failed('Kesalahan tidak terduga: ${e.toString()}');
     }
   }
@@ -493,8 +521,9 @@ class FirebaseUserRepository implements UserRepository {
       }
 
       // Check if user is superAdmin
-      final userRole = _stringToUserRole(userDoc.data()!['role']);
-      if (userRole == UserRole.superAdmin) {
+      final userRole = userDoc.data()!['role'] as String;
+      if (userRole == 'superAdmin') {
+        debugPrint('Attempted to delete superAdmin account');
         return const Result.failed('Cannot delete Super Admin user');
       }
 
@@ -504,17 +533,23 @@ class FirebaseUserRepository implements UserRepository {
         try {
           final photoRef = FirebaseStorage.instance.refFromURL(photoUrl);
           await photoRef.delete();
-        } catch (_) {
+          debugPrint('Deleted user profile picture');
+        } catch (e) {
           // Continue deletion even if photo deletion fails
+          debugPrint('Failed to delete profile picture: $e');
         }
       }
 
       // Delete user document
       await userRef.delete();
+      debugPrint('Successfully deleted user: $uid');
+
       return const Result.success(null);
     } on FirebaseException catch (e) {
+      debugPrint('Firebase error deleting user: ${e.message}');
       return Result.failed(e.message ?? 'Failed to delete user');
     } catch (e) {
+      debugPrint('Unexpected error deleting user: $e');
       return Result.failed('Unexpected error: ${e.toString()}');
     }
   }
@@ -531,13 +566,16 @@ class FirebaseUserRepository implements UserRepository {
       DocumentSnapshot<Map<String, dynamic>> userDoc = await userRef.get();
 
       if (!userDoc.exists) {
+        debugPrint('User not found: $uid');
         return const Result.failed('User not found');
       }
 
       // Check if user is in program
       List<String> programs =
           List<String>.from(userDoc.data()!['programs'] ?? []);
+
       if (!programs.contains(programId)) {
+        debugPrint('User is not enrolled in program: $programId');
         return const Result.failed('User is not enrolled in this program');
       }
 
@@ -547,10 +585,13 @@ class FirebaseUserRepository implements UserRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      debugPrint('Successfully removed user $uid from program $programId');
       return const Result.success(null);
     } on FirebaseException catch (e) {
+      debugPrint('Firebase error removing user from program: ${e.message}');
       return Result.failed(e.message ?? 'Failed to remove user from program');
     } catch (e) {
+      debugPrint('Unexpected error: $e');
       return Result.failed('Unexpected error: ${e.toString()}');
     }
   }

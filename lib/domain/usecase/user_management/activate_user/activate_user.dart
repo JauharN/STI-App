@@ -13,19 +13,41 @@ class ActivateUser implements Usecase<Result<User>, ActivateUserParams> {
 
   @override
   Future<Result<User>> call(ActivateUserParams params) async {
-    if (params.currentUserRole != UserRole.superAdmin) {
-      return const Result.failed('Only Super Admin can activate users');
+    try {
+      // Validasi role user yang melakukan aktivasi
+      if (params.currentUserRole != 'superAdmin') {
+        return const Result.failed(
+            'Hanya Super Admin yang dapat mengaktifkan user');
+      }
+
+      // Dapatkan user yang akan diaktifkan
+      final userResult = await _userRepository.getUser(uid: params.uid);
+
+      if (userResult.isFailed) {
+        return Result.failed(
+            'Gagal mendapatkan data user: ${userResult.errorMessage}');
+      }
+
+      final user = userResult.resultValue!;
+
+      // Cek apakah user sudah aktif
+      if (user.isActive) {
+        return Result.failed('User ${user.name} sudah dalam keadaan aktif');
+      }
+
+      // Aktifkan user
+      final updatedUser = user.copyWith(isActive: true);
+      final updateResult = await _userRepository.updateUser(user: updatedUser);
+
+      // Handle hasil update
+      if (updateResult.isSuccess) {
+        return Result.success(updateResult.resultValue!);
+      } else {
+        return Result.failed(
+            'Gagal mengaktifkan user: ${updateResult.errorMessage}');
+      }
+    } catch (e) {
+      return Result.failed('Terjadi kesalahan: ${e.toString()}');
     }
-
-    final userResult = await _userRepository.getUser(uid: params.uid);
-    if (userResult.isFailed) return userResult;
-
-    final user = userResult.resultValue!;
-    if (user.isActive) {
-      return const Result.failed('User is already active');
-    }
-
-    final updatedUser = user.copyWith(isActive: true);
-    return _userRepository.updateUser(user: updatedUser);
   }
 }

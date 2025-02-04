@@ -9,7 +9,8 @@ part 'available_teachers_provider.g.dart';
 Future<List<User>> availableTeachers(AvailableTeachersRef ref) async {
   final repository = ref.read(userRepositoryProvider);
 
-  final result = await repository.getUsersByRole(role: UserRole.admin);
+  // Get users with admin role (teachers)
+  final result = await repository.getUsersByRole(role: 'admin');
 
   return switch (result) {
     Success(value: final teachers) => teachers,

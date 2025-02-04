@@ -10,8 +10,7 @@ _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
       uid: json['uid'] as String,
       name: json['name'] as String,
       email: json['email'] as String,
-      role: $enumDecodeNullable(_$UserRoleEnumMap, json['role']) ??
-          UserRole.santri,
+      role: json['role'] as String? ?? 'santri',
       isActive: json['isActive'] as bool? ?? true,
       photoUrl: json['photoUrl'] as String?,
       phoneNumber: json['phoneNumber'] as String?,
@@ -33,9 +32,3 @@ Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
       'dateOfBirth': instance.dateOfBirth?.toIso8601String(),
       'address': instance.address,
     };
-
-const _$UserRoleEnumMap = {
-  UserRole.superAdmin: 'superAdmin',
-  UserRole.admin: 'admin',
-  UserRole.santri: 'santri',
-};

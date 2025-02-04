@@ -1,7 +1,7 @@
-import '../../../data/repositories/user_repository.dart';
-import '../../entities/result.dart';
-import '../../entities/user.dart';
-import '../usecase.dart';
+import 'package:sti_app/domain/entities/user.dart';
+import 'package:sti_app/domain/entities/result.dart';
+import 'package:sti_app/data/repositories/user_repository.dart';
+import 'package:sti_app/domain/usecase/usecase.dart';
 
 part 'get_santri_by_program_params.dart';
 
@@ -9,23 +9,21 @@ class GetSantriByProgram
     implements Usecase<Result<List<User>>, GetSantriByProgramParams> {
   final UserRepository _userRepository;
 
-  GetSantriByProgram({
-    required UserRepository userRepository,
-  }) : _userRepository = userRepository;
+  GetSantriByProgram({required UserRepository userRepository})
+      : _userRepository = userRepository;
 
   @override
   Future<Result<List<User>>> call(GetSantriByProgramParams params) async {
-    // Validasi role pengguna
-    if (params.currentUserRole != UserRole.admin &&
-        params.currentUserRole != UserRole.superAdmin) {
-      return const Result.failed(
-          'Access denied: Only admin or superAdmin can view santri lists.');
-    }
-
     try {
+      if (params.currentUserRole != 'admin' &&
+          params.currentUserRole != 'superAdmin') {
+        return const Result.failed(
+            'Hanya admin dan superAdmin yang dapat mengakses daftar santri');
+      }
+
       return await _userRepository.getSantriByProgramId(params.programId);
     } catch (e) {
-      return Result.failed(e.toString());
+      return Result.failed('Gagal mendapatkan daftar santri: ${e.toString()}');
     }
   }
 }

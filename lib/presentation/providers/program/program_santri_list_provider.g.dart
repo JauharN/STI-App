@@ -6,7 +6,7 @@ part of 'program_santri_list_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$programSantriListHash() => r'1a42f35c53558f79b7221f573272eeba740ff295';
+String _$programSantriListHash() => r'26c6cdc7d0a1a7f96eea7c0fd8e1d91468830d7d';
 
 /// Copied from Dart SDK
 class _SystemHash {

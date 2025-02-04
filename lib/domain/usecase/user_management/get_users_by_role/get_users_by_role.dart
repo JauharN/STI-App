@@ -14,36 +14,54 @@ class GetUsersByRole
 
   @override
   Future<Result<List<User>>> call(GetUsersByRoleParams params) async {
-    // Validasi role pengguna
-    if (params.currentUserRole == UserRole.santri) {
-      return const Result.failed('Santri cannot access user lists');
-    }
-
-    if (params.currentUserRole == UserRole.admin) {
-      if (params.roleToGet == UserRole.superAdmin) {
-        return const Result.failed('Admin cannot view Super Admin list');
+    try {
+      // Validasi role yang request
+      if (params.currentUserRole == 'santri') {
+        return const Result.failed('Santri tidak dapat mengakses daftar user');
       }
-      if (params.roleToGet != UserRole.santri &&
-          params.roleToGet != UserRole.admin) {
-        return const Result.failed('Admin can only view Santri or Admin lists');
+
+      // Validasi akses berdasarkan role
+      if (!_canAccessRole(params.currentUserRole, params.roleToGet)) {
+        return Result.failed(
+            'User dengan role ${User.getRoleDisplayName(params.currentUserRole)} '
+            'tidak dapat mengakses daftar ${User.getRoleDisplayName(params.roleToGet)}');
       }
+
+      // Validasi role yang diminta valid
+      if (!User.isValidRole(params.roleToGet)) {
+        return const Result.failed('Role yang diminta tidak valid');
+      }
+
+      // Get users dari repository
+      final result =
+          await _userRepository.getUsersByRole(role: params.roleToGet);
+
+      if (result.isFailed) {
+        return Result.failed(
+            'Gagal mendapatkan daftar user: ${result.errorMessage}');
+      }
+
+      // Filter berdasarkan status aktif jika diperlukan
+      final users = result.resultValue!;
+      final filteredUsers = params.includeInactive
+          ? users
+          : users.where((user) => user.isActive).toList();
+
+      return Result.success(filteredUsers);
+    } catch (e) {
+      return Result.failed('Terjadi kesalahan: ${e.toString()}');
     }
+  }
 
-    // Ambil daftar pengguna berdasarkan role
-    final result = await _userRepository.getUsersByRole(role: params.roleToGet);
-
-    if (result.isSuccess) {
-      final users = params.includeInactive
-          ? result.resultValue!
-          : result.resultValue!.where((user) => user.isActive).toList();
-
-      // Log akses ke daftar pengguna
-      print(
-          'User list accessed by ${params.currentUserRole}: Viewing ${params.roleToGet} users (${users.length} found)');
-
-      return Result.success(users);
+  bool _canAccessRole(String currentRole, String roleToAccess) {
+    switch (currentRole) {
+      case 'superAdmin':
+        return true; // Super Admin dapat mengakses semua role
+      case 'admin':
+        // Admin hanya bisa melihat admin dan santri, tidak bisa lihat superAdmin
+        return roleToAccess != 'superAdmin';
+      default:
+        return false;
     }
-
-    return result;
   }
 }

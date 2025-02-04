@@ -9,7 +9,10 @@ class UpdatePresensiPertemuanParams {
   final PresensiSummary summary;
   final String? materi;
   final String? catatan;
-  final UserRole currentUserRole;
+  final String currentUserRole;
+  final String userId;
+  final DateTime? createdAt;
+  final String? createdBy;
 
   UpdatePresensiPertemuanParams({
     required this.id,
@@ -19,7 +22,10 @@ class UpdatePresensiPertemuanParams {
     required this.daftarHadir,
     required this.summary,
     required this.currentUserRole,
+    required this.userId,
     this.materi,
     this.catatan,
+    this.createdAt,
+    this.createdBy,
   });
 }

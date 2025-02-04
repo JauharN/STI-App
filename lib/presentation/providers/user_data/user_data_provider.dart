@@ -4,11 +4,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter/foundation.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/entities/result.dart';
-import '../../../domain/entities/user_management/activate_user.dart';
-import '../../../domain/entities/user_management/deactivate_user.dart';
 import '../../../domain/usecase/authentication/login/login.dart';
 import '../../../domain/usecase/authentication/register/register.dart';
 import '../../../domain/usecase/authentication/upload_profile_picture/upload_profile_picture_params.dart';
+import '../../../domain/usecase/user_management/activate_user/activate_user.dart';
+import '../../../domain/usecase/user_management/deactivate_user/deactivate_user.dart';
 import '../../../domain/usecase/user_management/update_user_role/update_user_role.dart';
 import '../../utils/login_exception.dart';
 import '../../utils/rate_limit_exception.dart';
@@ -135,26 +135,31 @@ class UserData extends _$UserData {
       _notifyStateChange(null);
     } catch (e) {
       debugPrint('Unexpected error during login: $e');
-      state =
-          AsyncError(FlutterError(_formatErrorMessage(e)), StackTrace.current);
+      state = AsyncError(
+          FlutterError(_formatErrorMessage(e.toString())), StackTrace.current);
       _notifyStateChange(null);
     }
   }
 
-// Helper untuk format error message
-  String _formatErrorMessage(Object error) {
+  String _formatErrorMessage(String error) {
     final message = error.toString().toLowerCase();
 
     if (message.contains('network-request-failed')) {
       return 'Koneksi gagal. Periksa internet Anda.';
     }
+
     if (message.contains('user-not-found') ||
         message.contains('wrong-password') ||
         message.contains('invalid-credential')) {
       return 'Email atau password salah';
     }
+
     if (message.contains('too-many-requests')) {
       return 'Terlalu banyak percobaan. Silakan tunggu beberapa saat.';
+    }
+
+    if (message.contains('invalid-email')) {
+      return 'Format email tidak valid';
     }
 
     return 'Terjadi kesalahan. Silakan coba lagi';
@@ -164,7 +169,6 @@ class UserData extends _$UserData {
     required String email,
     required String password,
     required String name,
-    required UserRole role, // Tetap terima role tapi akan override
     String? phoneNumber,
     String? address,
     DateTime? dateOfBirth,
@@ -189,7 +193,6 @@ class UserData extends _$UserData {
         name: name.trim(),
         email: email.trim(),
         password: password,
-        role: UserRole.santri, // Force santri role
         phoneNumber: phoneNumber?.trim(),
         address: address?.trim(),
         dateOfBirth: dateOfBirth,
@@ -201,8 +204,6 @@ class UserData extends _$UserData {
             'Registration successful for user: ${result.resultValue?.email}');
         state = AsyncData(result.resultValue);
         _notifyStateChange(result.resultValue);
-
-        // Reset form atau clear data jika perlu
         _resetRegistrationData();
       } else {
         debugPrint('Registration failed: ${result.errorMessage}');
@@ -229,6 +230,7 @@ class UserData extends _$UserData {
     required String name,
   }) {
     if (email.trim().isEmpty || password.isEmpty || name.trim().isEmpty) {
+      debugPrint('Empty required field detected');
       return false;
     }
 
@@ -257,12 +259,15 @@ class UserData extends _$UserData {
     if (message.contains('email-already-in-use')) {
       return 'Email sudah terdaftar';
     }
+
     if (message.contains('invalid-email')) {
       return 'Format email tidak valid';
     }
+
     if (message.contains('weak-password')) {
       return 'Password terlalu lemah';
     }
+
     if (message.contains('network')) {
       return 'Koneksi gagal. Periksa internet Anda';
     }
@@ -271,8 +276,8 @@ class UserData extends _$UserData {
   }
 
   void _resetRegistrationData() {
-    // Reset any stored registration data if needed
     debugPrint('Resetting registration data');
+    // Reset temporary registration data if needed
   }
 
   // Method untuk logout
@@ -328,14 +333,25 @@ class UserData extends _$UserData {
 
   Future<void> updateUserRole({
     required String uid,
-    required UserRole newRole,
+    required String newRole,
   }) async {
     state = const AsyncLoading();
-    final currentUser = state.valueOrNull;
 
+    final currentUser = state.valueOrNull;
     if (currentUser == null) {
       state = const AsyncData(null);
       _notifyStateChange(null);
+      debugPrint('No current user found for role update');
+      return;
+    }
+
+    // Validasi role baru
+    if (!User.isValidRole(newRole)) {
+      debugPrint('Invalid new role provided: $newRole');
+      state =
+          AsyncError(FlutterError('Invalid role value'), StackTrace.current);
+      state = AsyncData(currentUser);
+      _notifyStateChange(currentUser);
       return;
     }
 
@@ -348,9 +364,11 @@ class UserData extends _$UserData {
 
     switch (result) {
       case Success(:final value):
+        debugPrint('Role successfully updated to: $newRole');
         state = AsyncData(value);
         _notifyStateChange(value);
       case Failed(:final message):
+        debugPrint('Failed to update role: $message');
         state = AsyncError(FlutterError(message), StackTrace.current);
         state = AsyncData(currentUser);
         _notifyStateChange(currentUser);

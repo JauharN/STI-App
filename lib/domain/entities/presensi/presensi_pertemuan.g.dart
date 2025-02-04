@@ -20,8 +20,14 @@ _$PresensiPertemuanImpl _$$PresensiPertemuanImplFromJson(
           PresensiSummary.fromJson(json['summary'] as Map<String, dynamic>),
       materi: json['materi'] as String?,
       catatan: json['catatan'] as String?,
-      createdAt: const TimestampConverter().fromJson(json['createdAt']),
-      updatedAt: const TimestampConverter().fromJson(json['updatedAt']),
+      createdAt: json['createdAt'] == null
+          ? null
+          : const TimestampConverter().fromJson(json['createdAt']),
+      updatedAt: json['updatedAt'] == null
+          ? null
+          : const TimestampConverter().fromJson(json['updatedAt']),
+      createdBy: json['createdBy'] as String? ?? null,
+      updatedBy: json['updatedBy'] as String? ?? null,
     );
 
 Map<String, dynamic> _$$PresensiPertemuanImplToJson(
@@ -37,4 +43,6 @@ Map<String, dynamic> _$$PresensiPertemuanImplToJson(
       'catatan': instance.catatan,
       'createdAt': const TimestampConverter().toJson(instance.createdAt),
       'updatedAt': const TimestampConverter().toJson(instance.updatedAt),
+      'createdBy': instance.createdBy,
+      'updatedBy': instance.updatedBy,
     };

@@ -34,8 +34,7 @@ Map<String, dynamic> _$$PresensiStatisticsDataImplToJson(
       'totalPertemuan': instance.totalPertemuan,
       'totalSantri': instance.totalSantri,
       'trendKehadiran': instance.trendKehadiran,
-      'totalByStatus': instance.totalByStatus
-          .map((k, e) => MapEntry(_$PresensiStatusEnumMap[k]!, e)),
+      'totalByStatus': instance.totalByStatus,
       'santriStats': instance.santriStats,
       'lastUpdated': instance.lastUpdated?.toIso8601String(),
     };

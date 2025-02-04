@@ -21,9 +21,8 @@ SantriPresensi _$SantriPresensiFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$SantriPresensi {
   String get santriId => throw _privateConstructorUsedError;
-  String get santriName => throw _privateConstructorUsedError; // Tambahkan ini
-  PresensiStatus get status =>
-      throw _privateConstructorUsedError; // Ubah ke enum
+  String get santriName => throw _privateConstructorUsedError;
+  PresensiStatus get status => throw _privateConstructorUsedError;
   String? get keterangan => throw _privateConstructorUsedError;
 
   /// Serializes this SantriPresensi to a JSON map.
@@ -160,10 +159,8 @@ class _$SantriPresensiImpl implements _SantriPresensi {
   final String santriId;
   @override
   final String santriName;
-// Tambahkan ini
   @override
   final PresensiStatus status;
-// Ubah ke enum
   @override
   final String? keterangan;
 
@@ -221,9 +218,9 @@ abstract class _SantriPresensi implements SantriPresensi {
   @override
   String get santriId;
   @override
-  String get santriName; // Tambahkan ini
+  String get santriName;
   @override
-  PresensiStatus get status; // Ubah ke enum
+  PresensiStatus get status;
   @override
   String? get keterangan;
 

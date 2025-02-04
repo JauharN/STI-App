@@ -7,7 +7,7 @@ class RegisterParams {
   final String name;
   final String email;
   final String password;
-  final UserRole role;
+  final String role;
   final String? photoUrl;
   final String? phoneNumber;
   final String? address;
@@ -17,13 +17,14 @@ class RegisterParams {
     required this.name,
     required this.email,
     required this.password,
-    required this.role, // Tetap terima untuk kompatibilitas
+    String? role,
     this.photoUrl,
     this.phoneNumber,
     this.address,
     this.dateOfBirth,
-  }) {
-    // Validasi yang lebih robust
+  }) : role = role ?? 'santri' {
+    // Use defaultRole from User class
+    // Validation
     final validationErrors = <String>[];
 
     if (name.trim().isEmpty) {
@@ -39,6 +40,10 @@ class RegisterParams {
           .add('Password must be at least $minPasswordLength characters');
     }
 
+    if (!User.isValidRole(this.role)) {
+      validationErrors.add('Invalid role value');
+    }
+
     // Validasi phoneNumber jika ada
     if (phoneNumber != null && phoneNumber!.isNotEmpty) {
       if (!RegExp(r'^\+?[\d\-\s]{10,13}$').hasMatch(phoneNumber!)) {
@@ -51,7 +56,6 @@ class RegisterParams {
       if (dateOfBirth!.isAfter(DateTime.now())) {
         validationErrors.add('Date of birth cannot be in the future');
       }
-      // Tambahan: validasi umur minimum jika diperlukan
       final minimumAge = DateTime.now().subtract(const Duration(days: 365 * 5));
       if (dateOfBirth!.isAfter(minimumAge)) {
         validationErrors.add('Minimum age requirement not met');

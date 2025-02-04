@@ -3,53 +3,15 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'user.freezed.dart';
 part 'user.g.dart';
 
-@JsonEnum()
-enum UserRole {
-  @JsonValue('santri')
-  santri,
-  @JsonValue('admin')
-  admin,
-  @JsonValue('superAdmin')
-  superAdmin;
-
-  String get displayName {
-    switch (this) {
-      case UserRole.superAdmin:
-        return 'Super Admin';
-      case UserRole.admin:
-        return 'Admin';
-      case UserRole.santri:
-        return 'Santri';
-    }
-  }
-
-  String toJson() {
-    return switch (this) {
-      UserRole.santri => 'santri',
-      UserRole.admin => 'admin',
-      UserRole.superAdmin => 'superAdmin',
-    };
-  }
-
-  static UserRole fromJson(String value) {
-    return switch (value.toLowerCase()) {
-      'santri' => UserRole.santri,
-      'admin' => UserRole.admin,
-      'superadmin' => UserRole.superAdmin,
-      _ => UserRole.santri,
-    };
-  }
-}
-
 @freezed
 class User with _$User {
+  static const List<String> validRoles = ['superAdmin', 'admin', 'santri'];
+
   factory User({
     required String uid,
     required String name,
     required String email,
-    @Default(UserRole.santri)
-    @JsonKey(toJson: _userRoleToJson, fromJson: _userRoleFromJson)
-    UserRole role,
+    @Default('santri') String role,
     @Default(true) bool isActive,
     String? photoUrl,
     String? phoneNumber,
@@ -57,8 +19,24 @@ class User with _$User {
     String? address,
   }) = _User;
 
+  // Add validation method
+  static bool isValidRole(String role) {
+    return validRoles.contains(role.toLowerCase());
+  }
+
+  // Add helper method to get display name
+  static String getRoleDisplayName(String role) {
+    switch (role.toLowerCase()) {
+      case 'superadmin':
+        return 'Super Admin';
+      case 'admin':
+        return 'Admin';
+      case 'santri':
+        return 'Santri';
+      default:
+        return 'Unknown Role';
+    }
+  }
+
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
 }
-
-String _userRoleToJson(UserRole role) => role.toJson();
-UserRole _userRoleFromJson(String value) => UserRole.fromJson(value);

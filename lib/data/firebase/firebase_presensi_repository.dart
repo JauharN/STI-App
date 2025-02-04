@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
+
 import '../../domain/entities/presensi/detail_presensi.dart';
 import '../../domain/entities/presensi/presensi_pertemuan.dart';
 import '../../domain/entities/presensi/presensi_statistics_data.dart';
@@ -7,7 +7,8 @@ import '../../domain/entities/presensi/presensi_status.dart';
 import '../../domain/entities/presensi/presensi_summary.dart';
 import '../../domain/entities/presensi/santri_presensi.dart';
 import '../../domain/entities/result.dart';
-import '../../domain/entities/presensi/santri_statistics.dart';
+
+import '../../presentation/utils/presensi_statistics_helper.dart';
 import '../repositories/presensi_repository.dart';
 
 class FirebasePresensiRepository implements PresensiRepository {
@@ -16,106 +17,47 @@ class FirebasePresensiRepository implements PresensiRepository {
   FirebasePresensiRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // HELPER METHODS
-
-  Future<bool> _isPertemuanExists(String programId, int pertemuanKe) async {
-    final snapshot = await _firestore
-        .collection('presensi_pertemuan')
-        .where('programId', isEqualTo: programId)
-        .where('pertemuanKe', isEqualTo: pertemuanKe)
-        .get();
-    return snapshot.docs.isNotEmpty;
-  }
-
-  // IMPLEMENTATION OF REPOSITORY METHODS
-
   @override
   Future<Result<PresensiPertemuan>> createPresensiPertemuan(
       PresensiPertemuan presensiPertemuan) async {
     try {
-      // Logging validasi awal
-      print('[INFO] Memulai validasi untuk createPresensiPertemuan.');
+      final docRef = _firestore.collection('presensi').doc();
 
-      // VALIDASI ROLE DAN LOGGING
-      // Jika Anda ingin menambahkan validasi role, tambahkan di sini (opsional).
-      // Jika tidak, pastikan logging menyertakan informasi proses validasi.
-
-      // Validasi program
-      if (!['TAHFIDZ', 'GMM', 'IFIS'].contains(presensiPertemuan.programId)) {
-        return const Result.failed('Program ID tidak valid');
-      }
-
-      print('[INFO] Program ID valid.');
-
-      // Cek duplikasi pertemuan
-      if (await _isPertemuanExists(
-          presensiPertemuan.programId, presensiPertemuan.pertemuanKe)) {
-        print(
-            '[ERROR] Pertemuan ke-${presensiPertemuan.pertemuanKe} sudah ada.');
-        return Result.failed(
-            'Pertemuan ke-${presensiPertemuan.pertemuanKe} sudah ada');
-      }
-
-      print('[INFO] Tidak ada duplikasi pertemuan.');
-
-      // Validasi tanggal
-      if (presensiPertemuan.tanggal.isAfter(DateTime.now())) {
-        return const Result.failed('Tanggal tidak boleh di masa depan');
-      }
-
-      print('[INFO] Tanggal valid.');
-
-      // Validasi daftar hadir
-      if (presensiPertemuan.daftarHadir.isEmpty) {
-        return const Result.failed('Daftar hadir tidak boleh kosong');
-      }
-
-      print('[INFO] Daftar hadir valid.');
-
-      // Validasi summary
-      if (presensiPertemuan.summary.totalSantri !=
-          presensiPertemuan.daftarHadir.length) {
-        return const Result.failed(
-            'Data summary tidak sesuai dengan daftar hadir');
-      }
-
-      print('[INFO] Summary valid.');
-
-      // Proses create
-      DocumentReference<Map<String, dynamic>> documentReference =
-          _firestore.collection('presensi_pertemuan').doc();
-
-      final presensiData = {
-        ...presensiPertemuan
-            .copyWith(
-              id: documentReference.id,
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            )
-            .toJson(),
+      // Transform and validate data
+      Map<String, dynamic> data = {
+        ...presensiPertemuan.toJson(),
+        'id': docRef.id,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      // Tambahkan log sebelum batch commit
-      print('[INFO] Menambahkan data ke batch Firebase.');
+      // Remove null values
+      data.removeWhere((key, value) => value == null);
 
-      // Gunakan writeBatch untuk atomic operation yang lebih efisien
-      final batch = _firestore.batch();
-      batch.set(documentReference, presensiData);
+      // Save to Firebase
+      await docRef.set(data);
 
-      // Commit batch
-      await batch.commit();
-
-      // Verifikasi hasil
-      final result = await documentReference.get();
-      if (result.exists) {
-        print('[SUCCESS] Presensi pertemuan berhasil dibuat.');
-        return Result.success(PresensiPertemuan.fromJson(result.data()!));
-      } else {
-        print('[ERROR] Gagal membuat presensi pertemuan.');
-        return const Result.failed('Gagal membuat presensi pertemuan');
+      // Get saved data
+      final docSnap = await docRef.get();
+      if (!docSnap.exists) {
+        return const Result.failed('Gagal menyimpan data presensi');
       }
+
+      final savedData = docSnap.data()!;
+      // Convert timestamps
+      final createdAt = (savedData['createdAt'] as Timestamp?)?.toDate();
+      final updatedAt = (savedData['updatedAt'] as Timestamp?)?.toDate();
+      final tanggal = (savedData['tanggal'] as Timestamp).toDate();
+
+      return Result.success(PresensiPertemuan.fromJson({
+        ...savedData,
+        'tanggal': tanggal.toIso8601String(),
+        'createdAt': createdAt?.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      }));
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
-      print('[ERROR] Error saat membuat presensi pertemuan: $e');
       return Result.failed('Error: ${e.toString()}');
     }
   }
@@ -126,22 +68,35 @@ class FirebasePresensiRepository implements PresensiRepository {
     required int pertemuanKe,
   }) async {
     try {
-      if (pertemuanKe <= 0) {
-        return const Result.failed('Nomor pertemuan harus positif');
-      }
-
       final querySnapshot = await _firestore
-          .collection('presensi_pertemuan')
+          .collection('presensi')
           .where('programId', isEqualTo: programId)
           .where('pertemuanKe', isEqualTo: pertemuanKe)
+          .limit(1)
           .get();
 
       if (querySnapshot.docs.isEmpty) {
-        return Result.failed('Pertemuan ke-$pertemuanKe tidak ditemukan');
+        return Result.failed(
+            'Data presensi tidak ditemukan untuk pertemuan ke-$pertemuanKe');
       }
 
-      return Result.success(
-          PresensiPertemuan.fromJson(querySnapshot.docs.first.data()));
+      final doc = querySnapshot.docs.first;
+      final data = doc.data();
+
+      // Convert timestamps
+      final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+      final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+      final tanggal = (data['tanggal'] as Timestamp).toDate();
+
+      return Result.success(PresensiPertemuan.fromJson({
+        ...data,
+        'id': doc.id,
+        'tanggal': tanggal.toIso8601String(),
+        'createdAt': createdAt?.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      }));
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
       return Result.failed('Error: ${e.toString()}');
     }
@@ -152,18 +107,36 @@ class FirebasePresensiRepository implements PresensiRepository {
       String programId) async {
     try {
       final querySnapshot = await _firestore
-          .collection('presensi_pertemuan')
+          .collection('presensi')
           .where('programId', isEqualTo: programId)
-          .orderBy('pertemuanKe')
+          .orderBy('pertemuanKe', descending: false)
           .get();
 
-      final presensiList = querySnapshot.docs
-          .map((doc) => PresensiPertemuan.fromJson(doc.data()))
-          .toList();
+      if (querySnapshot.docs.isEmpty) {
+        return const Result.failed('Belum ada data presensi untuk program ini');
+      }
+
+      List<PresensiPertemuan> presensiList = [];
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+        final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+        final tanggal = (data['tanggal'] as Timestamp).toDate();
+
+        presensiList.add(PresensiPertemuan.fromJson({
+          ...data,
+          'id': doc.id,
+          'tanggal': tanggal.toIso8601String(),
+          'createdAt': createdAt?.toIso8601String(),
+          'updatedAt': updatedAt?.toIso8601String(),
+        }));
+      }
 
       return Result.success(presensiList);
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
-      return Result.failed('Error getting all presensi: ${e.toString()}');
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
@@ -171,73 +144,71 @@ class FirebasePresensiRepository implements PresensiRepository {
   Future<Result<PresensiPertemuan>> updatePresensiPertemuan(
       PresensiPertemuan presensiPertemuan) async {
     try {
-      print(
-          '[INFO] Memulai proses updatePresensiPertemuan untuk ID: ${presensiPertemuan.id}');
+      DocumentReference<Map<String, dynamic>> docRef =
+          _firestore.collection('presensi').doc(presensiPertemuan.id);
 
-      // Basic validations
-      if (!presensiPertemuan.isValid) {
-        print(
-            '[ERROR] Data presensi tidak valid: ${presensiPertemuan.toJson()}');
-        return const Result.failed('Data presensi tidak valid');
+      // Verify existence
+      final doc = await docRef.get();
+      if (!doc.exists) {
+        return const Result.failed('Presensi tidak ditemukan');
       }
 
-      print('[INFO] Data presensi valid. Melanjutkan proses update.');
-
-      final docRef =
-          _firestore.collection('presensi_pertemuan').doc(presensiPertemuan.id);
-
-      final updateData = {
-        ...presensiPertemuan
-            .copyWith(
-              updatedAt: DateTime.now(),
-            )
-            .toJson(),
+      Map<String, dynamic> updateData = {
+        ...presensiPertemuan.toJson(),
+        'updatedAt': FieldValue.serverTimestamp(),
       };
+      updateData.remove('id');
+      updateData.remove('createdAt');
 
-      // Logging data sebelum diupdate
-      print('[INFO] Data yang akan diupdate: $updateData');
+      await docRef.update(updateData);
 
-      // Gunakan batch untuk update summary juga
-      final batch = _firestore.batch();
-      batch.update(docRef, updateData);
+      // Get updated data
+      final updatedDoc = await docRef.get();
+      final data = updatedDoc.data()!;
 
-      await batch.commit();
+      // Convert timestamps
+      final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+      final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+      final tanggal = (data['tanggal'] as Timestamp).toDate();
 
-      print('[INFO] Batch commit selesai. Verifikasi hasil.');
-
-      final result = await docRef.get();
-      if (result.exists) {
-        print(
-            '[SUCCESS] Presensi pertemuan berhasil diperbarui untuk ID: ${presensiPertemuan.id}');
-        return Result.success(PresensiPertemuan.fromJson(result.data()!));
-      } else {
-        print('[ERROR] Presensi pertemuan tidak ditemukan setelah update.');
-        return const Result.failed('Presensi pertemuan tidak ditemukan');
-      }
+      return Result.success(PresensiPertemuan.fromJson({
+        ...data,
+        'id': updatedDoc.id,
+        'tanggal': tanggal.toIso8601String(),
+        'createdAt': createdAt?.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      }));
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
-      print('[ERROR] Error saat memperbarui presensi pertemuan: $e');
-      return Result.failed('Error updating presensi: ${e.toString()}');
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
   @override
   Future<Result<void>> deletePresensiPertemuan(String id) async {
     try {
-      print('[INFO] Memulai proses deletePresensiPertemuan.');
+      final docRef = _firestore.collection('presensi').doc(id);
 
-      final docRef = _firestore.collection('presensi_pertemuan').doc(id);
+      // Verify existence
+      final doc = await docRef.get();
+      if (!doc.exists) {
+        return const Result.failed('Presensi tidak ditemukan');
+      }
 
-      // Gunakan batch untuk penghapusan
-      final batch = _firestore.batch();
-      batch.delete(docRef);
+      await docRef.delete();
 
-      await batch.commit();
-
-      print('[SUCCESS] Presensi pertemuan dengan ID $id berhasil dihapus.');
-      return const Result.success(null);
+      // Verify deletion
+      final verifyDoc = await docRef.get();
+      if (!verifyDoc.exists) {
+        return const Result.success(null);
+      } else {
+        return const Result.failed('Gagal menghapus presensi');
+      }
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
-      print('[ERROR] Error saat menghapus presensi pertemuan: $e');
-      return Result.failed('Error deleting presensi: ${e.toString()}');
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
@@ -256,51 +227,63 @@ class FirebasePresensiRepository implements PresensiRepository {
         return const Result.failed('Program tidak ditemukan');
       }
 
-      // Get pengajar details
-      final pengajarId = programDoc.data()?['pengajarId'];
-      final pengajarDoc =
-          await _firestore.collection('users').doc(pengajarId).get();
+      final programData = programDoc.data()!;
 
-      // Get presensi untuk bulan dan tahun yang diminta
-      final startDate = DateTime(int.parse(tahun), int.parse(bulan), 1);
-      final endDate = DateTime(int.parse(tahun), int.parse(bulan) + 1, 0);
-
+      // Get presensi for user in this program
       final presensiQuery = await _firestore
-          .collection('presensi_pertemuan')
+          .collection('presensi')
           .where('programId', isEqualTo: programId)
-          .where('tanggal', isGreaterThanOrEqualTo: startDate)
-          .where('tanggal', isLessThanOrEqualTo: endDate)
-          .orderBy('tanggal')
-          .get();
+          .where('daftarHadir', arrayContains: {'santriId': userId}).get();
 
-      // Transform ke PresensiDetailItem
-      final List<PresensiDetailItem> pertemuan = [];
+      if (presensiQuery.docs.isEmpty) {
+        return const Result.failed('Data presensi tidak ditemukan');
+      }
+
+      List<PresensiDetailItem> pertemuan = [];
       for (var doc in presensiQuery.docs) {
         final data = doc.data();
-        final daftarHadir = (data['daftarHadir'] as List)
-            .map((d) => SantriPresensi.fromJson(d))
-            .where((s) => s.santriId == userId)
-            .toList();
+        final tanggal = (data['tanggal'] as Timestamp).toDate();
 
-        if (daftarHadir.isNotEmpty) {
-          pertemuan.add(PresensiDetailItem(
-            pertemuanKe: data['pertemuanKe'],
-            status: daftarHadir.first.status,
-            tanggal: (data['tanggal'] as Timestamp).toDate(),
-            keterangan: daftarHadir.first.keterangan,
-          ));
+        // Filter by bulan and tahun
+        if (tanggal.month.toString() != bulan ||
+            tanggal.year.toString() != tahun) {
+          continue;
         }
+
+        // Get santri presensi status
+        List<Map<String, dynamic>> daftarHadir =
+            List<Map<String, dynamic>>.from(data['daftarHadir'] ?? []);
+
+        var santriPresensi = daftarHadir.firstWhere(
+          (p) => p['santriId'] == userId,
+          orElse: () => {'status': 'alpha'},
+        );
+
+        pertemuan.add(PresensiDetailItem(
+          pertemuanKe: data['pertemuanKe'],
+          status: PresensiStatus.fromJson(santriPresensi['status']),
+          tanggal: tanggal,
+          materi: data['materi'],
+          keterangan: santriPresensi['keterangan'],
+        ));
+      }
+
+      if (pertemuan.isEmpty) {
+        return const Result.failed(
+            'Tidak ada presensi pada periode yang diminta');
       }
 
       return Result.success(DetailPresensi(
-        programName: programDoc.data()?['nama'] ?? '',
-        kelas: programDoc.data()?['kelas'] ?? '',
-        pengajarName: pengajarDoc.data()?['name'] ?? '',
-        pertemuan: pertemuan,
         programId: programId,
+        programName: programData['nama'],
+        kelas: programData['kelas'] ?? '',
+        pengajarName: programData['pengajarName'] ?? 'Belum ditentukan',
+        pertemuan: pertemuan,
       ));
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
-      return Result.failed('Error getting detail presensi: ${e.toString()}');
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
@@ -310,41 +293,58 @@ class FirebasePresensiRepository implements PresensiRepository {
     required String programId,
   }) async {
     try {
-      final querySnapshot = await _firestore
-          .collection('presensi_pertemuan')
+      final presensiQuery = await _firestore
+          .collection('presensi')
           .where('programId', isEqualTo: programId)
           .get();
 
-      int hadir = 0, sakit = 0, izin = 0, alpha = 0, total = 0;
+      if (presensiQuery.docs.isEmpty) {
+        return const Result.failed('Data presensi tidak ditemukan');
+      }
 
-      // Hitung summary dari semua presensi pertemuan
-      for (var doc in querySnapshot.docs) {
-        final daftarHadir = (doc.data()['daftarHadir'] as List)
-            .map((d) => SantriPresensi.fromJson(d))
-            .where((s) => s.santriId == userId)
-            .toList();
+      int hadir = 0, sakit = 0, izin = 0, alpha = 0;
 
-        if (daftarHadir.isNotEmpty) {
-          total++;
-          switch (daftarHadir.first.status) {
-            case PresensiStatus.hadir:
-              hadir++;
-              break;
-            case PresensiStatus.sakit:
-              sakit++;
-              break;
-            case PresensiStatus.izin:
-              izin++;
-              break;
-            case PresensiStatus.alpha:
-              alpha++;
-              break;
-          }
+      for (var doc in presensiQuery.docs) {
+        final data = doc.data();
+        List<Map<String, dynamic>> daftarHadir =
+            List<Map<String, dynamic>>.from(data['daftarHadir'] ?? []);
+
+        // Find santri data and transform to entity
+        var santriData = daftarHadir.firstWhere(
+          (p) => p['santriId'] == userId,
+          orElse: () => {
+            'santriId': userId,
+            'santriName': '',
+            'status': 'alpha',
+            'keterangan': 'Tidak hadir'
+          },
+        );
+
+        final santriPresensi = SantriPresensi.fromJson(santriData);
+
+        switch (santriPresensi.status) {
+          case PresensiStatus.hadir:
+            hadir++;
+            break;
+          case PresensiStatus.sakit:
+            sakit++;
+            break;
+          case PresensiStatus.izin:
+            izin++;
+            break;
+          case PresensiStatus.alpha:
+            alpha++;
+            break;
         }
       }
 
+      final totalSantri = presensiQuery.docs.length;
+      if (totalSantri == 0) {
+        return const Result.failed('Belum ada data presensi');
+      }
+
       return Result.success(PresensiSummary(
-        totalSantri: total,
+        totalSantri: totalSantri,
         hadir: hadir,
         sakit: sakit,
         izin: izin,
@@ -352,24 +352,38 @@ class FirebasePresensiRepository implements PresensiRepository {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ));
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
-      return Result.failed('Error getting presensi summary: ${e.toString()}');
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
   @override
   Future<Result<PresensiPertemuan>> getPresensiById(String id) async {
     try {
-      final doc =
-          await _firestore.collection('presensi_pertemuan').doc(id).get();
+      final docSnapshot = await _firestore.collection('presensi').doc(id).get();
 
-      if (!doc.exists) {
-        return const Failed('Presensi tidak ditemukan');
+      if (!docSnapshot.exists) {
+        return Result.failed('Presensi dengan ID: $id tidak ditemukan');
       }
 
-      return Success(PresensiPertemuan.fromJson(doc.data()!));
+      final data = docSnapshot.data()!;
+      final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+      final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+      final tanggal = (data['tanggal'] as Timestamp).toDate();
+
+      return Result.success(PresensiPertemuan.fromJson({
+        ...data,
+        'id': docSnapshot.id,
+        'tanggal': tanggal.toIso8601String(),
+        'createdAt': createdAt?.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      }));
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
-      return Failed(e.toString());
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
@@ -380,135 +394,96 @@ class FirebasePresensiRepository implements PresensiRepository {
     DateTime? endDate,
   }) async {
     try {
-      // Buat query dasar
-      Query<Map<String, dynamic>> query = _firestore
-          .collection('presensi_pertemuan')
-          .where('programId', isEqualTo: programId);
-
-      // Tambahkan filter tanggal jika ada
-      if (startDate != null) {
-        query = query.where('tanggal', isGreaterThanOrEqualTo: startDate);
-      }
-      if (endDate != null) {
-        query = query.where('tanggal', isLessThanOrEqualTo: endDate);
-      }
-
-      // Ambil data presensi
-      final presensiDocs = await query.get();
-      final presensiList = presensiDocs.docs
-          .map((doc) => PresensiPertemuan.fromJson(doc.data()))
-          .toList();
-
-      if (presensiList.isEmpty) {
-        return Result.success(PresensiStatisticsData(
-          programId: programId,
-          totalPertemuan: 0,
-          totalSantri: 0,
-          trendKehadiran: {},
-          totalByStatus: {},
-          santriStats: [],
-          lastUpdated: DateTime.now(),
-        ));
-      }
-
-      // Calculate statistics
-      final totalPertemuan = presensiList.length;
-      final totalSantri = presensiList.first.summary.totalSantri;
-
-      // Calculate trend kehadiran
-      final trendKehadiran = _calculateTrendKehadiran(presensiList);
-
-      // Calculate total by status
-      final totalByStatus = _calculateTotalByStatus(presensiList);
-
-      // Calculate santri statistics
-      final santriStats = await _calculateSantriStatistics(presensiList);
-
-      final statisticsData = PresensiStatisticsData(
+      // 1. Get data dari Firebase
+      final presensiDocs = await _getPresensiDocuments(
         programId: programId,
-        totalPertemuan: totalPertemuan,
-        totalSantri: totalSantri,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      if (presensiDocs.isEmpty) {
+        return const Result.failed('Tidak ada data presensi untuk periode ini');
+      }
+
+      // 2. Transform ke List<PresensiPertemuan>
+      final presensiList = await _transformToPresensiList(presensiDocs);
+
+      // 3. Gunakan helper untuk kalkulasi
+      final trendKehadiran =
+          PresensiStatisticsHelper.calculateTrendKehadiran(presensiList);
+      final totalByStatus =
+          PresensiStatisticsHelper.calculateTotalByStatus(presensiList);
+      final santriStats =
+          await PresensiStatisticsHelper.calculateSantriStatistics(
+              presensiList);
+
+      // 4. Return hasil dalam bentuk PresensiStatisticsData
+      return Result.success(PresensiStatisticsData(
+        programId: programId,
+        totalPertemuan: presensiList.length,
+        totalSantri: santriStats.length,
         trendKehadiran: trendKehadiran,
         totalByStatus: totalByStatus,
         santriStats: santriStats,
         lastUpdated: DateTime.now(),
-      );
-
-      return Result.success(statisticsData);
+      ));
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
-      return Result.failed('Gagal mengambil statistik: ${e.toString()}');
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
-// Helper methods untuk kalkulasi
-  Map<String, double> _calculateTrendKehadiran(
-      List<PresensiPertemuan> presensiList) {
-    final Map<String, double> trend = {};
-    for (var presensi in presensiList) {
-      final date = DateFormat('yyyy-MM-dd').format(presensi.tanggal);
-      trend[date] =
-          (presensi.summary.hadir / presensi.summary.totalSantri) * 100;
+// Helper method untuk get documents dari Firebase
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+      _getPresensiDocuments({
+    required String programId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    Query<Map<String, dynamic>> query = _firestore
+        .collection('presensi')
+        .where('programId', isEqualTo: programId);
+
+    if (startDate != null) {
+      query = query.where('tanggal', isGreaterThanOrEqualTo: startDate);
     }
-    return trend;
+    if (endDate != null) {
+      query = query.where('tanggal', isLessThanOrEqualTo: endDate);
+    }
+
+    final QuerySnapshot<Map<String, dynamic>> snapshot = await query.get();
+    return snapshot.docs;
   }
 
-  Map<PresensiStatus, int> _calculateTotalByStatus(
-      List<PresensiPertemuan> presensiList) {
-    final Map<PresensiStatus, int> totalByStatus = {};
-    for (var presensi in presensiList) {
-      for (var santri in presensi.daftarHadir) {
-        totalByStatus.update(
-          santri.status,
-          (value) => value + 1,
-          ifAbsent: () => 1,
-        );
-      }
-    }
-    return totalByStatus;
-  }
+// Helper method untuk transform Firebase docs ke PresensiPertemuan
+  Future<List<PresensiPertemuan>> _transformToPresensiList(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) async {
+    List<PresensiPertemuan> presensiList = [];
 
-  Future<List<SantriStatistics>> _calculateSantriStatistics(
-      List<PresensiPertemuan> presensiList) async {
-    final Map<String, Map<String, dynamic>> santriStatsMap = {};
+    for (var doc in docs) {
+      final data = doc.data();
+      // Convert timestamps
+      final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+      final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+      final tanggal = (data['tanggal'] as Timestamp).toDate();
 
-    // Initialize stats for each santri
-    for (var presensi in presensiList) {
-      for (var santri in presensi.daftarHadir) {
-        if (!santriStatsMap.containsKey(santri.santriId)) {
-          santriStatsMap[santri.santriId] = {
-            'santriName': santri.santriName,
-            'totalKehadiran': 0,
-            'statusCount': <PresensiStatus, int>{},
-          };
-        }
-
-        // Update status count
-        santriStatsMap[santri.santriId]!['statusCount'].update(
-          santri.status,
-          (value) => value + 1,
-          ifAbsent: () => 1,
-        );
-
-        // Update total kehadiran
-        if (santri.status == PresensiStatus.hadir) {
-          santriStatsMap[santri.santriId]!['totalKehadiran'] =
-              santriStatsMap[santri.santriId]!['totalKehadiran']! + 1;
-        }
+      try {
+        final presensi = PresensiPertemuan.fromJson({
+          ...data,
+          'id': doc.id,
+          'tanggal': tanggal.toIso8601String(),
+          'createdAt': createdAt?.toIso8601String(),
+          'updatedAt': updatedAt?.toIso8601String(),
+        });
+        presensiList.add(presensi);
+      } catch (e) {
+        print('Error transforming document ${doc.id}: $e');
+        continue;
       }
     }
 
-    // Convert to list of SantriStatistics
-    return santriStatsMap.entries.map((entry) {
-      final stats = entry.value;
-      return SantriStatistics(
-        santriId: entry.key,
-        santriName: stats['santriName'],
-        totalKehadiran: stats['totalKehadiran'],
-        totalPertemuan: presensiList.length,
-        statusCount: stats['statusCount'],
-        persentaseKehadiran:
-            (stats['totalKehadiran'] / presensiList.length) * 100,
-      );
-    }).toList();
+    return presensiList;
   }
 }

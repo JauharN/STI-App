@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:sti_app/domain/entities/result.dart';
 import 'package:sti_app/domain/entities/user.dart';
 import 'package:sti_app/data/repositories/user_repository.dart';
@@ -14,44 +13,60 @@ class UpdateUserRole implements Usecase<Result<User>, UpdateUserRoleParams> {
 
   @override
   Future<Result<User>> call(UpdateUserRoleParams params) async {
-    // Validasi role pengguna yang melakukan perubahan
-    if (params.currentUserRole != UserRole.superAdmin) {
-      return const Result.failed('Only Super Admin can change roles');
-    }
-
-    // Validasi role baru
-    if (!UserRole.values.contains(params.newRole)) {
-      return const Result.failed('Invalid role provided');
-    }
-
-    // Tidak boleh mengubah role menjadi Super Admin
-    if (params.newRole == UserRole.superAdmin) {
-      return const Result.failed('Cannot assign Super Admin role');
-    }
-
-    // Ambil data pengguna yang akan diubah
-    final userResult = await _userRepository.getUser(uid: params.uid);
-    if (userResult.isFailed) return userResult;
-
-    final currentUser = userResult.resultValue!;
-
-    // Tidak boleh mengubah role pengguna dengan role Super Admin
-    if (currentUser.role == UserRole.superAdmin) {
-      return const Result.failed('Cannot modify Super Admin role');
-    }
-
-    // Lakukan pembaruan role
-    final updatedUser = currentUser.copyWith(role: params.newRole);
-    final updateResult = await _userRepository.updateUser(user: updatedUser);
-
-    if (updateResult.isSuccess) {
-      // Log perubahan role
-      if (kDebugMode) {
-        print(
-            'Role updated successfully: ${currentUser.uid} -> ${updatedUser.role}');
+    try {
+      // Validasi role executor
+      if (params.currentUserRole != 'superAdmin') {
+        return const Result.failed(
+            'Hanya Super Admin yang dapat mengubah role user');
       }
-    }
 
-    return updateResult;
+      // Validasi role baru
+      if (!User.isValidRole(params.newRole)) {
+        return Result.failed(
+            'Role ${params.newRole} tidak valid. Role yang tersedia: ${User.validRoles.join(", ")}');
+      }
+
+      // Tidak boleh mengubah role menjadi superAdmin
+      if (params.newRole == 'superAdmin') {
+        return const Result.failed(
+            'Tidak dapat mengubah role user menjadi Super Admin');
+      }
+
+      // Get user yang akan diupdate
+      final userResult = await _userRepository.getUser(uid: params.uid);
+
+      if (userResult.isFailed) {
+        return Result.failed(
+            'Gagal mendapatkan data user: ${userResult.errorMessage}');
+      }
+
+      final user = userResult.resultValue!;
+
+      // Validasi - tidak bisa mengubah role superAdmin
+      if (user.role == 'superAdmin') {
+        return Result.failed(
+            'Tidak dapat mengubah role user ${user.name} karena memiliki role Super Admin');
+      }
+
+      // Validasi - tidak bisa mengubah ke role yang sama
+      if (user.role == params.newRole) {
+        return Result.failed(
+            'User ${user.name} sudah memiliki role ${User.getRoleDisplayName(params.newRole)}');
+      }
+
+      // Update role user
+      final updatedUser = user.copyWith(role: params.newRole);
+      final updateResult = await _userRepository.updateUser(user: updatedUser);
+
+      // Handle hasil update
+      if (updateResult.isSuccess) {
+        return Result.success(updateResult.resultValue!);
+      } else {
+        return Result.failed(
+            'Gagal mengupdate role user: ${updateResult.errorMessage}');
+      }
+    } catch (e) {
+      return Result.failed('Terjadi kesalahan: ${e.toString()}');
+    }
   }
 }

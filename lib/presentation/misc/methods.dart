@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Tambahkan package intl
+import 'package:intl/intl.dart';
+
+import 'constants.dart';
 
 // Cache untuk SizedBox
 Map<double, SizedBox> _verticalSpaces = {};
@@ -55,6 +57,27 @@ Color getPresensiStatusColor(String status) {
 // Helper untuk validasi
 bool isValidEmail(String email) {
   return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+}
+
+bool hasPermission(String userRole, String permission) {
+  return RoleConstants.roleCapabilities[userRole]?.contains(permission) ??
+      false;
+}
+
+bool canAccessPage(String userRole, String page) {
+  switch (page) {
+    case 'user_management':
+      return userRole == RoleConstants.superAdmin;
+    case 'role_management':
+      return userRole == RoleConstants.superAdmin;
+    case 'presensi_management':
+      return userRole == RoleConstants.superAdmin ||
+          userRole == RoleConstants.admin;
+    case 'presensi_view':
+      return true; // All roles
+    default:
+      return false;
+  }
 }
 
 // untuk build runner

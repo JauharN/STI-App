@@ -1,5 +1,4 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-
 import '../json_converters.dart';
 
 part 'presensi_summary.freezed.dart';
@@ -7,7 +6,6 @@ part 'presensi_summary.g.dart';
 
 @freezed
 class PresensiSummary with _$PresensiSummary {
-  // Factory constructor biasa tanpa validasi
   factory PresensiSummary({
     required int totalSantri,
     required int hadir,
@@ -18,11 +16,6 @@ class PresensiSummary with _$PresensiSummary {
     @TimestampConverter() DateTime? updatedAt,
   }) = _PresensiSummary;
 
-  // Factory constructor fromJson
-  factory PresensiSummary.fromJson(Map<String, dynamic> json) =>
-      _$PresensiSummaryFromJson(json);
-
-  // Buat constructor baru untuk validasi
   factory PresensiSummary.validated({
     required int totalSantri,
     required int hadir,
@@ -32,8 +25,18 @@ class PresensiSummary with _$PresensiSummary {
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
-    if (hadir + sakit + izin + alpha != totalSantri) {
-      throw ArgumentError('Total status tidak sesuai dengan total santri');
+    if (totalSantri <= 0) {
+      throw ArgumentError('Total santri harus lebih dari 0');
+    }
+
+    final totalStatus = hadir + sakit + izin + alpha;
+    if (totalStatus != totalSantri) {
+      throw ArgumentError(
+          'Total status ($totalStatus) tidak sesuai dengan total santri ($totalSantri)');
+    }
+
+    if (hadir < 0 || sakit < 0 || izin < 0 || alpha < 0) {
+      throw ArgumentError('Jumlah status tidak boleh negatif');
     }
 
     return PresensiSummary(
@@ -42,16 +45,24 @@ class PresensiSummary with _$PresensiSummary {
       sakit: sakit,
       izin: izin,
       alpha: alpha,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
+      createdAt: createdAt ?? DateTime.now(),
+      updatedAt: updatedAt ?? DateTime.now(),
     );
   }
+
+  factory PresensiSummary.fromJson(Map<String, dynamic> json) =>
+      _$PresensiSummaryFromJson(json);
 }
 
-// Extension untuk method tambahan
 extension PresensiSummaryX on PresensiSummary {
   double get persentaseKehadiran => (hadir / totalSantri) * 100;
   double get persentaseSakit => (sakit / totalSantri) * 100;
   double get persentaseIzin => (izin / totalSantri) * 100;
   double get persentaseAlpha => (alpha / totalSantri) * 100;
+
+  bool get isValid {
+    if (totalSantri <= 0) return false;
+    if (hadir < 0 || sakit < 0 || izin < 0 || alpha < 0) return false;
+    return (hadir + sakit + izin + alpha) == totalSantri;
+  }
 }

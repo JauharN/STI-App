@@ -1,6 +1,6 @@
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
-import '../../../entities/result.dart';
+import 'package:sti_app/domain/entities/result.dart';
 
 part 'delete_program_params.dart';
 
@@ -12,18 +12,34 @@ class DeleteProgram implements Usecase<Result<void>, DeleteProgramParams> {
 
   @override
   Future<Result<void>> call(DeleteProgramParams params) async {
-    // Validasi ID tidak boleh kosong
-    if (params.programId.isEmpty) {
-      return const Result.failed('Program ID cannot be empty');
-    }
+    try {
+      if (params.currentUserRole != 'admin' &&
+          params.currentUserRole != 'superAdmin') {
+        return const Result.failed(
+            'Hanya admin dan superAdmin yang dapat menghapus program');
+      }
 
-    // Validasi program default tidak boleh dihapus
-    final defaultPrograms = ['TAHFIDZ-01', 'GMM-01', 'IFIS-01']; // Contoh ID
-    if (defaultPrograms.contains(params.programId)) {
-      return const Result.failed('Cannot delete default STI programs');
-    }
+      if (params.programId.isEmpty) {
+        return const Result.failed('ID Program tidak boleh kosong');
+      }
 
-    // Hapus program
-    return _programRepository.deleteProgram(params.programId);
+      // Protect default programs
+      final defaultPrograms = ['TAHFIDZ-01', 'GMM-01', 'IFIS-01'];
+      if (defaultPrograms.contains(params.programId)) {
+        return const Result.failed('Program default STI tidak dapat dihapus');
+      }
+
+      // Verify program exists and get enrolled students
+      final programResult =
+          await _programRepository.getProgramById(params.programId);
+      if (programResult.isFailed) {
+        return Result.failed(
+            'Program tidak ditemukan: ${programResult.errorMessage}');
+      }
+
+      return await _programRepository.deleteProgram(params.programId);
+    } catch (e) {
+      return Result.failed('Gagal menghapus program: ${e.toString()}');
+    }
   }
 }

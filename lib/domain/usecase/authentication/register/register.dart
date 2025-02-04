@@ -33,6 +33,7 @@ class Register implements Usecase<Result<User>, RegisterParams> {
       }
 
       _incrementAttempt();
+
       debugPrint('Starting registration for email: ${params.sanitizedEmail}');
 
       String uid = '';
@@ -41,7 +42,7 @@ class Register implements Usecase<Result<User>, RegisterParams> {
           email: params.sanitizedEmail,
           password: params.password,
           name: params.sanitizedName,
-          role: 'santri', // Force santri role untuk konsistensi
+          role: params.role, // Now passing string role
         );
 
         if (authResult.isFailed) {
@@ -66,12 +67,12 @@ class Register implements Usecase<Result<User>, RegisterParams> {
           phoneNumber: params.sanitizedPhoneNumber,
           address: params.sanitizedAddress,
           dateOfBirth: params.dateOfBirth,
-          role: UserRole.santri, // Konsisten dengan force santri
+          role: params.role, // Now passing string role
         );
 
         if (userResult.isSuccess) {
           debugPrint('User data saved successfully for UID: $uid');
-          _resetAttempts(); // Reset pada registrasi sukses
+          _resetAttempts();
           return Result.success(userResult.resultValue!);
         } else {
           debugPrint('Failed to save user data: ${userResult.errorMessage}');
@@ -90,7 +91,6 @@ class Register implements Usecase<Result<User>, RegisterParams> {
     }
   }
 
-  // Helper methods yang sudah ada
   bool _isRateLimited() {
     if (_lastRegistrationAttempt == null) return false;
     if (_registrationAttempts >= _maxRegistrationAttempts) {

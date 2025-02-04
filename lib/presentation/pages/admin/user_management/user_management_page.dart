@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sti_app/presentation/extensions/extensions.dart';
 
-import '../../../../domain/entities/user.dart';
 import '../../../misc/constants.dart';
 import '../../../providers/usecases/user_management/get_users_by_role_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';
@@ -26,18 +25,17 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
   final searchController = TextEditingController();
 
   // Filter state
-  UserRole selectedRole = UserRole.santri;
+  String selectedRole = 'santri';
   bool showInactive = false;
   String _searchQuery = '';
 
   // Handlers
-  void _handleRoleFilter(UserRole role) {
+  void _handleRoleFilter(String role) {
     setState(() {
       selectedRole = role;
       // Reset search when changing filters
       searchController.clear();
     });
-    // Could add analytics tracking here
   }
 
   void _handleInactiveFilter(bool? value) {
@@ -65,7 +63,7 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
   void _navigateToRoleManagement() {
     // Only allow superAdmin to access role management
     final currentUserRole = ref.read(userDataProvider).value?.role;
-    if (currentUserRole == UserRole.superAdmin) {
+    if (currentUserRole == 'superAdmin') {
       context.pushNamed('role-management');
     } else {
       context.showSnackBar('Only Super Admin can access role management');
@@ -75,7 +73,7 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
   Future<void> _handleRefresh() async {
     setState(() {
       searchController.clear();
-      selectedRole = UserRole.santri;
+      selectedRole = 'santri';
       showInactive = false;
     });
     // Invalidate cache to force refresh
@@ -88,7 +86,67 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
     super.dispose();
   }
 
-  // UI Components
+  @override
+  Widget build(BuildContext context) {
+    final userRole = ref.watch(userDataProvider).value?.role;
+
+    // Check role access
+    if (userRole != 'superAdmin' && userRole != 'admin') {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 64, color: AppColors.error),
+              const SizedBox(height: 16),
+              Text(
+                'Access Denied',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You don\'t have permission to manage users',
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppColors.neutral600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'User Management',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.manage_accounts),
+            onPressed: _navigateToRoleManagement,
+          )
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildHeader(),
+          _buildSearchBar(),
+          _buildFilters(),
+          Expanded(
+            child: _buildUserList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -129,16 +187,13 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
         labelText: 'Search Users',
         controller: searchController,
         prefixIcon: const Icon(Icons.search),
-        validator: (value) => null,
-        // Tambahkan onChanged untuk search
         onChanged: _handleSearch,
         suffixIcon: searchController.text.isNotEmpty
             ? IconButton(
                 icon: const Icon(Icons.clear),
                 onPressed: () {
                   searchController.clear();
-                  _handleSearch(''); // Reset search
-                  setState(() {});
+                  _handleSearch('');
                 },
               )
             : null,
@@ -153,15 +208,15 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
       child: Row(
         children: [
           // Role filter
-          SegmentedButton<UserRole>(
+          SegmentedButton<String>(
             selected: {selectedRole},
-            onSelectionChanged: (Set<UserRole> selection) {
+            onSelectionChanged: (Set<String> selection) {
               _handleRoleFilter(selection.first);
             },
-            segments: UserRole.values
+            segments: RoleConstants.allRoles
                 .map((role) => ButtonSegment(
                       value: role,
-                      label: Text(role.displayName),
+                      label: Text(RoleConstants.roleDisplayNames[role] ?? role),
                     ))
                 .toList(),
           ),
@@ -182,18 +237,18 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
       onRefresh: _handleRefresh,
       child: Consumer(
         builder: (context, ref, child) {
+          final userRole = ref.watch(userDataProvider).value?.role;
           final usersAsync = ref.watch(getUsersByRoleProvider(
             roleToGet: selectedRole,
-            currentUserRole:
-                ref.watch(userDataProvider).value?.role ?? UserRole.santri,
+            currentUserRole: userRole ?? 'santri',
             includeInactive: showInactive,
           ));
 
           return usersAsync.when(
             loading: () => const LoadingState(),
             error: (error, stack) => ErrorState(
-              message: error.toString(), // Pass specific error message
-              onRetry: _handleRefresh, // Add retry functionality
+              message: error.toString(),
+              onRetry: _handleRefresh,
             ),
             data: (users) {
               // Apply search filter
@@ -227,29 +282,6 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
             },
           );
         },
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('User Management'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.manage_accounts),
-            onPressed: _navigateToRoleManagement,
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildHeader(),
-          _buildSearchBar(),
-          _buildFilters(),
-          Expanded(child: _buildUserList()),
-        ],
       ),
     );
   }

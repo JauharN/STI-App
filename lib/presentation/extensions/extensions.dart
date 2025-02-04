@@ -122,3 +122,29 @@ extension PresensiStatusPresentation on PresensiStatus {
     }
   }
 }
+
+extension UserRoleExtension on String {
+  bool get isSuperAdmin => this == 'superAdmin';
+  bool get isAdmin => this == 'admin';
+  bool get isSantri => this == 'santri';
+
+  // Helper untuk role-based logic
+  bool canManageUsers() => isSuperAdmin;
+  bool canManageRoles() => isSuperAdmin;
+  bool canManagePresensi() => isSuperAdmin || isAdmin;
+  bool canViewPresensi() => true; // All roles can view
+
+  // Get display name
+  String get roleDisplayName {
+    switch (this) {
+      case 'superAdmin':
+        return 'Super Admin';
+      case 'admin':
+        return 'Admin';
+      case 'santri':
+        return 'Santri';
+      default:
+        return 'Unknown Role';
+    }
+  }
+}

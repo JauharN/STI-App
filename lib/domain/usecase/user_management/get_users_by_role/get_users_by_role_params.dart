@@ -1,8 +1,8 @@
 part of 'get_users_by_role.dart';
 
 class GetUsersByRoleParams {
-  final UserRole roleToGet;
-  final UserRole currentUserRole;
+  final String roleToGet;
+  final String currentUserRole;
   final bool includeInactive;
 
   GetUsersByRoleParams({

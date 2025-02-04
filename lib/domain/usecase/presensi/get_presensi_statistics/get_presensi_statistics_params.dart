@@ -4,12 +4,12 @@ class GetPresensiStatisticsParams {
   final String programId;
   final DateTime? startDate;
   final DateTime? endDate;
-  final UserRole currentUserRole;
+  final String currentUserRole;
 
   GetPresensiStatisticsParams({
     required this.programId,
+    required this.currentUserRole,
     this.startDate,
     this.endDate,
-    required this.currentUserRole,
   });
 }

@@ -3,7 +3,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../domain/entities/presensi/santri_detail.dart';
 import '../../../../domain/entities/result.dart';
-import '../../../../domain/entities/user.dart';
 import '../../../states/manage_santri_state.dart';
 import '../../repositories/user_repository/user_repository_provider.dart';
 
@@ -52,27 +51,27 @@ class ManageSantriController extends _$ManageSantriController {
     String? address,
     DateTime? dateOfBirth,
     List<String>? programIds,
-    UserRole role = UserRole.santri,
+    String role = 'santri', // Default role as string
   }) async {
     state = const AsyncValue.loading();
-
     try {
       final userRepository = ref.read(userRepositoryProvider);
       final uid = const Uuid().v4();
 
-      // Buat akun santri dengan parameter role
+      // Create santri user
       final result = await userRepository.createUser(
         uid: uid,
         email: email,
         name: name,
+        role: role,
         photoUrl: photoUrl,
         phoneNumber: phoneNumber,
         address: address,
         dateOfBirth: dateOfBirth,
-        role: role, // Tambahkan role di sini
       );
 
       if (result.isSuccess && programIds != null) {
+        // Enroll santri in programs
         for (final programId in programIds) {
           await userRepository.updateUserProgram(
             uid: result.resultValue!.uid,
@@ -87,7 +86,7 @@ class ManageSantriController extends _$ManageSantriController {
           ? const Result.success(null)
           : Result.failed(result.errorMessage!);
     } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+      state = AsyncError(e, StackTrace.current);
       return Result.failed(e.toString());
     }
   }
@@ -103,13 +102,17 @@ class ManageSantriController extends _$ManageSantriController {
     bool? isActive,
   }) async {
     state = const AsyncValue.loading();
-
     try {
       final userRepository = ref.read(userRepositoryProvider);
       final currentUser = await userRepository.getUser(uid: santriId);
 
       if (currentUser case Failed(:final message)) {
         return Result.failed(message);
+      }
+
+      // Validate role is santri
+      if (currentUser.resultValue!.role != 'santri') {
+        return const Result.failed('Can only update santri users');
       }
 
       final updateResult = await userRepository.updateUser(
@@ -137,22 +140,27 @@ class ManageSantriController extends _$ManageSantriController {
           ? const Result.success(null)
           : Result.failed(updateResult.errorMessage!);
     } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+      state = AsyncError(e, StackTrace.current);
       return Result.failed(e.toString());
     }
   }
 
   Future<Result<void>> deleteSantri(String santriId) async {
     state = const AsyncValue.loading();
-
     try {
       final userRepository = ref.read(userRepositoryProvider);
-      final result = await userRepository.deleteUser(santriId);
 
+      // Validate user is santri before delete
+      final userResult = await userRepository.getUser(uid: santriId);
+      if (userResult.isSuccess && userResult.resultValue?.role != 'santri') {
+        return const Result.failed('Can only delete santri users');
+      }
+
+      final result = await userRepository.deleteUser(santriId);
       state = AsyncValue.data(await _fetchSantriList());
       return result;
     } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+      state = AsyncError(e, StackTrace.current);
       return Result.failed(e.toString());
     }
   }

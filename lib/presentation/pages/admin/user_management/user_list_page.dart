@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../../../../domain/entities/user.dart';
 import '../../../misc/constants.dart';
+import '../../../misc/methods.dart';
 import '../../../providers/usecases/user_management/get_users_by_role_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';
 import '../../../states/empty_state.dart';
@@ -27,11 +27,18 @@ class _UserListPageState extends ConsumerState<UserListPage> {
   // State variables
   String searchQuery = '';
   bool showInactive = false;
+  bool isLoading = false;
 
   @override
   void dispose() {
     searchController.dispose();
     super.dispose();
+  }
+
+  // Access control helper
+  bool _hasAccess(String? userRole) {
+    return userRole == RoleConstants.superAdmin ||
+        userRole == RoleConstants.admin;
   }
 
   // Action Handlers
@@ -47,42 +54,97 @@ class _UserListPageState extends ConsumerState<UserListPage> {
     context.pushNamed(
       'user-detail',
       pathParameters: {'userId': userId},
-      extra: {
-        'fromUserList': true
-      }, // Optional flag if needed for back navigation
+      extra: {'fromUserList': true},
     );
   }
 
   Future<void> _handleRefresh() async {
+    final userRole = ref.read(userDataProvider).value?.role;
     ref.refresh(getUsersByRoleProvider(
-      roleToGet: UserRole.santri,
-      currentUserRole:
-          ref.read(userDataProvider).value?.role ?? UserRole.santri,
+      roleToGet: RoleConstants.santri,
+      currentUserRole: userRole ?? RoleConstants.santri,
       includeInactive: showInactive,
     ));
   }
 
-  // UI Components
+  @override
+  Widget build(BuildContext context) {
+    final userRole = ref.watch(userDataProvider).value?.role;
+
+    // Access control check
+    if (!_hasAccess(userRole)) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 64, color: AppColors.error),
+              verticalSpace(16),
+              Text(
+                'Access Denied',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              verticalSpace(8),
+              Text(
+                'You don\'t have permission to view user list',
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppColors.neutral600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: Column(
+        children: [
+          _buildHeader(),
+          _buildSearchAndFilter(),
+          _buildUserStats(),
+          Expanded(child: _buildUserList()),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: Text(
+        'User List',
+        style: GoogleFonts.plusJakartaSans(
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: _handleRefresh,
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.05),
-        border: const Border(bottom: BorderSide(color: AppColors.neutral300)),
-      ),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'User List',
+            'User Management',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 4),
           Text(
-            'View and manage registered users',
+            'View and manage all users',
             style: GoogleFonts.plusJakartaSans(
               color: AppColors.neutral600,
             ),
@@ -92,9 +154,9 @@ class _UserListPageState extends ConsumerState<UserListPage> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchAndFilter() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
           STITextField(
@@ -103,7 +165,7 @@ class _UserListPageState extends ConsumerState<UserListPage> {
             prefixIcon: const Icon(Icons.search),
             onChanged: _handleSearch,
           ),
-          const SizedBox(height: 8),
+          verticalSpace(8),
           Row(
             children: [
               FilterChip(
@@ -118,88 +180,13 @@ class _UserListPageState extends ConsumerState<UserListPage> {
     );
   }
 
-  Widget _buildUserList() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final currentUserRole = ref.watch(userDataProvider).value?.role;
-
-        final usersAsync = ref.watch(getUsersByRoleProvider(
-          roleToGet: UserRole.santri, // Default to show santri
-          currentUserRole: currentUserRole ?? UserRole.santri,
-          includeInactive: showInactive,
-        ));
-
-        return usersAsync.when(
-          loading: () => const LoadingState(message: 'Loading users list...'),
-          error: (error, stack) => ErrorState(
-            message: error.toString(),
-            onRetry: () => ref.refresh(getUsersByRoleProvider(
-              roleToGet: UserRole.santri,
-              currentUserRole: currentUserRole ?? UserRole.santri,
-              includeInactive: showInactive,
-            )),
-          ),
-          data: (users) {
-            final filteredUsers = users
-                .where((user) =>
-                    user.name
-                        .toLowerCase()
-                        .contains(searchQuery.toLowerCase()) ||
-                    user.email
-                        .toLowerCase()
-                        .contains(searchQuery.toLowerCase()))
-                .toList();
-
-            if (filteredUsers.isEmpty) {
-              return const EmptyState(
-                message: 'No users found',
-                icon: Icons.people_outline,
-              );
-            }
-
-            return RefreshIndicator(
-              onRefresh: _handleRefresh,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: filteredUsers.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final user = filteredUsers[index];
-                  return Card(
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: user.photoUrl != null
-                            ? NetworkImage(user.photoUrl!)
-                            : const AssetImage('assets/profile-placeholder.png')
-                                as ImageProvider,
-                      ),
-                      title: Text(
-                        user.name,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Text(user.email),
-                      trailing: RoleBadgeWidget(role: user.role),
-                      onTap: () => _navigateToUserDetail(user.uid),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   Widget _buildUserStats() {
     return Consumer(
       builder: (context, ref, child) {
         final usersAsync = ref.watch(getUsersByRoleProvider(
-          roleToGet: UserRole.santri,
+          roleToGet: RoleConstants.santri,
           currentUserRole:
-              ref.watch(userDataProvider).value?.role ?? UserRole.santri,
+              ref.watch(userDataProvider).value?.role ?? RoleConstants.santri,
           includeInactive: true,
         ));
 
@@ -207,7 +194,7 @@ class _UserListPageState extends ConsumerState<UserListPage> {
           loading: () => const SizedBox(),
           error: (_, __) => const SizedBox(),
           data: (users) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -244,7 +231,7 @@ class _UserListPageState extends ConsumerState<UserListPage> {
         child: Column(
           children: [
             Icon(icon, color: color),
-            const SizedBox(height: 4),
+            verticalSpace(4),
             Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
             Text(title, style: const TextStyle(fontSize: 12)),
           ],
@@ -253,25 +240,81 @@ class _UserListPageState extends ConsumerState<UserListPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('User List'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _handleRefresh,
+  Widget _buildUserList() {
+    return Consumer(
+      builder: (context, ref, child) {
+        final userRole = ref.watch(userDataProvider).value?.role;
+        final usersAsync = ref.watch(getUsersByRoleProvider(
+          roleToGet: RoleConstants.santri,
+          currentUserRole: userRole ?? RoleConstants.santri,
+          includeInactive: showInactive,
+        ));
+
+        return usersAsync.when(
+          loading: () => const LoadingState(message: 'Loading users list...'),
+          error: (error, stack) => ErrorState(
+            message: error.toString(),
+            onRetry: _handleRefresh,
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildHeader(),
-          _buildSearchBar(),
-          _buildUserStats(),
-          Expanded(child: _buildUserList()),
-        ],
+          data: (users) {
+            final filteredUsers = users.where((user) {
+              final searchString = '${user.name} ${user.email}'.toLowerCase();
+              return searchString.contains(searchQuery.toLowerCase());
+            }).toList();
+
+            if (filteredUsers.isEmpty) {
+              return const EmptyState(
+                message: 'No users found',
+                icon: Icons.people_outline,
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: _handleRefresh,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(24),
+                itemCount: filteredUsers.length,
+                separatorBuilder: (_, __) => verticalSpace(8),
+                itemBuilder: (context, index) {
+                  final user = filteredUsers[index];
+                  return _buildUserCard(user);
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildUserCard(User user) {
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundImage: user.photoUrl != null
+              ? NetworkImage(user.photoUrl!)
+              : const AssetImage('assets/profile-placeholder.png')
+                  as ImageProvider,
+        ),
+        title: Text(
+          user.name,
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(user.email),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RoleBadgeWidget(role: user.role),
+            if (!user.isActive)
+              const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(Icons.block, color: AppColors.error),
+              ),
+          ],
+        ),
+        onTap: () => _navigateToUserDetail(user.uid),
       ),
     );
   }

@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:sti_app/domain/entities/presensi/presensi_summary.dart';
+import 'package:sti_app/domain/entities/presensi/program_detail.dart';
 import '../repositories/program_repository.dart';
 import '../../domain/entities/program.dart';
 import '../../domain/entities/result.dart';
@@ -12,9 +14,13 @@ class FirebaseProgramRepository implements ProgramRepository {
   @override
   Future<Result<Program>> createProgram(Program program) async {
     try {
-      // Gunakan nama program sebagai document ID
       DocumentReference<Map<String, dynamic>> documentReference =
           _firestore.collection('program').doc(program.nama);
+
+      // Validasi nama program
+      if (!['TAHFIDZ', 'GMM', 'IFIS'].contains(program.nama)) {
+        return const Result.failed('Nama program tidak valid');
+      }
 
       final programData = {
         ...program.toJson(),
@@ -28,33 +34,71 @@ class FirebaseProgramRepository implements ProgramRepository {
           await documentReference.get();
 
       if (result.exists) {
-        return Result.success(Program.fromJson(result.data()!));
+        final data = result.data()!;
+        // Convert timestamps to DateTime
+        final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+        final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+
+        return Result.success(Program.fromJson({
+          ...data,
+          'createdAt': createdAt?.toIso8601String(),
+          'updatedAt': updatedAt?.toIso8601String(),
+        }));
       } else {
-        return const Result.failed('Failed to create program');
+        return const Result.failed('Gagal membuat program');
       }
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to create program');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
   @override
   Future<Result<void>> deleteProgram(String programId) async {
     try {
+      // Validasi program default
+      final defaultPrograms = ['TAHFIDZ', 'GMM', 'IFIS'];
+      if (defaultPrograms.contains(programId)) {
+        return const Result.failed('Program default tidak dapat dihapus');
+      }
+
       DocumentReference<Map<String, dynamic>> documentReference =
           _firestore.doc('program/$programId');
 
+      // Cek program exists
+      final doc = await documentReference.get();
+      if (!doc.exists) {
+        return const Result.failed('Program tidak ditemukan');
+      }
+
+      // Cek apakah ada santri yang terdaftar
+      final userSnapshot = await _firestore
+          .collection('users')
+          .where('programs', arrayContains: programId)
+          .limit(1)
+          .get();
+
+      if (userSnapshot.docs.isNotEmpty) {
+        return const Result.failed(
+            'Program tidak dapat dihapus karena masih memiliki santri terdaftar');
+      }
+
+      // Delete program
       await documentReference.delete();
 
+      // Verify deletion
       DocumentSnapshot<Map<String, dynamic>> result =
           await documentReference.get();
-
       if (!result.exists) {
         return const Result.success(null);
       } else {
-        return const Result.failed('Failed to delete program');
+        return const Result.failed('Gagal menghapus program');
       }
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to delete program');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
@@ -64,95 +108,168 @@ class FirebaseProgramRepository implements ProgramRepository {
       QuerySnapshot<Map<String, dynamic>> querySnapshot =
           await _firestore.collection('program').get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        List<Program> programs = querySnapshot.docs
-            .map((doc) => Program.fromJson(doc.data()))
-            .toList();
-        return Result.success(programs);
-      } else {
-        return const Result.failed('No programs found');
+      if (querySnapshot.docs.isEmpty) {
+        return const Result.failed('Tidak ada program yang tersedia');
       }
+
+      List<Program> programs = [];
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+
+        // Convert timestamps
+        final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+        final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+
+        programs.add(Program.fromJson({
+          ...data,
+          'createdAt': createdAt?.toIso8601String(),
+          'updatedAt': updatedAt?.toIso8601String(),
+        }));
+      }
+
+      // Sort by default programs first
+      programs.sort((a, b) {
+        final defaultPrograms = ['TAHFIDZ', 'GMM', 'IFIS'];
+        final aIsDefault = defaultPrograms.contains(a.nama);
+        final bIsDefault = defaultPrograms.contains(b.nama);
+
+        if (aIsDefault && !bIsDefault) return -1;
+        if (!aIsDefault && bIsDefault) return 1;
+        return a.nama.compareTo(b.nama);
+      });
+
+      return Result.success(programs);
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to get programs');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
   @override
   Future<Result<Program>> getProgramById(String programId) async {
     try {
-      DocumentSnapshot<Map<String, dynamic>> doc = await _firestore
-          .collection('program') // pastikan nama collection benar
-          .doc(programId)
-          .get();
-
-      if (doc.exists) {
-        // Validasi data
-        final data = doc.data()!;
-        if (data['id'] == null ||
-            data['nama'] == null ||
-            data['deskripsi'] == null ||
-            data['jadwal'] == null) {
-          return const Result.failed('Invalid program data');
-        }
-
-        // Pastikan jadwal adalah List<String>
-        if (data['jadwal'] is List) {
-          data['jadwal'] =
-              (data['jadwal'] as List).map((e) => e.toString()).toList();
-        }
-
-        return Result.success(Program.fromJson(data));
-      } else {
-        return const Result.failed('Program not found');
+      if (programId.isEmpty) {
+        return const Result.failed('ID Program tidak boleh kosong');
       }
+
+      DocumentSnapshot<Map<String, dynamic>> doc =
+          await _firestore.collection('program').doc(programId).get();
+
+      if (!doc.exists) {
+        return Result.failed('Program dengan ID: $programId tidak ditemukan');
+      }
+
+      // Validasi data
+      final data = doc.data()!;
+      if (data['nama'] == null ||
+          data['deskripsi'] == null ||
+          data['jadwal'] == null) {
+        return const Result.failed('Data program tidak valid');
+      }
+
+      // Convert timestamps
+      final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+      final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+
+      // Pastikan jadwal adalah List<String>
+      if (data['jadwal'] is List) {
+        data['jadwal'] =
+            (data['jadwal'] as List).map((e) => e.toString()).toList();
+      }
+
+      return Result.success(Program.fromJson({
+        ...data,
+        'createdAt': createdAt?.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      }));
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
-      return Result.failed('Failed to get program: ${e.toString()}');
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
   @override
   Future<Result<List<Program>>> getProgramsByUserId(String userId) async {
     try {
-      // Pertama ambil data user untuk mendapatkan program IDs yang diikuti
+      if (userId.isEmpty) {
+        return const Result.failed('ID User tidak boleh kosong');
+      }
+
+      // Get user doc untuk mendapatkan program IDs
       DocumentSnapshot<Map<String, dynamic>> userDoc =
           await _firestore.collection('users').doc(userId).get();
 
       if (!userDoc.exists) {
-        return const Result.failed('User not found');
+        return Result.failed('User dengan ID: $userId tidak ditemukan');
       }
 
-      // Ambil array program IDs dari dokumen user
+      // Get array program IDs
       List<String> programIds =
           List<String>.from(userDoc.data()?['programs'] ?? []);
 
       if (programIds.isEmpty) {
-        return const Result.failed('User has no enrolled programs');
+        return const Result.failed('User tidak terdaftar di program manapun');
       }
 
-      // Ambil data program berdasarkan program IDs
       List<Program> programs = [];
       for (String programId in programIds) {
         DocumentSnapshot<Map<String, dynamic>> programDoc =
-            await _firestore.collection('programs').doc(programId).get();
+            await _firestore.collection('program').doc(programId).get();
 
         if (programDoc.exists) {
-          programs.add(Program.fromJson(programDoc.data()!));
+          final data = programDoc.data()!;
+
+          // Convert timestamps
+          final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+          final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+
+          // Pastikan jadwal adalah List<String>
+          if (data['jadwal'] is List) {
+            data['jadwal'] =
+                (data['jadwal'] as List).map((e) => e.toString()).toList();
+          }
+
+          programs.add(Program.fromJson({
+            ...data,
+            'createdAt': createdAt?.toIso8601String(),
+            'updatedAt': updatedAt?.toIso8601String(),
+          }));
         }
       }
 
-      if (programs.isNotEmpty) {
-        return Result.success(programs);
-      } else {
-        return const Result.failed('No programs found');
+      if (programs.isEmpty) {
+        return const Result.failed(
+            'Tidak dapat menemukan program yang terdaftar');
       }
+
+      return Result.success(programs);
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to get user programs');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
   @override
   Future<Result<Program>> updateProgram(Program program) async {
     try {
+      if (program.id.isEmpty) {
+        return const Result.failed('ID Program tidak boleh kosong');
+      }
+
+      // Validasi program default
+      if (['TAHFIDZ', 'GMM', 'IFIS'].contains(program.id)) {
+        // Cek perubahan nama program default
+        DocumentSnapshot<Map<String, dynamic>> existingDoc =
+            await _firestore.doc('program/${program.id}').get();
+
+        if (existingDoc.exists && existingDoc.data()?['nama'] != program.nama) {
+          return const Result.failed('Nama program default tidak dapat diubah');
+        }
+      }
+
       DocumentReference<Map<String, dynamic>> documentReference =
           _firestore.doc('programs/${program.id}');
 
@@ -161,18 +278,135 @@ class FirebaseProgramRepository implements ProgramRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
+      // Remove createdAt from update data
+      updateData.remove('createdAt');
+
       await documentReference.update(updateData);
 
       DocumentSnapshot<Map<String, dynamic>> result =
           await documentReference.get();
 
       if (result.exists) {
-        return Result.success(Program.fromJson(result.data()!));
+        final data = result.data()!;
+        final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+        final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+
+        return Result.success(Program.fromJson({
+          ...data,
+          'createdAt': createdAt?.toIso8601String(),
+          'updatedAt': updatedAt?.toIso8601String(),
+        }));
       } else {
-        return const Result.failed('Program not found');
+        return const Result.failed('Program tidak ditemukan');
       }
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to update program');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Result<(ProgramDetail, PresensiSummary)>> getProgramDetailWithStats({
+    required String programId,
+    required String requestingUserId,
+  }) async {
+    try {
+      // 1. Get program detail
+      final programDoc =
+          await _firestore.collection('program').doc(programId).get();
+
+      if (!programDoc.exists) {
+        return const Result.failed('Program tidak ditemukan');
+      }
+
+      final programData = programDoc.data()!;
+
+      // Convert timestamps
+      final createdAt = (programData['createdAt'] as Timestamp?)?.toDate();
+      final updatedAt = (programData['updatedAt'] as Timestamp?)?.toDate();
+
+      // Parse program data
+      final program = ProgramDetail.fromJson({
+        ...programData,
+        'createdAt': createdAt?.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      });
+
+      // 2. Get presensi data query
+      final presensiQuery = await _firestore
+          .collection('presensi')
+          .where('programId', isEqualTo: programId)
+          .get();
+
+      if (presensiQuery.docs.isEmpty) {
+        // Return program dengan summary default
+        return Result.success((
+          program,
+          PresensiSummary(
+            totalSantri: program.enrolledSantriIds.length,
+            hadir: 0,
+            sakit: 0,
+            izin: 0,
+            alpha: 0,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          )
+        ));
+      }
+
+      // 3. Calculate summary
+      int hadir = 0, sakit = 0, izin = 0, alpha = 0;
+
+      for (var doc in presensiQuery.docs) {
+        final data = doc.data();
+        List<Map<String, dynamic>> daftarHadir =
+            List<Map<String, dynamic>>.from(data['daftarHadir'] ?? []);
+
+        // Find santri data
+        var santriData = daftarHadir.firstWhere(
+          (p) => p['santriId'] == requestingUserId,
+          orElse: () => {
+            'santriId': requestingUserId,
+            'status': 'alpha',
+            'keterangan': 'Tidak hadir'
+          },
+        );
+
+        // Count status
+        switch (santriData['status'].toString().toUpperCase()) {
+          case 'HADIR':
+            hadir++;
+            break;
+          case 'SAKIT':
+            sakit++;
+            break;
+          case 'IZIN':
+            izin++;
+            break;
+          case 'ALPHA':
+            alpha++;
+            break;
+        }
+      }
+
+      // Create PresensiSummary
+      final summary = PresensiSummary(
+        totalSantri: presensiQuery.docs.length,
+        hadir: hadir,
+        sakit: sakit,
+        izin: izin,
+        alpha: alpha,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      // 4. Return combined result
+      return Result.success((program, summary));
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 }

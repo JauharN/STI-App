@@ -62,10 +62,8 @@ class ManageProgramController extends _$ManageProgramController {
     String? teacherName,
   }) async {
     state = const AsyncValue.loading();
-
     try {
       final programRepository = ref.read(programRepositoryProvider);
-
       final result = await programRepository.createProgram(
         Program(
           id: '', // Will be generated
@@ -82,12 +80,11 @@ class ManageProgramController extends _$ManageProgramController {
       );
 
       state = AsyncValue.data(await _fetchProgramList());
-
       return result.isSuccess
           ? const Result.success(null)
           : Result.failed(result.errorMessage!);
     } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+      state = AsyncError(e, StackTrace.current);
       return Result.failed(e.toString());
     }
   }
@@ -103,10 +100,8 @@ class ManageProgramController extends _$ManageProgramController {
     String? teacherName,
   }) async {
     state = const AsyncValue.loading();
-
     try {
       final programRepository = ref.read(programRepositoryProvider);
-
       final currentProgram = await programRepository.getProgramById(programId);
 
       if (currentProgram case Failed(:final message)) {
@@ -128,17 +123,15 @@ class ManageProgramController extends _$ManageProgramController {
       );
 
       state = AsyncValue.data(await _fetchProgramList());
-
       return result;
     } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+      state = AsyncError(e, StackTrace.current);
       return Result.failed(e.toString());
     }
   }
 
   Future<Result<void>> deleteProgram(String programId) async {
     state = const AsyncValue.loading();
-
     try {
       final programRepository = ref.read(programRepositoryProvider);
 
@@ -153,9 +146,7 @@ class ManageProgramController extends _$ManageProgramController {
       }
 
       final result = await programRepository.deleteProgram(programId);
-
       state = AsyncValue.data(await _fetchProgramList());
-
       return result;
     } catch (e) {
       state = AsyncError(e, StackTrace.current);
@@ -169,18 +160,15 @@ class ManageProgramController extends _$ManageProgramController {
   ) async {
     try {
       final userRepository = ref.read(userRepositoryProvider);
-
       for (final santriId in santriIds) {
         final result = await userRepository.updateUserProgram(
           uid: santriId,
           programId: programId,
         );
-
         if (result.isFailed) {
           return result;
         }
       }
-
       state = AsyncValue.data(await _fetchProgramList());
       return const Result.success(null);
     } catch (e) {
@@ -194,16 +182,13 @@ class ManageProgramController extends _$ManageProgramController {
   ) async {
     try {
       final userRepository = ref.read(userRepositoryProvider);
-
       final result = await userRepository.removeUserFromProgram(
         uid: santriId,
         programId: programId,
       );
-
       if (result.isSuccess) {
         state = AsyncValue.data(await _fetchProgramList());
       }
-
       return result;
     } catch (e) {
       return Result.failed(e.toString());
@@ -222,7 +207,7 @@ class ManageProgramController extends _$ManageProgramController {
     );
   }
 
-  // Additional helper methods
+  // Helper methods for UI filtering/sorting
   Future<void> filterByTeacher(String? teacherId) async {
     state.whenData((currentState) {
       currentState.whenOrNull(
@@ -231,7 +216,6 @@ class ManageProgramController extends _$ManageProgramController {
             state = AsyncValue.data(currentState);
             return;
           }
-
           final filteredList = programList
               .where((program) => program.teacherId == teacherId)
               .toList();
@@ -246,7 +230,6 @@ class ManageProgramController extends _$ManageProgramController {
       state = AsyncValue.data(await _fetchProgramList());
       return;
     }
-
     state.whenData((currentState) {
       currentState.whenOrNull(
         loaded: (programList) {

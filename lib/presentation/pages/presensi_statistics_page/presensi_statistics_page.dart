@@ -1,16 +1,19 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:fl_chart/fl_chart.dart';
-import '../../../domain/entities/presensi/presensi_status.dart';
+
 import '../../../domain/entities/presensi/presensi_statistics_data.dart';
 import '../../../domain/entities/presensi/santri_statistics.dart';
+import '../../../domain/entities/presensi/presensi_status.dart';
+import '../../extensions/extensions.dart';
 import '../../misc/constants.dart';
 import '../../misc/methods.dart';
 import '../../providers/presensi/presensi_detail_provider.dart';
 import '../../providers/presensi/presensi_statistics_provider.dart';
-import '../../extensions/extensions.dart';
+import '../../providers/program/program_detail_with_stats_provider.dart';
+import '../../providers/user_data/user_data_provider.dart';
 import '../../utils/export_helper_util.dart';
 
 class PresensiStatisticsPage extends ConsumerStatefulWidget {
@@ -28,119 +31,165 @@ class PresensiStatisticsPage extends ConsumerStatefulWidget {
 
 class _PresensiStatisticsPageState
     extends ConsumerState<PresensiStatisticsPage> {
-  // Filter variables
+  // Configuration Constants
+  static const int maxRetries = 3;
+  static const Duration retryDelay = Duration(seconds: 1);
+
+  // State Variables
+  bool isLoading = false;
+  bool isExporting = false;
   DateTime? startDate;
   DateTime? endDate;
   String filterBy = 'month'; // 'all', 'month', 'semester', 'custom'
-  bool isExporting = false;
+  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _initializeFilters();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeData();
+      _checkAccess();
+    });
   }
 
-  // Initialize default filters to current month
+  // Initialization
+  Future<void> _initializeData() async {
+    setState(() => isLoading = true);
+    try {
+      _initializeFilters();
+      await _loadStatisticsData();
+    } catch (e) {
+      setState(() => errorMessage = e.toString());
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
   void _initializeFilters() {
     final now = DateTime.now();
     startDate = DateTime(now.year, now.month, 1);
     endDate = DateTime(now.year, now.month + 1, 0);
   }
 
-  // Helper Methods
-  String _formatDate(DateTime date) => DateFormat('dd MMMM yyyy').format(date);
-  String _formatPercentage(double value) => '${value.toStringAsFixed(1)}%';
-
-  // Get color based on attendance percentage
-  Color _getPercentageColor(double percentage) {
-    if (percentage >= 80) return AppColors.success;
-    if (percentage >= 60) return AppColors.warning;
-    return AppColors.error;
-  }
-
-  // Filter data by date range
-  Future<void> _applyDateFilter() async {
-    if (startDate == null || endDate == null) return;
-
-    setState(() => isExporting = true);
-
+  Future<void> _loadStatisticsData() async {
     try {
-      await ref
-          .read(presensiStatisticsProvider(widget.programId).notifier)
-          .refreshWithDateRange(startDate!, endDate!);
-    } finally {
-      setState(() => isExporting = false);
+      await ref.read(
+        presensiStatisticsProvider(widget.programId).future,
+      );
+      await ref.read(
+        programDetailWithStatsStateProvider(widget.programId).future,
+      );
+    } catch (e) {
+      throw Exception('Gagal memuat data statistik: ${e.toString()}');
     }
   }
 
-  // Show date range picker
-  Future<void> _selectDateRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: DateTimeRange(
-        start: startDate ?? DateTime.now(),
-        end: endDate ?? DateTime.now(),
-      ),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: AppColors.neutral900,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        startDate = picked.start;
-        endDate = picked.end;
-        filterBy = 'custom';
-      });
-      _applyDateFilter();
+  // Access Control
+  void _checkAccess() {
+    final userRole = ref.read(userDataProvider).value?.role;
+    if (!_canAccessStatistics(userRole)) {
+      context.showErrorSnackBar('Anda tidak memiliki akses ke halaman ini');
+      Navigator.pop(context);
     }
   }
 
-  // Set predefined filter periods
+  // RBAC Helpers
+  bool _canAccessStatistics(String? role) {
+    if (role == null) return false;
+    return role == RoleConstants.superAdmin ||
+        role == RoleConstants.admin ||
+        role == RoleConstants.santri;
+  }
+
+  bool _canExportData(String? role) {
+    if (role == null) return false;
+    return role == RoleConstants.superAdmin || role == RoleConstants.admin;
+  }
+
+  // Error Handling
+  Future<bool> _handleOperationWithRetry(
+    Future<void> Function() operation,
+  ) async {
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        await operation();
+        return true;
+      } catch (e) {
+        retryCount++;
+        if (retryCount == maxRetries) {
+          if (mounted) {
+            context.showErrorSnackBar(
+              'Operasi gagal setelah $maxRetries percobaan: ${e.toString()}',
+            );
+          }
+          return false;
+        }
+        await Future.delayed(retryDelay * retryCount);
+      }
+    }
+    return false;
+  }
+
+  Future<void> _refreshData() async {
+    await _handleOperationWithRetry(() async {
+      if (mounted) {
+        setState(() => isLoading = true);
+      }
+      await _loadStatisticsData();
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
+
+  // Date Filter Helpers
+  String _formatDateRange() {
+    if (startDate == null || endDate == null) return 'Pilih Rentang Tanggal';
+    return '${formatDate(startDate!)} - ${formatDate(endDate!)}';
+  }
+
   void _setFilterPeriod(String period) {
     final now = DateTime.now();
     setState(() {
+      filterBy = period;
       switch (period) {
         case 'all':
           startDate = null;
           endDate = null;
-          filterBy = 'all';
           break;
         case 'month':
           startDate = DateTime(now.year, now.month, 1);
           endDate = DateTime(now.year, now.month + 1, 0);
-          filterBy = 'month';
           break;
         case 'semester':
-          // First semester: January-June, Second semester: July-December
-          final currentMonth = now.month;
-          if (currentMonth <= 6) {
+          if (now.month <= 6) {
             startDate = DateTime(now.year, 1, 1);
             endDate = DateTime(now.year, 6, 30);
           } else {
             startDate = DateTime(now.year, 7, 1);
             endDate = DateTime(now.year, 12, 31);
           }
-          filterBy = 'semester';
           break;
       }
     });
     _applyDateFilter();
   }
 
-  // UI Building Methods
+  Future<void> _applyDateFilter() async {
+    if (startDate == null || endDate == null) return;
+
+    setState(() => isLoading = true);
+    try {
+      await ref
+          .read(presensiStatisticsProvider(widget.programId).notifier)
+          .refreshWithDateRange(startDate!, endDate!);
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  // Widget Build Methods
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(presensiStatisticsProvider(widget.programId));
@@ -150,7 +199,7 @@ class _PresensiStatisticsPageState
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(context, programNameAsync),
       body: statsAsync.when(
-        data: (stats) => _buildBody(stats),
+        data: (stats) => _buildContent(stats),
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
@@ -163,6 +212,8 @@ class _PresensiStatisticsPageState
     BuildContext context,
     AsyncValue<String> programNameAsync,
   ) {
+    final userRole = ref.watch(userDataProvider).value?.role;
+
     return AppBar(
       title: Column(
         children: [
@@ -182,28 +233,29 @@ class _PresensiStatisticsPageState
       ),
       centerTitle: true,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.file_download),
-          onPressed: isExporting ? null : _exportData,
-        ),
+        if (_canExportData(userRole))
+          IconButton(
+            icon: const Icon(Icons.file_download),
+            onPressed: isExporting ? null : _exportData,
+          ),
       ],
     );
   }
 
-  Widget _buildBody(PresensiStatisticsData stats) {
+  Widget _buildContent(PresensiStatisticsData stats) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildFilterSection(),
-          verticalSpace(24),
+          const SizedBox(height: 24),
           _buildOverviewSection(stats),
-          verticalSpace(24),
+          const SizedBox(height: 24),
           _buildTrendSection(stats),
-          verticalSpace(24),
+          const SizedBox(height: 24),
           _buildStatusBreakdownSection(stats),
-          verticalSpace(24),
+          const SizedBox(height: 24),
           _buildSantriStatisticsSection(stats),
         ],
       ),
@@ -234,10 +286,10 @@ class _PresensiStatisticsPageState
               fontWeight: FontWeight.bold,
             ),
           ),
-          verticalSpace(16),
+          const SizedBox(height: 16),
           _buildFilterChips(),
           if (filterBy == 'custom') ...[
-            verticalSpace(16),
+            const SizedBox(height: 16),
             _buildDateRangeDisplay(),
           ],
         ],
@@ -288,10 +340,73 @@ class _PresensiStatisticsPageState
           children: [
             const Icon(Icons.calendar_today, size: 20),
             const SizedBox(width: 8),
+            Text(_formatDateRange()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectDateRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(
+        start: startDate ?? DateTime.now(),
+        end: endDate ?? DateTime.now(),
+      ),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppColors.neutral900,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        startDate = picked.start;
+        endDate = picked.end;
+        filterBy = 'custom';
+      });
+      _applyDateFilter();
+    }
+  }
+
+  Widget _buildErrorState(Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: AppColors.error,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
             Text(
-              startDate != null && endDate != null
-                  ? '${_formatDate(startDate!)} - ${_formatDate(endDate!)}'
-                  : 'Pilih Rentang Tanggal',
+              'Error: ${error.toString()}',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppColors.error,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _refreshData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Coba Lagi'),
             ),
           ],
         ),
@@ -323,7 +438,7 @@ class _PresensiStatisticsPageState
               fontWeight: FontWeight.bold,
             ),
           ),
-          verticalSpace(16),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -334,7 +449,7 @@ class _PresensiStatisticsPageState
                   AppColors.primary,
                 ),
               ),
-              horizontalSpace(16),
+              const SizedBox(width: 16),
               Expanded(
                 child: _buildOverviewCard(
                   'Total Santri',
@@ -344,44 +459,6 @@ class _PresensiStatisticsPageState
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOverviewCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color),
-          verticalSpace(8),
-          Text(
-            value,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              color: AppColors.neutral600,
-            ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -412,10 +489,121 @@ class _PresensiStatisticsPageState
               fontWeight: FontWeight.bold,
             ),
           ),
-          verticalSpace(24),
+          const SizedBox(height: 24),
           SizedBox(
             height: 200,
             child: LineChart(_buildLineChartData(stats.trendKehadiran)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBreakdownSection(PresensiStatisticsData stats) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Breakdown Status Kehadiran',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildStatusGrid(stats),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSantriStatisticsSection(PresensiStatisticsData stats) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Statistik per Santri',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (_canExportData(ref.read(userDataProvider).value?.role))
+                TextButton.icon(
+                  icon: const Icon(Icons.download, size: 20),
+                  label: const Text('Export'),
+                  onPressed: () => _exportSantriStatistics(stats.santriStats),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildSantriList(stats.santriStats),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: AppColors.neutral600,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -488,37 +676,6 @@ class _PresensiStatisticsPageState
     );
   }
 
-  Widget _buildStatusBreakdownSection(PresensiStatisticsData stats) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Breakdown Status Kehadiran',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          verticalSpace(16),
-          _buildStatusGrid(stats),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStatusGrid(PresensiStatisticsData stats) {
     final totalHadir = stats.totalByStatus[PresensiStatus.hadir] ?? 0;
     final totalSakit = stats.totalByStatus[PresensiStatus.sakit] ?? 0;
@@ -568,12 +725,12 @@ class _PresensiStatisticsPageState
 
   Widget _buildStatusCard(
     String label,
-    int value,
+    int count,
     int total,
     Color color,
     IconData icon,
   ) {
-    final percentage = total > 0 ? (value / total * 100) : 0.0;
+    final percentage = total > 0 ? (count / total * 100) : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -590,16 +747,16 @@ class _PresensiStatisticsPageState
             children: [
               Icon(icon, color: color),
               Text(
-                _formatPercentage(percentage),
+                '${percentage.toStringAsFixed(1)}%',
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 20,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
               ),
             ],
           ),
-          verticalSpace(8),
+          const SizedBox(height: 8),
           Text(
             label,
             style: GoogleFonts.plusJakartaSans(
@@ -608,53 +765,12 @@ class _PresensiStatisticsPageState
             ),
           ),
           Text(
-            '$value dari $total',
+            '$count dari $total',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               color: AppColors.neutral500,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSantriStatisticsSection(PresensiStatisticsData stats) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Statistik per Santri',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton.icon(
-                icon: const Icon(Icons.download, size: 20),
-                label: const Text('Export'),
-                onPressed: () => _exportSantriStatistics(stats.santriStats),
-              ),
-            ],
-          ),
-          verticalSpace(16),
-          _buildSantriList(stats.santriStats),
         ],
       ),
     );
@@ -710,7 +826,7 @@ class _PresensiStatisticsPageState
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
-          _formatPercentage(stats.persentaseKehadiran),
+          '${stats.persentaseKehadiran.toStringAsFixed(1)}%',
           style: GoogleFonts.plusJakartaSans(
             color: _getPercentageColor(stats.persentaseKehadiran),
             fontWeight: FontWeight.w600,
@@ -720,38 +836,12 @@ class _PresensiStatisticsPageState
     );
   }
 
-  Widget _buildErrorState(Object error) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.error_outline,
-            color: AppColors.error,
-            size: 48,
-          ),
-          verticalSpace(16),
-          Text(
-            'Error: ${error.toString()}',
-            style: GoogleFonts.plusJakartaSans(
-              color: AppColors.error,
-              fontSize: 16,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          verticalSpace(24),
-          ElevatedButton(
-            onPressed: () => ref.refresh(
-              presensiStatisticsProvider(widget.programId),
-            ),
-            child: const Text('Coba Lagi'),
-          ),
-        ],
-      ),
-    );
+  Color _getPercentageColor(double percentage) {
+    if (percentage >= 80) return AppColors.success;
+    if (percentage >= 60) return AppColors.warning;
+    return AppColors.error;
   }
 
-  // Export Methods
   Future<void> _exportData() async {
     setState(() => isExporting = true);
 
@@ -784,7 +874,6 @@ class _PresensiStatisticsPageState
 
       // Show dialog untuk pilih format
       if (!mounted) return;
-
       final format = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
@@ -820,7 +909,9 @@ class _PresensiStatisticsPageState
         context.showErrorSnackBar('Gagal mengexport data: ${e.toString()}');
       }
     } finally {
-      setState(() => isExporting = false);
+      if (mounted) {
+        setState(() => isExporting = false);
+      }
     }
   }
 
@@ -860,7 +951,39 @@ class _PresensiStatisticsPageState
             .showErrorSnackBar('Gagal mengexport statistik: ${e.toString()}');
       }
     } finally {
-      setState(() => isExporting = false);
+      if (mounted) {
+        setState(() => isExporting = false);
+      }
     }
+  }
+
+  // State Management Helpers
+  void _resetState() {
+    setState(() {
+      isLoading = false;
+      isExporting = false;
+      errorMessage = null;
+    });
+  }
+
+  // Lifecycle Helpers
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resetState();
+  }
+
+  @override
+  void didUpdateWidget(PresensiStatisticsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.programId != widget.programId) {
+      _initializeData();
+    }
+  }
+
+  @override
+  void dispose() {
+    // Add any cleanup if needed
+    super.dispose();
   }
 }

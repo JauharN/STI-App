@@ -1,9 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:sti_app/domain/entities/presensi/presensi_statistics_data.dart';
-import 'package:sti_app/domain/entities/result.dart';
-import 'package:sti_app/presentation/providers/user_data/user_data_provider.dart';
+import '../../../domain/entities/presensi/presensi_statistics_data.dart';
+import '../../../domain/entities/result.dart';
 import '../../../domain/usecase/presensi/get_presensi_statistics/get_presensi_statistics.dart';
 import '../usecases/presensi/get_presensi_statistics_provider.dart';
+import '../user_data/user_data_provider.dart';
 
 part 'presensi_statistics_provider.g.dart';
 
@@ -11,14 +11,11 @@ part 'presensi_statistics_provider.g.dart';
 class PresensiStatistics extends _$PresensiStatistics {
   @override
   Future<PresensiStatisticsData> build(String programId) async {
-    // Ambil use case GetPresensiStatistics
     final getPresensiStatistics = ref.watch(getPresensiStatisticsProvider);
-    // Ambil data user yang sedang login
     final user = ref.watch(userDataProvider).value;
-    if (user == null) {
-      throw Exception('User tidak ditemukan');
-    }
-    // Panggil use case dengan parameter yang sesuai
+
+    if (user == null) throw Exception('User tidak ditemukan');
+
     final result = await getPresensiStatistics(
       GetPresensiStatisticsParams(
         programId: programId,
@@ -27,7 +24,7 @@ class PresensiStatistics extends _$PresensiStatistics {
         endDate: null,
       ),
     );
-    // Handle hasil dari use case
+
     return switch (result) {
       Success(value: final stats) => stats,
       Failed(:final message) => throw Exception(message),
@@ -37,12 +34,13 @@ class PresensiStatistics extends _$PresensiStatistics {
   Future<void> refreshWithDateRange(
       DateTime startDate, DateTime endDate) async {
     state = const AsyncLoading();
+
     try {
       final getPresensiStatistics = ref.watch(getPresensiStatisticsProvider);
       final user = ref.watch(userDataProvider).value;
-      if (user == null) {
-        throw Exception('User tidak ditemukan');
-      }
+
+      if (user == null) throw Exception('User tidak ditemukan');
+
       final result = await getPresensiStatistics(
         GetPresensiStatisticsParams(
           programId: state.value!.programId,
@@ -51,6 +49,7 @@ class PresensiStatistics extends _$PresensiStatistics {
           endDate: endDate,
         ),
       );
+
       state = switch (result) {
         Success(value: final stats) => AsyncData(stats),
         Failed(:final message) =>

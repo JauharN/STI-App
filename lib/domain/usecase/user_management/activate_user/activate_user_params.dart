@@ -2,7 +2,7 @@ part of 'activate_user.dart';
 
 class ActivateUserParams {
   final String uid;
-  final UserRole currentUserRole;
+  final String currentUserRole;
 
   ActivateUserParams({
     required this.uid,

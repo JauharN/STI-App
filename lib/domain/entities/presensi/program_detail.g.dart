@@ -18,8 +18,9 @@ _$ProgramDetailImpl _$$ProgramDetailImplFromJson(Map<String, dynamic> json) =>
       teacherId: json['teacherId'] as String?,
       teacherName: json['teacherName'] as String?,
       enrolledSantriIds: (json['enrolledSantriIds'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),

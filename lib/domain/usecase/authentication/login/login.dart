@@ -64,10 +64,16 @@ class Login implements Usecase<Result<User>, LoginParams> {
                 'Akun tidak aktif, silakan hubungi admin');
           }
 
+          // Validasi role
+          if (!User.isValidRole(user.role)) {
+            debugPrint('Login failed: Invalid role found');
+            return const Result.failed('Terjadi kesalahan pada role akun');
+          }
+
           debugPrint('Role from Firestore: ${user.role}');
-          // Validasi role sudah cukup dari type safety
 
           _resetAttempts(); // Reset setelah login berhasil
+
           debugPrint('Login successful for user: ${user.name}');
           return Result.success(user);
         } else {

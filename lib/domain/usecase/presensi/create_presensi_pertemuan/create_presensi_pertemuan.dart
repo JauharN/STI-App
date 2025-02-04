@@ -4,8 +4,6 @@ import 'package:sti_app/domain/entities/presensi/presensi_summary.dart';
 import 'package:sti_app/domain/entities/presensi/santri_presensi.dart';
 import 'package:sti_app/domain/entities/result.dart';
 import 'package:sti_app/data/repositories/presensi_repository.dart';
-
-import '../../../entities/user.dart';
 import '../../usecase.dart';
 
 part 'create_presensi_pertemuan_params.dart';
@@ -21,25 +19,24 @@ class CreatePresensiPertemuan
   @override
   Future<Result<PresensiPertemuan>> call(
       CreatePresensiPertemuanParams params) async {
-    // Validasi role
-    if (params.currentUserRole != UserRole.admin &&
-        params.currentUserRole != UserRole.superAdmin) {
-      return const Result.failed(
-          'Akses ditolak: Hanya admin atau superAdmin yang dapat membuat presensi.');
-    }
-
-    // Validasi daftar hadir
-    if (params.daftarHadir.isEmpty) {
-      return const Result.failed('Daftar hadir tidak boleh kosong.');
-    }
-
     try {
+      // Role validation
+      if (!PresensiPertemuan.canManage(params.currentUserRole)) {
+        return const Result.failed(
+            'Akses ditolak: Hanya admin atau superAdmin yang dapat membuat presensi');
+      }
+
+      // Validate daftar hadir
+      if (params.daftarHadir.isEmpty) {
+        return const Result.failed('Daftar hadir tidak boleh kosong');
+      }
+
       // Generate summary dari daftar hadir
       final summary = _generateSummary(params.daftarHadir);
 
-      // Buat objek presensi
+      // Create presensi object
       final presensiPertemuan = PresensiPertemuan(
-        id: '', // ID akan di-generate oleh Firebase
+        id: '', // ID akan digenerate oleh Firebase
         programId: params.programId,
         pertemuanKe: params.pertemuanKe,
         tanggal: params.tanggal,
@@ -47,9 +44,13 @@ class CreatePresensiPertemuan
         summary: summary,
         materi: params.materi,
         catatan: params.catatan,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        createdBy: params.userId, // Track creator
+        updatedBy: params.userId,
       );
 
-      // Simpan ke repository
+      // Save to repository
       return await _presensiRepository
           .createPresensiPertemuan(presensiPertemuan);
     } catch (e) {
@@ -57,7 +58,6 @@ class CreatePresensiPertemuan
     }
   }
 
-  // Helper method untuk generate summary
   PresensiSummary _generateSummary(List<SantriPresensi> daftarHadir) {
     int hadir = 0, sakit = 0, izin = 0, alpha = 0;
 

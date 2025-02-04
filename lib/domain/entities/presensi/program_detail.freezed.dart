@@ -28,7 +28,7 @@ mixin _$ProgramDetail {
   String? get location => throw _privateConstructorUsedError;
   String? get teacherId => throw _privateConstructorUsedError;
   String? get teacherName => throw _privateConstructorUsedError;
-  List<String>? get enrolledSantriIds => throw _privateConstructorUsedError;
+  List<String> get enrolledSantriIds => throw _privateConstructorUsedError;
   DateTime? get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
@@ -57,7 +57,7 @@ abstract class $ProgramDetailCopyWith<$Res> {
       String? location,
       String? teacherId,
       String? teacherName,
-      List<String>? enrolledSantriIds,
+      List<String> enrolledSantriIds,
       DateTime? createdAt,
       DateTime? updatedAt});
 }
@@ -85,7 +85,7 @@ class _$ProgramDetailCopyWithImpl<$Res, $Val extends ProgramDetail>
     Object? location = freezed,
     Object? teacherId = freezed,
     Object? teacherName = freezed,
-    Object? enrolledSantriIds = freezed,
+    Object? enrolledSantriIds = null,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
   }) {
@@ -122,10 +122,10 @@ class _$ProgramDetailCopyWithImpl<$Res, $Val extends ProgramDetail>
           ? _value.teacherName
           : teacherName // ignore: cast_nullable_to_non_nullable
               as String?,
-      enrolledSantriIds: freezed == enrolledSantriIds
+      enrolledSantriIds: null == enrolledSantriIds
           ? _value.enrolledSantriIds
           : enrolledSantriIds // ignore: cast_nullable_to_non_nullable
-              as List<String>?,
+              as List<String>,
       createdAt: freezed == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -155,7 +155,7 @@ abstract class _$$ProgramDetailImplCopyWith<$Res>
       String? location,
       String? teacherId,
       String? teacherName,
-      List<String>? enrolledSantriIds,
+      List<String> enrolledSantriIds,
       DateTime? createdAt,
       DateTime? updatedAt});
 }
@@ -181,7 +181,7 @@ class __$$ProgramDetailImplCopyWithImpl<$Res>
     Object? location = freezed,
     Object? teacherId = freezed,
     Object? teacherName = freezed,
-    Object? enrolledSantriIds = freezed,
+    Object? enrolledSantriIds = null,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
   }) {
@@ -218,10 +218,10 @@ class __$$ProgramDetailImplCopyWithImpl<$Res>
           ? _value.teacherName
           : teacherName // ignore: cast_nullable_to_non_nullable
               as String?,
-      enrolledSantriIds: freezed == enrolledSantriIds
+      enrolledSantriIds: null == enrolledSantriIds
           ? _value._enrolledSantriIds
           : enrolledSantriIds // ignore: cast_nullable_to_non_nullable
-              as List<String>?,
+              as List<String>,
       createdAt: freezed == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -246,9 +246,9 @@ class _$ProgramDetailImpl implements _ProgramDetail {
       this.location,
       this.teacherId,
       this.teacherName,
-      final List<String>? enrolledSantriIds,
-      this.createdAt,
-      this.updatedAt})
+      final List<String> enrolledSantriIds = const [],
+      this.createdAt = null,
+      this.updatedAt = null})
       : _schedule = schedule,
         _enrolledSantriIds = enrolledSantriIds;
 
@@ -277,20 +277,21 @@ class _$ProgramDetailImpl implements _ProgramDetail {
   final String? teacherId;
   @override
   final String? teacherName;
-  final List<String>? _enrolledSantriIds;
+  final List<String> _enrolledSantriIds;
   @override
-  List<String>? get enrolledSantriIds {
-    final value = _enrolledSantriIds;
-    if (value == null) return null;
+  @JsonKey()
+  List<String> get enrolledSantriIds {
     if (_enrolledSantriIds is EqualUnmodifiableListView)
       return _enrolledSantriIds;
     // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(value);
+    return EqualUnmodifiableListView(_enrolledSantriIds);
   }
 
   @override
+  @JsonKey()
   final DateTime? createdAt;
   @override
+  @JsonKey()
   final DateTime? updatedAt;
 
   @override
@@ -366,7 +367,7 @@ abstract class _ProgramDetail implements ProgramDetail {
       final String? location,
       final String? teacherId,
       final String? teacherName,
-      final List<String>? enrolledSantriIds,
+      final List<String> enrolledSantriIds,
       final DateTime? createdAt,
       final DateTime? updatedAt}) = _$ProgramDetailImpl;
 
@@ -390,7 +391,7 @@ abstract class _ProgramDetail implements ProgramDetail {
   @override
   String? get teacherName;
   @override
-  List<String>? get enrolledSantriIds;
+  List<String> get enrolledSantriIds;
   @override
   DateTime? get createdAt;
   @override

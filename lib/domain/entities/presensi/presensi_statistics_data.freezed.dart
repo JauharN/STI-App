@@ -198,7 +198,7 @@ class _$PresensiStatisticsDataImpl implements _PresensiStatisticsData {
       required final Map<String, double> trendKehadiran,
       required final Map<PresensiStatus, int> totalByStatus,
       required final List<SantriStatistics> santriStats,
-      this.lastUpdated})
+      this.lastUpdated = null})
       : _trendKehadiran = trendKehadiran,
         _totalByStatus = totalByStatus,
         _santriStats = santriStats;
@@ -237,6 +237,7 @@ class _$PresensiStatisticsDataImpl implements _PresensiStatisticsData {
   }
 
   @override
+  @JsonKey()
   final DateTime? lastUpdated;
 
   @override

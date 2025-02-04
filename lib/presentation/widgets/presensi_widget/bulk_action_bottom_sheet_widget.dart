@@ -10,12 +10,14 @@ class BulkActionBottomSheet extends ConsumerWidget {
   final String programId;
   final List<String> santriIds;
   final int pertemuanKe;
+  final Function(String status, String keterangan) onStatusUpdate;
 
   const BulkActionBottomSheet({
     super.key,
     required this.programId,
     required this.santriIds,
     required this.pertemuanKe,
+    required this.onStatusUpdate,
   });
 
   @override
@@ -61,6 +63,8 @@ class BulkActionBottomSheet extends ConsumerWidget {
                               pertemuanKe: pertemuanKe,
                             );
                         if (context.mounted) {
+                          onStatusUpdate(status.name.toUpperCase(),
+                              keteranganController.text);
                           context.showSuccessSnackBar(
                               'Berhasil update ${santriIds.length} santri');
                           Navigator.pop(context);

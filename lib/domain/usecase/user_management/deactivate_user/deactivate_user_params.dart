@@ -2,7 +2,7 @@ part of 'deactivate_user.dart';
 
 class DeactivateUserParams {
   final String uid;
-  final UserRole currentUserRole;
+  final String currentUserRole;
 
   DeactivateUserParams({
     required this.uid,

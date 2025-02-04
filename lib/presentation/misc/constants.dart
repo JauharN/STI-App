@@ -1,5 +1,3 @@
-// constant.dart
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -179,4 +177,31 @@ class AppTheme {
       ),
     );
   }
+}
+
+class RoleConstants {
+  static const String superAdmin = 'superAdmin';
+  static const String admin = 'admin';
+  static const String santri = 'santri';
+
+  static const List<String> allRoles = [superAdmin, admin, santri];
+
+  static const Map<String, String> roleDisplayNames = {
+    superAdmin: 'Super Admin',
+    admin: 'Admin',
+    santri: 'Santri',
+  };
+
+  // Role-based permissions/capabilities
+  static const Map<String, List<String>> roleCapabilities = {
+    superAdmin: [
+      'manage_users',
+      'manage_roles',
+      'manage_presensi',
+      'view_presensi',
+      'manage_programs'
+    ],
+    admin: ['manage_presensi', 'view_presensi', 'manage_programs'],
+    santri: ['view_presensi'],
+  };
 }

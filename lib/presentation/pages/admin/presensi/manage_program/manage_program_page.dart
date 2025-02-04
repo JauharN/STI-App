@@ -1,56 +1,64 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sti_app/presentation/extensions/extensions.dart';
 
-import '../../../../../domain/entities/user.dart';
+import '../../../../../domain/entities/presensi/program_detail.dart';
 import '../../../../misc/constants.dart';
+import '../../../../misc/methods.dart';
 import '../../../../providers/presensi/admin/manage_program_provider.dart';
 import '../../../../providers/user_data/user_data_provider.dart';
+import '../../../../states/manage_program_state.dart';
 import '../../../../widgets/presensi_widget/program_form_dialog_widget.dart';
-
-class ManageProgramConstants {
-  static const int maxRetries = 3;
-  static const int timeoutSeconds = 30;
-  static const int searchDebounceMs = 500;
-}
 
 class ManageProgramPage extends ConsumerStatefulWidget {
   const ManageProgramPage({super.key});
+
   @override
   ConsumerState<ManageProgramPage> createState() => _ManageProgramPageState();
 }
 
 class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
+  // Constants
+  static const int maxRetries = 3;
+  static const int timeoutSeconds = 30;
+  static const int filterDebounceMs = 500;
+
   // State variables
   String searchQuery = '';
-  bool isLoading = false;
   String selectedFilter = '';
   String selectedSort = '';
-  Timer? _searchDebounce;
-
-  bool _canManageProgram(UserRole? userRole) {
-    return userRole == UserRole.admin || userRole == UserRole.superAdmin;
-  }
+  Timer? _filterDebounce;
+  bool isLoading = false;
 
   // Controllers
   final searchController = TextEditingController();
 
+  @override
+  void dispose() {
+    searchController.dispose();
+    _filterDebounce?.cancel();
+    super.dispose();
+  }
+
+  // Access control helper
+  bool _canManageProgram(String? userRole) {
+    return userRole == 'admin' || userRole == 'superAdmin';
+  }
+
+  // Error handling with retry
   Future<bool> _handleOperationWithRetry(
     Future<void> Function() operation, {
-    int maxRetries = ManageProgramConstants.maxRetries,
-    int timeoutSeconds = ManageProgramConstants.timeoutSeconds,
+    int maxRetries = maxRetries,
+    int timeoutSeconds = timeoutSeconds,
   }) async {
     int retryCount = 0;
     while (retryCount < maxRetries) {
       try {
         await operation().timeout(
           Duration(seconds: timeoutSeconds),
-          onTimeout: () {
-            throw TimeoutException('Operation timed out');
-          },
+          onTimeout: () => throw TimeoutException('Operation timed out'),
         );
         return true;
       } catch (e) {
@@ -68,219 +76,156 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
     return false;
   }
 
-  @override
-  void dispose() {
-    searchController.dispose();
-    _searchDebounce?.cancel();
-    super.dispose();
-  }
-
+  // UI Methods
   @override
   Widget build(BuildContext context) {
     final userRole = ref.watch(userDataProvider).value?.role;
+
     if (!_canManageProgram(userRole)) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.lock_outline, size: 64, color: AppColors.error),
-              const SizedBox(height: 16),
-              Text(
-                'Access Denied',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'You don\'t have permission to manage programs',
-                style: GoogleFonts.plusJakartaSans(
-                  color: AppColors.neutral600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildUnauthorizedView();
     }
 
     final programAsync = ref.watch(manageProgramControllerProvider);
 
     return Scaffold(
-      appBar: _buildAppBar(),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            children: [
-              _buildSearchBar(),
-              _buildFilterSection(),
-              SizedBox(
-                // Tambah ini
-                height: MediaQuery.of(context).size.height - 200,
-                child: _buildProgramList(programAsync),
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              _buildAppBar(context),
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    _buildSearchAndFilters(),
+                    _buildProgramList(programAsync),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
+          if (isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ),
       floatingActionButton: _buildAddButton(),
     );
   }
 
-  // UI Building Methods
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: Text(
-        'Manajemen Program',
-        style: GoogleFonts.plusJakartaSans(
-          fontWeight: FontWeight.bold,
+  Widget _buildUnauthorizedView() {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock_outline, size: 64, color: AppColors.error),
+            verticalSpace(16),
+            Text(
+              'Access Denied',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            verticalSpace(8),
+            Text(
+              'You don\'t have permission to manage programs',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppColors.neutral600,
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  SliverAppBar _buildAppBar(BuildContext context) {
+    return SliverAppBar(
+      expandedHeight: 120,
+      floating: false,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: AppColors.primary,
+      flexibleSpace: FlexibleSpaceBar(
+        title: Text(
+          'Program Management',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.refresh),
+          icon: const Icon(Icons.refresh, color: Colors.white),
           onPressed: () => ref.refresh(manageProgramControllerProvider),
         ),
       ],
     );
   }
 
-  Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.neutral200,
-            width: 1,
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Program List',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-      ),
-      child: TextField(
-        controller: searchController,
-        decoration: InputDecoration(
-          hintText: 'Cari program...',
-          prefixIcon: const Icon(Icons.search, color: AppColors.neutral500),
-          suffixIcon: searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, color: AppColors.neutral500),
-                  onPressed: () {
-                    searchController.clear();
-                    _handleSearch('');
-                  },
-                )
-              : null,
-          filled: true,
-          fillColor: AppColors.neutral100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+          verticalSpace(8),
+          Text(
+            'Manage all learning programs',
+            style: GoogleFonts.plusJakartaSans(
+              color: AppColors.neutral600,
+            ),
           ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 10,
-          ),
-        ),
-        onChanged: (value) {
-          setState(() {
-            searchQuery = value;
-          });
-          // Debounce search
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (searchQuery == value) {
-              _handleSearch(value);
-            }
-          });
-        },
+        ],
       ),
     );
   }
 
-  Widget _buildFilterSection() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.neutral200,
-            width: 1,
-          ),
-        ),
-      ),
+  Widget _buildSearchAndFilters() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Filter & Urutan',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+          TextField(
+            controller: searchController,
+            decoration: InputDecoration(
+              hintText: 'Search programs...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              // Clear filter button
-              if (searchQuery.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() => searchQuery = '');
-                    ref.refresh(manageProgramControllerProvider);
-                  },
-                  icon: const Icon(Icons.clear, size: 16),
-                  label: const Text('Clear'),
-                ),
-            ],
+            ),
+            onChanged: _handleSearch,
           ),
-          const SizedBox(height: 12),
+          verticalSpace(16),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                // Filter by status
-                FilterChip(
-                  label: const Text('Aktif'),
-                  selected: false, // Connect to state
-                  onSelected: (selected) {
-                    _handleFilter('active');
-                  },
-                ),
-                const SizedBox(width: 8),
-                // Filter by teacher
-                FilterChip(
-                  label: const Text('Ada Pengajar'),
-                  selected: selectedFilter == 'has_teacher', // Update ini
-                  onSelected: (selected) {
-                    setState(() {
-                      selectedFilter =
-                          selected ? 'has_teacher' : ''; // Tambah ini
-                    });
-                    _handleFilter('has_teacher');
-                  },
-                ),
-                const SizedBox(width: 8),
-                // Sort options
-                ChoiceChip(
-                  label: const Text('Terbaru'),
-                  selected: false, // Connect to state
-                  onSelected: (selected) {
-                    _handleSort('newest');
-                  },
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('Terlama'),
-                  selected: false, // Connect to state
-                  onSelected: (selected) {
-                    _handleSort('oldest');
-                  },
-                ),
+                _buildFilterChip('All Programs', 'all'),
+                horizontalSpace(8),
+                _buildFilterChip('With Teacher', 'has_teacher'),
+                horizontalSpace(8),
+                _buildSortChip('Newest', 'newest'),
+                horizontalSpace(8),
+                _buildSortChip('Oldest', 'oldest'),
               ],
             ),
           ),
@@ -289,137 +234,169 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
     );
   }
 
-  Widget _buildProgramList(AsyncValue programAsync) {
+  Widget _buildFilterChip(String label, String value) {
+    return FilterChip(
+      label: Text(label),
+      selected: selectedFilter == value,
+      onSelected: (selected) => _handleFilter(selected ? value : ''),
+    );
+  }
+
+  Widget _buildSortChip(String label, String value) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selectedSort == value,
+      onSelected: (selected) => _handleSort(selected ? value : ''),
+    );
+  }
+
+  Widget _buildProgramList(AsyncValue<ManageProgramState> programAsync) {
     return programAsync.when(
       data: (state) => state.when(
-        initial: () => const Center(child: Text('Memuat data...')),
+        initial: () => const Center(child: Text('Loading data...')),
         loading: () => const Center(child: CircularProgressIndicator()),
         loaded: (programList) {
           if (programList.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.school_outlined,
-                    size: 64,
-                    color: AppColors.neutral400,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Belum ada program',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      color: AppColors.neutral600,
-                    ),
-                  ),
-                ],
-              ),
-            );
+            return _buildEmptyState();
           }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: programList.length,
-            itemBuilder: (context, index) {
-              final program = programList[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  title: Text(
-                    program.nama,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(program.deskripsi),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 4,
-                        children: program.jadwal.map((hari) {
-                          return Chip(
-                            label: Text(
-                              hari,
-                              style: GoogleFonts.plusJakartaSans(fontSize: 12),
-                            ),
-                            backgroundColor: AppColors.primary.withOpacity(0.1),
-                            labelStyle: GoogleFonts.plusJakartaSans(
-                              color: AppColors.primary,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      if (program.pengajarName != null) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.person_outline,
-                              size: 16,
-                              color: AppColors.neutral600,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Pengajar: ${program.pengajarName}',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                color: AppColors.neutral600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'edit':
-                          _showEditProgramDialog(program.id);
-                          break;
-                        case 'delete':
-                          _showDeleteConfirmation(program.id);
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined),
-                            SizedBox(width: 8),
-                            Text('Edit'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, color: AppColors.error),
-                            SizedBox(width: 8),
-                            Text(
-                              'Hapus',
-                              style: TextStyle(color: AppColors.error),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
+          return _buildProgramGrid(programList);
         },
-        error: (message) => Center(child: Text('Error: $message')),
+        error: (message) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+              verticalSpace(16),
+              Text(
+                'Error: $message',
+                style: GoogleFonts.plusJakartaSans(color: AppColors.error),
+              ),
+              verticalSpace(16),
+              ElevatedButton(
+                onPressed: () => ref.refresh(manageProgramControllerProvider),
+                child: const Text('Try Again'),
+              ),
+            ],
+          ),
+        ),
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Error: $error')),
+      error: (error, stack) => Center(
+        child: Text('Error: ${error.toString()}'),
+      ),
+    );
+  }
+
+  Widget _buildProgramGrid(List<ProgramDetail> programs) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(24),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: programs.length,
+      itemBuilder: (context, index) => _buildProgramCard(programs[index]),
+    );
+  }
+
+  Widget _buildProgramCard(ProgramDetail program) {
+    return Card(
+      child: InkWell(
+        onTap: () => _showProgramActions(program),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                program.name,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              verticalSpace(8),
+              Text(
+                program.description,
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppColors.neutral600,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              verticalSpace(16),
+              _buildProgramInfo(program),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgramInfo(ProgramDetail program) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildInfoRow(
+            Icons.people, '${program.enrolledSantriIds.length} Santri'),
+        _buildInfoRow(Icons.person, program.teacherName ?? 'No Teacher'),
+        _buildInfoRow(
+            Icons.calendar_today, '${program.totalMeetings} Meetings'),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.neutral600),
+          horizontalSpace(8),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.plusJakartaSans(
+                color: AppColors.neutral600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.school_outlined,
+            size: 64,
+            color: AppColors.neutral400,
+          ),
+          verticalSpace(16),
+          Text(
+            'No programs yet',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              color: AppColors.neutral600,
+            ),
+          ),
+          Text(
+            'Create your first program',
+            style: GoogleFonts.plusJakartaSans(
+              color: AppColors.neutral600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -431,20 +408,72 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
     );
   }
 
-  // Dialog Methods
+  // Action Methods
+  void _handleSearch(String query) {
+    _filterDebounce?.cancel();
+    _filterDebounce = Timer(
+      const Duration(milliseconds: filterDebounceMs),
+      () {
+        setState(() => searchQuery = query.trim());
+        ref
+            .read(manageProgramControllerProvider.notifier)
+            .searchPrograms(query);
+      },
+    );
+  }
+
+  void _handleFilter(String filter) {
+    setState(() => selectedFilter = filter);
+    ref.read(manageProgramControllerProvider.notifier).filterPrograms(filter);
+  }
+
+  void _handleSort(String sort) {
+    setState(() => selectedSort = sort);
+    ref.read(manageProgramControllerProvider.notifier).sortPrograms(sort);
+  }
+
   Future<void> _showAddProgramDialog() async {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => const ProgramFormDialog(),
     );
-
     if (result == true) {
       if (mounted) {
-        context.showSuccessSnackBar('Program berhasil ditambahkan');
+        context.showSuccessSnackBar('Program successfully added');
         ref.refresh(manageProgramControllerProvider);
       }
     }
+  }
+
+  void _showProgramActions(ProgramDetail program) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('Edit Program'),
+            onTap: () {
+              Navigator.pop(context);
+              _showEditProgramDialog(program.id);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete, color: AppColors.error),
+            title: const Text(
+              'Delete Program',
+              style: TextStyle(color: AppColors.error),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              _showDeleteConfirmation(program.id);
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showEditProgramDialog(String programId) async {
@@ -453,10 +482,9 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
       barrierDismissible: false,
       builder: (context) => ProgramFormDialog(programId: programId),
     );
-
     if (result == true) {
       if (mounted) {
-        context.showSuccessSnackBar('Program berhasil diperbarui');
+        context.showSuccessSnackBar('Program successfully updated');
         ref.refresh(manageProgramControllerProvider);
       }
     }
@@ -467,33 +495,23 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          'Hapus Program',
+          'Delete Program',
           style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Yakin ingin menghapus program ini?'),
-            const SizedBox(height: 8),
-            Text('Program dengan ID: $programId'),
-            const Text(
-              'Tindakan ini tidak dapat dibatalkan.',
-              style: TextStyle(
-                  color: AppColors.error,
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic),
-            ),
-          ],
+        content: const Text(
+          'Are you sure you want to delete this program? This action cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Hapus'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -501,6 +519,7 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
 
     if (confirm == true) {
       setState(() => isLoading = true);
+
       try {
         final success = await _handleOperationWithRetry(() async {
           await ref
@@ -509,73 +528,14 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
         });
 
         if (success && mounted) {
-          context.showSuccessSnackBar('Program berhasil dihapus');
+          context.showSuccessSnackBar('Program successfully deleted');
           ref.refresh(manageProgramControllerProvider);
         }
       } finally {
-        setState(() => isLoading = false);
+        if (mounted) {
+          setState(() => isLoading = false);
+        }
       }
     }
-  }
-
-  // Action Handler Methods
-  Future<void> _handleSearch(String query) async {
-    if (query.isEmpty) {
-      ref.refresh(manageProgramControllerProvider);
-      return;
-    }
-
-    try {
-      await ref
-          .read(manageProgramControllerProvider.notifier)
-          .searchPrograms(query);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal melakukan pencarian: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleSort(String sortType) async {
-    try {
-      await ref
-          .read(manageProgramControllerProvider.notifier)
-          .sortPrograms(sortType);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal mengurutkan data: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleFilter(String filterType) async {
-    try {
-      await ref
-          .read(manageProgramControllerProvider.notifier)
-          .filterPrograms(filterType);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menerapkan filter: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleRefresh() async {
-    ref.refresh(manageProgramControllerProvider);
   }
 }

@@ -27,8 +27,7 @@ Map<String, dynamic> _$$SantriStatisticsImplToJson(
       'santriName': instance.santriName,
       'totalKehadiran': instance.totalKehadiran,
       'totalPertemuan': instance.totalPertemuan,
-      'statusCount': instance.statusCount
-          .map((k, e) => MapEntry(_$PresensiStatusEnumMap[k]!, e)),
+      'statusCount': instance.statusCount,
       'persentaseKehadiran': instance.persentaseKehadiran,
     };
 

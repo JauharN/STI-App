@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-import '../../../domain/entities/user.dart';
 import '../../misc/constants.dart';
 
 class RoleBadgeWidget extends StatelessWidget {
-  final UserRole role;
+  final String role;
 
   const RoleBadgeWidget({
     super.key,
@@ -14,17 +12,28 @@ class RoleBadgeWidget extends StatelessWidget {
 
   Color get _backgroundColor {
     return switch (role) {
-      UserRole.superAdmin => AppColors.error.withOpacity(0.1),
-      UserRole.admin => AppColors.primary.withOpacity(0.1),
-      UserRole.santri => AppColors.secondary.withOpacity(0.1),
+      'superAdmin' => AppColors.error.withOpacity(0.1),
+      'admin' => AppColors.primary.withOpacity(0.1),
+      'santri' => AppColors.secondary.withOpacity(0.1),
+      _ => AppColors.neutral300.withOpacity(0.1),
     };
   }
 
   Color get _textColor {
     return switch (role) {
-      UserRole.superAdmin => AppColors.error,
-      UserRole.admin => AppColors.primary,
-      UserRole.santri => AppColors.secondary,
+      'superAdmin' => AppColors.error,
+      'admin' => AppColors.primary,
+      'santri' => AppColors.secondary,
+      _ => AppColors.neutral600,
+    };
+  }
+
+  String get _displayName {
+    return switch (role) {
+      'superAdmin' => 'Super Admin',
+      'admin' => 'Admin',
+      'santri' => 'Santri',
+      _ => 'Unknown Role',
     };
   }
 
@@ -44,7 +53,7 @@ class RoleBadgeWidget extends StatelessWidget {
         ),
       ),
       child: Text(
-        role.displayName,
+        _displayName,
         style: GoogleFonts.plusJakartaSans(
           fontSize: 12,
           fontWeight: FontWeight.w600,

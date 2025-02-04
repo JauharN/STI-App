@@ -12,21 +12,21 @@ Future<List<User>> programSantriList(
   ProgramSantriListRef ref,
   String programId,
 ) async {
-  // Ambil role pengguna saat ini
-  final currentUserRole = ref.read(userDataProvider).value?.role;
-  if (currentUserRole == null) {
-    throw Exception('User role is not available');
+  final user = ref.read(userDataProvider).value;
+  if (user == null) {
+    throw Exception('User tidak ditemukan');
   }
 
-  // Get santri list dari use case
+  // Role validation dengan string
+  final currentUserRole = user.role;
+
   final result = await ref.read(getSantriByProgramProvider).call(
         GetSantriByProgramParams(
           programId: programId,
-          currentUserRole: currentUserRole, // Tambahkan parameter role
+          currentUserRole: currentUserRole,
         ),
       );
 
-  // Handle hasil
   return switch (result) {
     Success(value: final list) => list,
     Failed(:final message) => throw Exception(message),

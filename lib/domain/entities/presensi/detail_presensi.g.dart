@@ -45,7 +45,7 @@ Map<String, dynamic> _$$PresensiDetailItemImplToJson(
         _$PresensiDetailItemImpl instance) =>
     <String, dynamic>{
       'pertemuanKe': instance.pertemuanKe,
-      'status': _$PresensiStatusEnumMap[instance.status]!,
+      'status': instance.status,
       'tanggal': instance.tanggal.toIso8601String(),
       'materi': instance.materi,
       'keterangan': instance.keterangan,

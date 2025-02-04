@@ -1,6 +1,5 @@
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../../../domain/entities/user.dart';
 import '../../models/news_model.dart';
 import '../../pages/admin/presensi/input_presensi/input_presensi_page.dart';
 import '../../pages/admin/presensi/manage_presensi_page/manage_presensi_page.dart';
@@ -80,7 +79,7 @@ Raw<GoRouter> router(RouterRef ref) => GoRouter(
           },
         ),
         GoRoute(
-          path: '/presensi-detail/:programId', // Gunakan parameter path
+          path: '/presensi-detail/:programId',
           name: 'presensi-detail',
           builder: (context, state) => PresensiDetailPage(
             programId: state.pathParameters['programId'] ?? '',
@@ -91,7 +90,8 @@ Raw<GoRouter> router(RouterRef ref) => GoRouter(
           name: 'manage-presensi',
           builder: (context, state) {
             final userRole = ref.read(userDataProvider).value?.role;
-            if (userRole != UserRole.admin && userRole != UserRole.superAdmin) {
+            // Check role dengan string
+            if (userRole != 'admin' && userRole != 'superAdmin') {
               return const UnauthorizedPage();
             }
             return ManagePresensiPage(
@@ -104,8 +104,8 @@ Raw<GoRouter> router(RouterRef ref) => GoRouter(
               name: 'input-presensi',
               builder: (context, state) {
                 final userRole = ref.read(userDataProvider).value?.role;
-                if (userRole != UserRole.admin &&
-                    userRole != UserRole.superAdmin) {
+                // Check role dengan string
+                if (userRole != 'admin' && userRole != 'superAdmin') {
                   return const UnauthorizedPage();
                 }
                 return InputPresensiPage(
@@ -127,7 +127,8 @@ Raw<GoRouter> router(RouterRef ref) => GoRouter(
           name: 'role-management',
           builder: (context, state) {
             final userRole = ref.read(userDataProvider).value?.role;
-            if (userRole != UserRole.superAdmin) {
+            // Check superAdmin role dengan string
+            if (userRole != 'superAdmin') {
               return const UnauthorizedPage();
             }
             return const RoleManagementPage();
@@ -138,13 +139,14 @@ Raw<GoRouter> router(RouterRef ref) => GoRouter(
           name: 'user-management',
           builder: (context, state) {
             final userRole = ref.read(userDataProvider).value?.role;
-            if (userRole != UserRole.superAdmin) {
+            // Check superAdmin role dengan string
+            if (userRole != 'superAdmin') {
               return const UnauthorizedPage();
             }
             return const UserManagementPage();
           },
         ),
       ],
-      initialLocation: '/main',
+      initialLocation: '/splash_screen',
       debugLogDiagnostics: false,
     );

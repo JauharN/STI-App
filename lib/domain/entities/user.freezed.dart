@@ -23,7 +23,7 @@ mixin _$User {
   String get uid => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
   String get email => throw _privateConstructorUsedError;
-  UserRole get role => throw _privateConstructorUsedError;
+  String get role => throw _privateConstructorUsedError;
   bool get isActive => throw _privateConstructorUsedError;
   String? get photoUrl => throw _privateConstructorUsedError;
   String? get phoneNumber => throw _privateConstructorUsedError;
@@ -48,7 +48,7 @@ abstract class $UserCopyWith<$Res> {
       {String uid,
       String name,
       String email,
-      UserRole role,
+      String role,
       bool isActive,
       String? photoUrl,
       String? phoneNumber,
@@ -97,7 +97,7 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
       role: null == role
           ? _value.role
           : role // ignore: cast_nullable_to_non_nullable
-              as UserRole,
+              as String,
       isActive: null == isActive
           ? _value.isActive
           : isActive // ignore: cast_nullable_to_non_nullable
@@ -133,7 +133,7 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
       {String uid,
       String name,
       String email,
-      UserRole role,
+      String role,
       bool isActive,
       String? photoUrl,
       String? phoneNumber,
@@ -179,7 +179,7 @@ class __$$UserImplCopyWithImpl<$Res>
       role: null == role
           ? _value.role
           : role // ignore: cast_nullable_to_non_nullable
-              as UserRole,
+              as String,
       isActive: null == isActive
           ? _value.isActive
           : isActive // ignore: cast_nullable_to_non_nullable
@@ -211,7 +211,7 @@ class _$UserImpl implements _User {
       {required this.uid,
       required this.name,
       required this.email,
-      this.role = UserRole.santri,
+      this.role = 'santri',
       this.isActive = true,
       this.photoUrl,
       this.phoneNumber,
@@ -229,7 +229,7 @@ class _$UserImpl implements _User {
   final String email;
   @override
   @JsonKey()
-  final UserRole role;
+  final String role;
   @override
   @JsonKey()
   final bool isActive;
@@ -293,7 +293,7 @@ abstract class _User implements User {
       {required final String uid,
       required final String name,
       required final String email,
-      final UserRole role,
+      final String role,
       final bool isActive,
       final String? photoUrl,
       final String? phoneNumber,
@@ -309,7 +309,7 @@ abstract class _User implements User {
   @override
   String get email;
   @override
-  UserRole get role;
+  String get role;
   @override
   bool get isActive;
   @override

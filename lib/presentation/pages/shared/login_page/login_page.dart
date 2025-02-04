@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../domain/entities/user.dart';
 import '../../../misc/constants.dart';
 import '../../../misc/methods.dart';
 import '../../../providers/router/router_provider.dart';
@@ -82,14 +81,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
 
     return true;
-  }
-
-  void _handleRoleBasedRouting(UserRole? role) {
-    if (!mounted) return;
-
-    debugPrint('User logged in with role: $role');
-    // Semua role akan diarahkan ke main page
-    ref.read(routerProvider).goNamed('main');
   }
 
   Future<void> _handleLogin() async {
@@ -175,7 +166,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         if (!mounted) return;
 
         if (next is AsyncData && next.value != null) {
-          _handleRoleBasedRouting(next.value!.role);
+          // User logged in successfully
+          debugPrint('Login successful, routing to main page');
+          ref.read(routerProvider).goNamed('main');
         } else if (next is AsyncError) {
           final errorMessage = switch (next.error.toString().toLowerCase()) {
             String e when e.contains('wrong-password') =>

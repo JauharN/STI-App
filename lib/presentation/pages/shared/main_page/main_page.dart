@@ -19,15 +19,22 @@ class MainPage extends ConsumerStatefulWidget {
 class _MainPageState extends ConsumerState<MainPage> {
   int selectedIndex = 0;
 
-  // Define all screens
-  final List<Widget> _screens = [
-    const BerandaPage(),
-    const PresensiPage(),
-    const Center(child: Text('Progres Page')),
-    const ProfilePage(),
-  ];
+  // // Define all screens
+  // final List<Widget> _screens = [
+  //   const BerandaPage(),
+  //   const PresensiPage(),
+  //   const Center(child: Text('Progres Page')),
+  //   const ProfilePage(),
+  // ];
 
   void onNavTap(int index) {
+    final userRole = ref.read(userDataProvider).value?.role;
+
+    if (!_hasAccess(userRole ?? '', index)) {
+      context.showErrorSnackBar('Anda tidak memiliki akses ke halaman ini');
+      return;
+    }
+
     setState(() {
       selectedIndex = index;
     });
@@ -43,6 +50,7 @@ class _MainPageState extends ConsumerState<MainPage> {
       );
     }
 
+    // Listen untuk state changes
     ref.listen(
       userDataProvider,
       (previous, next) {
@@ -58,12 +66,40 @@ class _MainPageState extends ConsumerState<MainPage> {
       backgroundColor: AppColors.background,
       body: IndexedStack(
         index: selectedIndex,
-        children: _screens,
+        children: _buildScreensForRole(userRole),
       ),
       bottomNavigationBar: STIBottomNavBar(
         selectedIndex: selectedIndex,
         onTap: onNavTap,
       ),
     );
+  }
+
+  List<Widget> _buildScreensForRole(String role) {
+    // Basic screens available for all roles
+    final screens = <Widget>[
+      const BerandaPage(),
+      if (role == 'santri') const PresensiPage(),
+      const Center(child: Text('Progres Page')), // Placeholder
+      const ProfilePage(),
+    ];
+
+    return screens;
+  }
+
+  // Helper untuk mengecek apakah role memiliki akses ke screen
+  bool _hasAccess(String role, int screenIndex) {
+    switch (screenIndex) {
+      case 0: // Beranda
+        return true;
+      case 1: // Presensi
+        return role == 'santri';
+      case 2: // Progres
+        return true;
+      case 3: // Profile
+        return true;
+      default:
+        return false;
+    }
   }
 }

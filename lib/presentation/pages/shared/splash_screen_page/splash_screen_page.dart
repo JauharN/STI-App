@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../../misc/constants.dart';
 import '../../../misc/methods.dart';
 import '../../../providers/router/router_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';
+import '../../../utils/storage_helper.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -15,7 +14,6 @@ class SplashScreen extends ConsumerStatefulWidget {
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-// Tambahkan TickerProviderStateMixin setelah ConsumerState<SplashScreen>
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with TickerProviderStateMixin {
   late AnimationController _controller;
@@ -28,6 +26,64 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _initialize() async {
+    try {
+      _setupAnimation();
+
+      // Delay minimal untuk splash
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
+
+      // Get stored session
+      final sessionData = await StorageHelper.getUserSession();
+      final isLoggedIn = sessionData?['isLoggedIn'] as bool? ?? false;
+
+      if (isLoggedIn) {
+        final email = sessionData?['email'] as String?;
+        final password = sessionData?['password'] as String?;
+
+        if (email != null && password != null) {
+          debugPrint('Attempting auto-login for: $email');
+
+          // Auto login
+          await ref.read(userDataProvider.notifier).login(
+                email: email,
+                password: password,
+              );
+
+          if (!mounted) return;
+
+          // Check login result
+          final userState = ref.read(userDataProvider);
+          if (userState is AsyncData && userState.value != null) {
+            ref.read(routerProvider).goNamed('main');
+            return;
+          } else {
+            // Clear invalid session
+            await StorageHelper.clearUserSession();
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      // Check first time user
+      final isFirstTime =
+          await StorageHelper.getData<bool>('isFirstTime') ?? true;
+      if (isFirstTime) {
+        ref.read(routerProvider).goNamed('onboarding');
+      } else {
+        ref.read(routerProvider).goNamed('login');
+      }
+    } catch (e) {
+      debugPrint('Error in splash screen: $e');
+      if (mounted) {
+        ref.read(routerProvider).goNamed('login');
+      }
+    }
+  }
+
+  void _setupAnimation() {
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -38,45 +94,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       curve: Curves.easeIn,
     );
 
-    // Mulai animasi
     _controller.forward();
-
-    // Delay minimal untuk splash
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      final prefs = await SharedPreferences.getInstance();
-      final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-
-      if (isLoggedIn) {
-        // Jika user sudah login dan remember me aktif
-        final email = prefs.getString('userEmail');
-        final password = prefs.getString('userPassword');
-
-        if (email != null && password != null) {
-          // Auto login
-          await ref.read(userDataProvider.notifier).login(
-                email: email,
-                password: password,
-              );
-
-          if (mounted) {
-            ref.read(routerProvider).goNamed('main');
-            return;
-          }
-        }
-      }
-
-      // Cek first time user
-      final isFirstTime = prefs.getBool('isFirstTime') ?? true;
-      if (mounted) {
-        if (isFirstTime) {
-          ref.read(routerProvider).goNamed('onboarding');
-        } else {
-          ref.read(routerProvider).goNamed('login');
-        }
-      }
-    }
   }
 
   @override

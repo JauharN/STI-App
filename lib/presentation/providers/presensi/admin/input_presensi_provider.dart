@@ -12,9 +12,7 @@ part 'input_presensi_provider.g.dart';
 @riverpod
 class InputPresensiController extends _$InputPresensiController {
   @override
-  FutureOr<void> build() {
-    return null;
-  }
+  FutureOr<void> build() => null;
 
   Future<void> submitPresensi({
     required String programId,
@@ -25,29 +23,21 @@ class InputPresensiController extends _$InputPresensiController {
     String? catatan,
   }) async {
     state = const AsyncLoading();
-
     try {
-      // Ambil user role saat ini
       final user = ref.read(userDataProvider).value;
-      if (user == null) {
-        throw Exception('User tidak ditemukan');
-      }
+      if (user == null) throw Exception('User tidak ditemukan');
 
-      final currentUserRole = user.role;
-
-      // Get usecase instance
       final createPresensi = ref.read(createPresensiPertemuanProvider);
-
-      // Gunakan parameter baru (tanpa summary)
       final result = await createPresensi(
         CreatePresensiPertemuanParams(
           programId: programId,
           pertemuanKe: pertemuanKe,
           tanggal: tanggal,
           materi: materi,
-          catatan: catatan,
           daftarHadir: daftarHadir,
-          currentUserRole: currentUserRole, // Tambahan validasi role
+          catatan: catatan,
+          userId: user.uid,
+          currentUserRole: user.role,
         ),
       );
 
@@ -65,19 +55,18 @@ class InputPresensiController extends _$InputPresensiController {
     required String programId,
     required List<String> santriIds,
     required PresensiStatus status,
-    String? keterangan,
     required int pertemuanKe,
+    String? keterangan,
   }) async {
     state = const AsyncLoading();
     try {
-      // Get santri details first
       final userRepository = ref.read(userRepositoryProvider);
       final daftarHadir = await Future.wait(
         santriIds.map((id) async {
           final user = await userRepository.getUser(uid: id);
           return SantriPresensi(
             santriId: id,
-            santriName: user.resultValue?.name ?? '', // Fix missing santriName
+            santriName: user.resultValue?.name ?? '',
             status: status,
             keterangan: keterangan,
           );

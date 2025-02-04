@@ -197,7 +197,7 @@ class _$DetailPresensiImpl implements _DetailPresensi {
       required this.kelas,
       required this.pengajarName,
       required final List<PresensiDetailItem> pertemuan,
-      this.summary})
+      this.summary = null})
       : _pertemuan = pertemuan;
 
   factory _$DetailPresensiImpl.fromJson(Map<String, dynamic> json) =>
@@ -220,6 +220,7 @@ class _$DetailPresensiImpl implements _DetailPresensi {
   }
 
   @override
+  @JsonKey()
   final PresensiSummary? summary;
 
   @override
@@ -306,8 +307,7 @@ PresensiDetailItem _$PresensiDetailItemFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$PresensiDetailItem {
   int get pertemuanKe => throw _privateConstructorUsedError;
-  PresensiStatus get status =>
-      throw _privateConstructorUsedError; // Gunakan enum
+  PresensiStatus get status => throw _privateConstructorUsedError;
   @TimestampConverter()
   DateTime get tanggal => throw _privateConstructorUsedError;
   String? get materi => throw _privateConstructorUsedError;
@@ -460,7 +460,6 @@ class _$PresensiDetailItemImpl implements _PresensiDetailItem {
   final int pertemuanKe;
   @override
   final PresensiStatus status;
-// Gunakan enum
   @override
   @TimestampConverter()
   final DateTime tanggal;
@@ -524,7 +523,7 @@ abstract class _PresensiDetailItem implements PresensiDetailItem {
   @override
   int get pertemuanKe;
   @override
-  PresensiStatus get status; // Gunakan enum
+  PresensiStatus get status;
   @override
   @TimestampConverter()
   DateTime get tanggal;

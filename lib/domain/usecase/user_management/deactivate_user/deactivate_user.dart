@@ -13,23 +13,47 @@ class DeactivateUser implements Usecase<Result<User>, DeactivateUserParams> {
 
   @override
   Future<Result<User>> call(DeactivateUserParams params) async {
-    if (params.currentUserRole != UserRole.superAdmin) {
-      return const Result.failed('Only Super Admin can deactivate users');
+    try {
+      // Validasi role user yang melakukan deaktivasi
+      if (params.currentUserRole != 'superAdmin') {
+        return const Result.failed(
+            'Hanya Super Admin yang dapat menonaktifkan user');
+      }
+
+      // Dapatkan user yang akan dinonaktifkan
+      final userResult = await _userRepository.getUser(uid: params.uid);
+
+      if (userResult.isFailed) {
+        return Result.failed(
+            'Gagal mendapatkan data user: ${userResult.errorMessage}');
+      }
+
+      final user = userResult.resultValue!;
+
+      // Validasi - tidak bisa menonaktifkan Super Admin
+      if (user.role == 'superAdmin') {
+        return const Result.failed(
+            'Tidak dapat menonaktifkan user dengan role Super Admin');
+      }
+
+      // Cek apakah user sudah nonaktif
+      if (!user.isActive) {
+        return Result.failed('User ${user.name} sudah dalam keadaan nonaktif');
+      }
+
+      // Nonaktifkan user
+      final updatedUser = user.copyWith(isActive: false);
+      final updateResult = await _userRepository.updateUser(user: updatedUser);
+
+      // Handle hasil update
+      if (updateResult.isSuccess) {
+        return Result.success(updateResult.resultValue!);
+      } else {
+        return Result.failed(
+            'Gagal menonaktifkan user: ${updateResult.errorMessage}');
+      }
+    } catch (e) {
+      return Result.failed('Terjadi kesalahan: ${e.toString()}');
     }
-
-    final userResult = await _userRepository.getUser(uid: params.uid);
-    if (userResult.isFailed) return userResult;
-
-    final user = userResult.resultValue!;
-    if (user.role == UserRole.superAdmin) {
-      return const Result.failed('Cannot deactivate Super Admin users');
-    }
-
-    if (!user.isActive) {
-      return const Result.failed('User is already inactive');
-    }
-
-    final updatedUser = user.copyWith(isActive: false);
-    return _userRepository.updateUser(user: updatedUser);
   }
 }

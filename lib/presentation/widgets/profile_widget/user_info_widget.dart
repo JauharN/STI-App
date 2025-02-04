@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../misc/constants.dart';
 import '../../misc/methods.dart';
 import '../../providers/user_data/user_data_provider.dart';
+import '../user_management_widget/role_badge_widget.dart';
 
 List<Widget> userInfo(WidgetRef ref) => [
       Container(
@@ -50,25 +51,8 @@ List<Widget> userInfo(WidgetRef ref) => [
         ),
       ),
       verticalSpace(8),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(100),
+      if (ref.watch(userDataProvider).valueOrNull?.role != null)
+        RoleBadgeWidget(
+          role: ref.watch(userDataProvider).valueOrNull!.role,
         ),
-        child: Text(
-          ref
-                  .watch(userDataProvider)
-                  .valueOrNull
-                  ?.role
-                  .displayName
-                  .toUpperCase() ??
-              '',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
     ];

@@ -1,10 +1,11 @@
 part of 'delete_program.dart';
 
 class DeleteProgramParams {
-  // ID program yang akan dihapus
   final String programId;
+  final String currentUserRole;
 
   DeleteProgramParams({
     required this.programId,
+    required this.currentUserRole,
   });
 }

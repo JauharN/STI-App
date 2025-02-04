@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sti_app/domain/entities/user.dart';
-import 'package:sti_app/presentation/misc/constants.dart';
-import 'package:sti_app/presentation/widgets/user_management_widget/role_badge_widget.dart';
+import '../../../domain/entities/user.dart';
+import '../../misc/constants.dart';
+import 'role_badge_widget.dart';
 
 class RoleManagementItemWidget extends StatelessWidget {
   final User user;
-  final Function(UserRole) onUpdateRole;
+  final Function(String) onUpdateRole;
   final VoidCallback onToggleActive;
 
   const RoleManagementItemWidget({
@@ -24,11 +24,11 @@ class RoleManagementItemWidget extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Current role: ${user.role.displayName}'),
+            Text('Current role: ${_getRoleDisplay(user.role)}'),
             const SizedBox(height: 16),
-            ...UserRole.values.where((role) => role != UserRole.superAdmin).map(
+            ...RoleConstants.allRoles.where((role) => role != 'superAdmin').map(
                   (role) => ListTile(
-                    title: Text(role.displayName),
+                    title: Text(_getRoleDisplay(role)),
                     leading: role == user.role
                         ? const Icon(Icons.check, color: AppColors.success)
                         : null,
@@ -42,6 +42,10 @@ class RoleManagementItemWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getRoleDisplay(String role) {
+    return RoleConstants.roleDisplayNames[role] ?? 'Unknown Role';
   }
 
   @override

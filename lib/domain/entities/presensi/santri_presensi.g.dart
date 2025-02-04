@@ -19,7 +19,7 @@ Map<String, dynamic> _$$SantriPresensiImplToJson(
     <String, dynamic>{
       'santriId': instance.santriId,
       'santriName': instance.santriName,
-      'status': _$PresensiStatusEnumMap[instance.status]!,
+      'status': instance.status,
       'keterangan': instance.keterangan,
     };
 

@@ -33,6 +33,8 @@ mixin _$PresensiPertemuan {
   DateTime? get createdAt => throw _privateConstructorUsedError;
   @TimestampConverter()
   DateTime? get updatedAt => throw _privateConstructorUsedError;
+  String? get createdBy => throw _privateConstructorUsedError;
+  String? get updatedBy => throw _privateConstructorUsedError;
 
   /// Serializes this PresensiPertemuan to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -60,7 +62,9 @@ abstract class $PresensiPertemuanCopyWith<$Res> {
       String? materi,
       String? catatan,
       @TimestampConverter() DateTime? createdAt,
-      @TimestampConverter() DateTime? updatedAt});
+      @TimestampConverter() DateTime? updatedAt,
+      String? createdBy,
+      String? updatedBy});
 
   $PresensiSummaryCopyWith<$Res> get summary;
 }
@@ -90,6 +94,8 @@ class _$PresensiPertemuanCopyWithImpl<$Res, $Val extends PresensiPertemuan>
     Object? catatan = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? createdBy = freezed,
+    Object? updatedBy = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -132,6 +138,14 @@ class _$PresensiPertemuanCopyWithImpl<$Res, $Val extends PresensiPertemuan>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      createdBy: freezed == createdBy
+          ? _value.createdBy
+          : createdBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      updatedBy: freezed == updatedBy
+          ? _value.updatedBy
+          : updatedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 
@@ -164,7 +178,9 @@ abstract class _$$PresensiPertemuanImplCopyWith<$Res>
       String? materi,
       String? catatan,
       @TimestampConverter() DateTime? createdAt,
-      @TimestampConverter() DateTime? updatedAt});
+      @TimestampConverter() DateTime? updatedAt,
+      String? createdBy,
+      String? updatedBy});
 
   @override
   $PresensiSummaryCopyWith<$Res> get summary;
@@ -193,6 +209,8 @@ class __$$PresensiPertemuanImplCopyWithImpl<$Res>
     Object? catatan = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? createdBy = freezed,
+    Object? updatedBy = freezed,
   }) {
     return _then(_$PresensiPertemuanImpl(
       id: null == id
@@ -235,6 +253,14 @@ class __$$PresensiPertemuanImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      createdBy: freezed == createdBy
+          ? _value.createdBy
+          : createdBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      updatedBy: freezed == updatedBy
+          ? _value.updatedBy
+          : updatedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -251,8 +277,10 @@ class _$PresensiPertemuanImpl implements _PresensiPertemuan {
       required this.summary,
       this.materi,
       this.catatan,
-      @TimestampConverter() this.createdAt,
-      @TimestampConverter() this.updatedAt})
+      @TimestampConverter() this.createdAt = null,
+      @TimestampConverter() this.updatedAt = null,
+      this.createdBy = null,
+      this.updatedBy = null})
       : _daftarHadir = daftarHadir;
 
   factory _$PresensiPertemuanImpl.fromJson(Map<String, dynamic> json) =>
@@ -282,15 +310,23 @@ class _$PresensiPertemuanImpl implements _PresensiPertemuan {
   @override
   final String? catatan;
   @override
+  @JsonKey()
   @TimestampConverter()
   final DateTime? createdAt;
   @override
+  @JsonKey()
   @TimestampConverter()
   final DateTime? updatedAt;
+  @override
+  @JsonKey()
+  final String? createdBy;
+  @override
+  @JsonKey()
+  final String? updatedBy;
 
   @override
   String toString() {
-    return 'PresensiPertemuan(id: $id, programId: $programId, pertemuanKe: $pertemuanKe, tanggal: $tanggal, daftarHadir: $daftarHadir, summary: $summary, materi: $materi, catatan: $catatan, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'PresensiPertemuan(id: $id, programId: $programId, pertemuanKe: $pertemuanKe, tanggal: $tanggal, daftarHadir: $daftarHadir, summary: $summary, materi: $materi, catatan: $catatan, createdAt: $createdAt, updatedAt: $updatedAt, createdBy: $createdBy, updatedBy: $updatedBy)';
   }
 
   @override
@@ -312,7 +348,11 @@ class _$PresensiPertemuanImpl implements _PresensiPertemuan {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.createdBy, createdBy) ||
+                other.createdBy == createdBy) &&
+            (identical(other.updatedBy, updatedBy) ||
+                other.updatedBy == updatedBy));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -328,7 +368,9 @@ class _$PresensiPertemuanImpl implements _PresensiPertemuan {
       materi,
       catatan,
       createdAt,
-      updatedAt);
+      updatedAt,
+      createdBy,
+      updatedBy);
 
   /// Create a copy of PresensiPertemuan
   /// with the given fields replaced by the non-null parameter values.
@@ -349,17 +391,18 @@ class _$PresensiPertemuanImpl implements _PresensiPertemuan {
 
 abstract class _PresensiPertemuan implements PresensiPertemuan {
   factory _PresensiPertemuan(
-          {required final String id,
-          required final String programId,
-          required final int pertemuanKe,
-          @TimestampConverter() required final DateTime tanggal,
-          required final List<SantriPresensi> daftarHadir,
-          required final PresensiSummary summary,
-          final String? materi,
-          final String? catatan,
-          @TimestampConverter() final DateTime? createdAt,
-          @TimestampConverter() final DateTime? updatedAt}) =
-      _$PresensiPertemuanImpl;
+      {required final String id,
+      required final String programId,
+      required final int pertemuanKe,
+      @TimestampConverter() required final DateTime tanggal,
+      required final List<SantriPresensi> daftarHadir,
+      required final PresensiSummary summary,
+      final String? materi,
+      final String? catatan,
+      @TimestampConverter() final DateTime? createdAt,
+      @TimestampConverter() final DateTime? updatedAt,
+      final String? createdBy,
+      final String? updatedBy}) = _$PresensiPertemuanImpl;
 
   factory _PresensiPertemuan.fromJson(Map<String, dynamic> json) =
       _$PresensiPertemuanImpl.fromJson;
@@ -387,6 +430,10 @@ abstract class _PresensiPertemuan implements PresensiPertemuan {
   @override
   @TimestampConverter()
   DateTime? get updatedAt;
+  @override
+  String? get createdBy;
+  @override
+  String? get updatedBy;
 
   /// Create a copy of PresensiPertemuan
   /// with the given fields replaced by the non-null parameter values.

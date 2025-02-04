@@ -23,7 +23,7 @@ final getUsersByRoleUsecaseProvider =
 );
 
 typedef GetUsersByRoleUsecaseRef = AutoDisposeProviderRef<GetUsersByRole>;
-String _$getUsersByRoleHash() => r'436478e3052aa81dd7f92138cd79d02d7355cbfd';
+String _$getUsersByRoleHash() => r'b77393d1dce3ff64dd796b977e2097a891d9cc10';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -57,8 +57,8 @@ class GetUsersByRoleFamily extends Family<AsyncValue<List<User>>> {
 
   /// See also [getUsersByRole].
   GetUsersByRoleProvider call({
-    required UserRole roleToGet,
-    required UserRole currentUserRole,
+    required String roleToGet,
+    required String currentUserRole,
     required bool includeInactive,
   }) {
     return GetUsersByRoleProvider(
@@ -98,8 +98,8 @@ class GetUsersByRoleFamily extends Family<AsyncValue<List<User>>> {
 class GetUsersByRoleProvider extends AutoDisposeFutureProvider<List<User>> {
   /// See also [getUsersByRole].
   GetUsersByRoleProvider({
-    required UserRole roleToGet,
-    required UserRole currentUserRole,
+    required String roleToGet,
+    required String currentUserRole,
     required bool includeInactive,
   }) : this._internal(
           (ref) => getUsersByRole(
@@ -134,8 +134,8 @@ class GetUsersByRoleProvider extends AutoDisposeFutureProvider<List<User>> {
     required this.includeInactive,
   }) : super.internal();
 
-  final UserRole roleToGet;
-  final UserRole currentUserRole;
+  final String roleToGet;
+  final String currentUserRole;
   final bool includeInactive;
 
   @override
@@ -184,10 +184,10 @@ class GetUsersByRoleProvider extends AutoDisposeFutureProvider<List<User>> {
 
 mixin GetUsersByRoleRef on AutoDisposeFutureProviderRef<List<User>> {
   /// The parameter `roleToGet` of this provider.
-  UserRole get roleToGet;
+  String get roleToGet;
 
   /// The parameter `currentUserRole` of this provider.
-  UserRole get currentUserRole;
+  String get currentUserRole;
 
   /// The parameter `includeInactive` of this provider.
   bool get includeInactive;
@@ -199,9 +199,9 @@ class _GetUsersByRoleProviderElement
   _GetUsersByRoleProviderElement(super.provider);
 
   @override
-  UserRole get roleToGet => (origin as GetUsersByRoleProvider).roleToGet;
+  String get roleToGet => (origin as GetUsersByRoleProvider).roleToGet;
   @override
-  UserRole get currentUserRole =>
+  String get currentUserRole =>
       (origin as GetUsersByRoleProvider).currentUserRole;
   @override
   bool get includeInactive =>

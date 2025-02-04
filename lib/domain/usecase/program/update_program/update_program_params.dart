@@ -1,9 +1,8 @@
 part of 'update_program.dart';
 
 class UpdateProgramParams {
-  // Program yang akan diupdate
   final Program program;
-  final UserRole currentUserRole;
+  final String currentUserRole;
 
   UpdateProgramParams({
     required this.program,

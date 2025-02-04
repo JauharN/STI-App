@@ -156,7 +156,7 @@ class _ProgramNameProviderElement
 }
 
 String _$presensiDetailStateHash() =>
-    r'a82505280d392b33175da98736dba12e560d4e68';
+    r'f1851375b27bea4a041bcd3de4fc7b56f07ff6a6';
 
 abstract class _$PresensiDetailState
     extends BuildlessAutoDisposeAsyncNotifier<DetailPresensi> {

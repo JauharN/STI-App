@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../domain/entities/user.dart';
+import '../../extensions/extensions.dart';
 import '../../misc/constants.dart';
 import '../../misc/methods.dart';
 import '../../providers/user_data/user_data_provider.dart';
@@ -16,263 +17,277 @@ class PresensiPage extends ConsumerStatefulWidget {
 }
 
 class _PresensiPageState extends ConsumerState<PresensiPage> {
+  // RBAC Helper
+  bool _canManagePresensi(String? role) {
+    return role == RoleConstants.admin || role == RoleConstants.superAdmin;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(userDataProvider).valueOrNull;
-    final isAdmin = user?.role == UserRole.admin;
+    final userAsync = ref.watch(userDataProvider);
+
+    return userAsync.when(
+      data: (user) => _buildContent(context, user),
+      loading: () => const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, stack) => Scaffold(
+        body: Center(
+          child: Text('Error: ${error.toString()}'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, User? user) {
+    final isAdmin = _canManagePresensi(user?.role);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          // Custom App Bar
-          SliverAppBar(
-            expandedHeight: MediaQuery.of(context).size.height * 0.25,
-            floating: false,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Background pattern
-                  Container(
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/green-pattern.jpg'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  // Gradient overlay
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.3),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Title Section
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 16,
-                    left: 0,
-                    right: 0,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Presensi',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // User name or role specific text
-                          Text(
-                            isAdmin
-                                ? 'Kelola Presensi Santri'
-                                : 'Riwayat Kehadiran',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Action buttons for admin
-            actions: [
-              if (isAdmin) ...[
-                IconButton(
-                  onPressed: () {
-                    // Navigate to input presensi page
-                    context.pushNamed('input-presensi');
-                  },
-                  icon: const Icon(
-                    Icons.add_circle_outline,
-                    color: Colors.white,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {
-                    // Navigate to presensi history/management
-                    context.pushNamed('manage-presensi');
-                  },
-                  icon: const Icon(
-                    Icons.history,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-              const SizedBox(width: 8),
-            ],
-          ),
-          // Content
+          _buildAppBar(context, isAdmin),
           SliverToBoxAdapter(
             child: Container(
               color: AppColors.background,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Program Section
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Program',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.neutral900,
-                          ),
-                        ),
-                        verticalSpace(8),
-                        Text(
-                          isAdmin
-                              ? 'Pilih program untuk mengelola presensi'
-                              : 'Pilih program untuk melihat presensi',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            color: AppColors.neutral600,
-                          ),
-                        ),
-                        verticalSpace(24),
-                        // Program Cards
-                        PresensiProgramCard(
-                          title: 'TAHFIDZ',
-                          userId: user?.uid ?? '',
-                          programId: 'TAHFIDZ',
-                          onTap: () {
-                            if (isAdmin) {
-                              // Untuk admin ke manage presensi
-                              context.pushNamed('manage-presensi',
-                                  pathParameters: {'programId': 'TAHFIDZ'});
-                            } else {
-                              // Untuk santri ke detail presensi
-                              context.pushNamed('presensi-detail',
-                                  pathParameters: {'programId': 'TAHFIDZ'});
-                            }
-                          },
-                        ),
-                        verticalSpace(16),
-                        PresensiProgramCard(
-                          title: 'GMM',
-                          userId: user?.uid ?? '',
-                          programId: 'GMM',
-                          onTap: () {
-                            if (isAdmin) {
-                              context.pushNamed('manage-presensi',
-                                  pathParameters: {'programId': 'GMM'});
-                            } else {
-                              context.pushNamed('presensi-detail',
-                                  pathParameters: {'programId': 'GMM'});
-                            }
-                          },
-                        ),
-                        verticalSpace(16),
-                        PresensiProgramCard(
-                          title: 'IFIS',
-                          userId: user?.uid ?? '',
-                          programId: 'IFIS',
-                          onTap: () {
-                            if (isAdmin) {
-                              context.pushNamed('manage-presensi',
-                                  pathParameters: {'programId': 'IFIS'});
-                            } else {
-                              context.pushNamed('presensi-detail',
-                                  pathParameters: {'programId': 'IFIS'});
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Admin Quick Actions Section
+                  _buildProgramSection(context, isAdmin, user),
                   if (isAdmin) ...[
-                    const Divider(
-                      height: 1,
-                      color: AppColors.neutral200,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Aksi Cepat',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.neutral900,
-                            ),
-                          ),
-                          verticalSpace(16),
-                          // Input Presensi Card
-                          _buildQuickActionCard(
-                            icon: Icons.add_circle_outline,
-                            title: 'Input Presensi',
-                            subtitle: 'Input presensi untuk pertemuan baru',
-                            color: AppColors.primary,
-                            onTap: () {
-                              // Gunakan programId yang sudah ada
-                              context.pushNamed(
-                                'input-presensi',
-                                pathParameters: {'programId': 'TAHFIDZ'},
-                              );
-                            },
-                          ),
-                          verticalSpace(16),
-                          // Manage Presensi Card
-                          _buildQuickActionCard(
-                            icon: Icons.edit_outlined,
-                            title: 'Kelola Presensi',
-                            subtitle: 'Edit atau hapus data presensi',
-                            color: AppColors.secondary,
-                            onTap: () => context.pushNamed('manage-presensi'),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const Divider(height: 1, color: AppColors.neutral200),
+                    _buildQuickActionsSection(context),
                   ],
-                  // Recent Activity Section - For both admin and santri
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Aktivitas Terkini',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.neutral900,
-                          ),
-                        ),
-                        verticalSpace(16),
-                        // Recent activity items would go here
-                        // This could be a list of recent presensi entries
-                        // We'll implement this in the next iteration
-                      ],
-                    ),
-                  ),
+                  _buildRecentActivitySection(context),
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context, bool isAdmin) {
+    return SliverAppBar(
+      expandedHeight: MediaQuery.of(context).size.height * 0.25,
+      floating: false,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/green-pattern.jpg'),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.3),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+            _buildAppBarTitle(context, isAdmin),
+          ],
+        ),
+      ),
+      actions: _buildAppBarActions(context, isAdmin),
+    );
+  }
+
+  Widget _buildAppBarTitle(BuildContext context, bool isAdmin) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 16,
+      left: 0,
+      right: 0,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Presensi',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              isAdmin ? 'Kelola Presensi Santri' : 'Riwayat Kehadiran',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildAppBarActions(BuildContext context, bool isAdmin) {
+    if (!isAdmin) return [];
+
+    return [
+      IconButton(
+        onPressed: () => context.pushNamed('input-presensi'),
+        icon: const Icon(
+          Icons.add_circle_outline,
+          color: Colors.white,
+        ),
+      ),
+      IconButton(
+        onPressed: () => context.pushNamed('manage-presensi'),
+        icon: const Icon(
+          Icons.history,
+          color: Colors.white,
+        ),
+      ),
+      const SizedBox(width: 8),
+    ];
+  }
+
+  Widget _buildProgramSection(BuildContext context, bool isAdmin, User? user) {
+    final programs = [
+      {'id': 'TAHFIDZ', 'title': 'TAHFIDZ'},
+      {'id': 'GMM', 'title': 'GMM'},
+      {'id': 'IFIS', 'title': 'IFIS'},
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Program',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.neutral900,
+            ),
+          ),
+          verticalSpace(8),
+          Text(
+            isAdmin
+                ? 'Pilih program untuk mengelola presensi'
+                : 'Pilih program untuk melihat presensi',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: AppColors.neutral600,
+            ),
+          ),
+          verticalSpace(24),
+          ...programs.map((program) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: PresensiProgramCard(
+                  title: program['title']!,
+                  userId: user?.uid ?? '',
+                  programId: program['id']!,
+                  onTap: () => _navigateToProgram(
+                    context,
+                    isAdmin,
+                    program['id']!,
+                  ),
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToProgram(
+      BuildContext context, bool isAdmin, String programId) {
+    if (isAdmin) {
+      context.pushNamed(
+        'manage-presensi',
+        pathParameters: {'programId': programId},
+      );
+    } else {
+      context.pushNamed(
+        'presensi-detail',
+        pathParameters: {'programId': programId},
+      );
+    }
+  }
+
+  Widget _buildQuickActionsSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Aksi Cepat',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.neutral900,
+            ),
+          ),
+          verticalSpace(16),
+          _buildQuickActionCard(
+            icon: Icons.add_circle_outline,
+            title: 'Input Presensi',
+            subtitle: 'Input presensi untuk pertemuan baru',
+            color: AppColors.primary,
+            onTap: () => context.pushNamed(
+              'input-presensi',
+              pathParameters: {'programId': 'TAHFIDZ'},
+            ),
+          ),
+          verticalSpace(16),
+          _buildQuickActionCard(
+            icon: Icons.edit_outlined,
+            title: 'Kelola Presensi',
+            subtitle: 'Edit atau hapus data presensi',
+            color: AppColors.secondary,
+            onTap: () => context.pushNamed('manage-presensi'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivitySection(BuildContext context) {
+    // TODO: Implement recent activity
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Aktivitas Terkini',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.neutral900,
+            ),
+          ),
+          verticalSpace(16),
+          // Placeholder untuk recent activity
+          Center(
+            child: Text(
+              'Coming Soon',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppColors.neutral600,
               ),
             ),
           ),
@@ -290,7 +305,8 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
   }) {
     return InkWell(
       onTap: onTap,
-      child: Container(
+      borderRadius: BorderRadius.circular(16),
+      child: Ink(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -311,11 +327,7 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
+              child: Icon(icon, color: color, size: 24),
             ),
             horizontalSpace(16),
             Expanded(

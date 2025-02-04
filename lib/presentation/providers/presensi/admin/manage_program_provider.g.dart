@@ -7,7 +7,7 @@ part of 'manage_program_provider.dart';
 // **************************************************************************
 
 String _$manageProgramControllerHash() =>
-    r'f9b1359ebe5de579d031caad9f19c1f010e9605b';
+    r'afdc4212fc28030cc68dd1d09ab6bf7183c0c2a7';
 
 /// See also [ManageProgramController].
 @ProviderFor(ManageProgramController)

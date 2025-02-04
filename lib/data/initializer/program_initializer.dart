@@ -1,8 +1,9 @@
+// lib/data/initializer/program_initializer.dart
+
 import '../../domain/entities/program.dart';
 import '../../domain/usecase/program/create_program/create_program.dart';
 import '../../presentation/utils/logger_util.dart';
 import '../repositories/program_repository.dart';
-import '../../domain/entities/user.dart'; // Tambahkan import untuk UserRole
 
 class ProgramInitializer {
   final CreateProgram _createProgram;
@@ -17,7 +18,7 @@ class ProgramInitializer {
   Future<void> initializeDefaultPrograms() async {
     final defaultPrograms = [
       Program(
-        id: 'TAHFIDZ', // ID tetap
+        id: 'TAHFIDZ',
         nama: 'TAHFIDZ',
         deskripsi: 'Program Tahfidz Al-Quran',
         jadwal: ['Senin', 'Rabu', 'Jumat'],
@@ -58,31 +59,38 @@ class ProgramInitializer {
     ];
 
     for (var program in defaultPrograms) {
-      // Cek apakah program sudah ada
-      final existingProgram =
-          await _programRepository.getProgramById(program.id);
+      try {
+        // Cek apakah program sudah ada
+        final existingProgram =
+            await _programRepository.getProgramById(program.id);
 
-      if (existingProgram.isSuccess) {
-        logger.i('Program ${program.nama} already exists, skipping...');
-        continue;
-      }
+        if (existingProgram.isSuccess) {
+          logger
+              .i('Program ${program.nama} sudah ada, melewati inisialisasi...');
+          continue;
+        }
 
-      // Jika belum ada, buat program baru
-      final result = await _createProgram(
-        CreateProgramParams(
-          nama: program.nama,
-          deskripsi: program.deskripsi,
-          jadwal: program.jadwal,
-          lokasi: program.lokasi,
-          currentUserRole: UserRole.superAdmin,
-        ),
-      );
+        // Jika belum ada, buat program baru
+        final result = await _createProgram(
+          CreateProgramParams(
+            nama: program.nama,
+            deskripsi: program.deskripsi,
+            jadwal: program.jadwal,
+            lokasi: program.lokasi,
+            currentUserRole: 'superAdmin',
+            totalPertemuan: program.totalPertemuan,
+            kelas: program.kelas,
+          ),
+        );
 
-      if (result.isFailed) {
-        logger
-            .e('Failed to initialize ${program.nama}: ${result.errorMessage}');
-      } else {
-        logger.i('Successfully initialized ${program.nama}');
+        if (result.isFailed) {
+          logger
+              .e('Gagal inisialisasi ${program.nama}: ${result.errorMessage}');
+        } else {
+          logger.i('Berhasil inisialisasi ${program.nama}');
+        }
+      } catch (e) {
+        logger.e('Error saat inisialisasi ${program.nama}: $e');
       }
     }
   }

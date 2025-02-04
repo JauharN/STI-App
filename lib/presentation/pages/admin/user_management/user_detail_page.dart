@@ -1,12 +1,11 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:sti_app/presentation/extensions/extensions.dart';
 
+import '../../../../domain/entities/result.dart';
 import '../../../../domain/entities/user.dart';
 import '../../../misc/constants.dart';
 import '../../../providers/repositories/user_repository/user_repository_provider.dart';
@@ -30,19 +29,22 @@ class UserDetailPage extends ConsumerStatefulWidget {
 }
 
 class _UserDetailPageState extends ConsumerState<UserDetailPage> {
-  // Form key
   final _formKey = GlobalKey<FormState>();
-  late final AsyncValue<User> userAsync;
 
   // Controllers
-  late final TextEditingController nameController;
-  late final TextEditingController emailController;
-  late final TextEditingController phoneController;
-  late final TextEditingController addressController;
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final phoneController = TextEditingController();
+  final addressController = TextEditingController();
 
   // State variables
   bool isEditing = false;
+  bool isLoading = false;
   DateTime? selectedDate;
+  File? profileImage;
+  String? error;
+
+  // Focus nodes
   final _nameFocus = FocusNode();
   final _phoneFocus = FocusNode();
   final _addressFocus = FocusNode();
@@ -50,22 +52,7 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
   @override
   void initState() {
     super.initState();
-    _initializeControllers();
-  }
-
-  void _initializeControllers() {
-    nameController = TextEditingController();
-    emailController = TextEditingController();
-    phoneController = TextEditingController();
-    addressController = TextEditingController();
-  }
-
-  void _updateControllers(User user) {
-    nameController.text = user.name;
-    emailController.text = user.email;
-    phoneController.text = user.phoneNumber ?? '';
-    addressController.text = user.address ?? '';
-    selectedDate = user.dateOfBirth;
+    _loadUserData();
   }
 
   @override
@@ -74,207 +61,293 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
     emailController.dispose();
     phoneController.dispose();
     addressController.dispose();
+
     _nameFocus.dispose();
     _phoneFocus.dispose();
     _addressFocus.dispose();
+
     super.dispose();
+  }
+
+  bool _canEdit(String? currentUserRole) {
+    return currentUserRole == 'superAdmin';
+  }
+
+  bool _canManageRole(String? currentUserRole, String targetUserRole) {
+    if (currentUserRole != 'superAdmin') return false;
+    if (targetUserRole == 'superAdmin') return false;
+    return true;
+  }
+
+  String? _validateName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Name is required';
+    }
+    if (value.length < 3) {
+      return 'Name must be at least 3 characters';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) return null;
+    if (value.length < 10) {
+      return 'Phone number must be at least 10 digits';
+    }
+    return null;
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() => isLoading = true);
+
+    try {
+      final userRepository = ref.read(userRepositoryProvider);
+      final result = await userRepository.getUser(uid: widget.userId);
+
+      if (result case Success(value: final user)) {
+        nameController.text = user.name;
+        phoneController.text = user.phoneNumber ?? '';
+        addressController.text = user.address ?? '';
+        selectedDate = user.dateOfBirth;
+      } else {
+        throw Exception('Failed to load user data');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading user data: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
   }
 
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final currentUser = ref.read(getUserProvider(widget.userId)).value;
-    if (currentUser == null) return;
-
-    final updatedUser = currentUser.copyWith(
-      name: nameController.text,
-      phoneNumber: phoneController.text,
-      address: addressController.text,
-      dateOfBirth: selectedDate,
-    );
+    setState(() => isLoading = true);
 
     try {
-      final result = await ref.read(userRepositoryProvider).updateUser(
-            user: updatedUser,
-          );
+      final userRepository = ref.read(userRepositoryProvider);
+      final currentUser = ref.read(getUserProvider(widget.userId)).value;
+
+      if (currentUser == null) return;
+
+      final updatedUser = currentUser.copyWith(
+        name: nameController.text,
+        phoneNumber: phoneController.text,
+        address: addressController.text,
+        dateOfBirth: selectedDate,
+      );
+
+      final result = await userRepository.updateUser(
+        user: updatedUser,
+      );
 
       if (result.isSuccess) {
-        setState(() => isEditing = false);
+        if (mounted) {
+          setState(() => isEditing = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('User data updated successfully'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
         ref.refresh(getUserProvider(widget.userId));
       } else {
-        // Show error
-        if (context.mounted) {
-          context.showSnackBar(result.errorMessage!);
-        }
+        throw Exception(result.errorMessage);
       }
     } catch (e) {
-      if (context.mounted) {
-        context.showSnackBar('Failed to update user');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update user: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
       }
     }
   }
 
   Future<void> _handleUpdatePhoto() async {
     try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      final picker = ImagePicker();
+      final pickedImage = await picker.pickImage(source: ImageSource.gallery);
 
-      if (image == null) return;
+      if (pickedImage != null) {
+        setState(() => profileImage = File(pickedImage.path));
 
-      final currentUser = ref.read(getUserProvider(widget.userId)).value;
-      if (currentUser == null) return;
+        final currentUser = ref.read(getUserProvider(widget.userId)).value;
+        if (currentUser != null) {
+          final userRepository = ref.read(userRepositoryProvider);
+          final result = await userRepository.uploadProfilePicture(
+            user: currentUser,
+            imageFile: File(pickedImage.path),
+          );
 
-      final file = File(image.path);
-      final result =
-          await ref.read(userRepositoryProvider).uploadProfilePicture(
-                user: currentUser,
-                imageFile: file,
+          if (result.isSuccess) {
+            ref.refresh(getUserProvider(widget.userId));
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Profile picture updated'),
+                  backgroundColor: AppColors.success,
+                ),
               );
-
-      if (result.isSuccess) {
-        ref.refresh(getUserProvider(widget.userId));
-      } else {
-        if (context.mounted) {
-          context.showSnackBar(result.errorMessage!);
+            }
+          } else {
+            throw Exception(result.errorMessage);
+          }
         }
       }
     } catch (e) {
-      if (context.mounted) {
-        context.showSnackBar('Failed to update profile picture');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update profile picture: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }
 
-  Future<void> _handleUpdateRole() async {
-    // Only SuperAdmin can update roles
-    final currentUserRole = ref.read(userDataProvider).value?.role;
-    if (currentUserRole != UserRole.superAdmin) {
-      context.showSnackBar('Only Super Admin can change roles');
-      return;
-    }
+  Future<void> _handleUpdateRole(String newRole) async {
+    final currentUser = ref.read(userDataProvider).value;
 
-    final currentUser = ref.read(getUserProvider(widget.userId)).value;
-    if (currentUser == null) return;
-
-    // Don't allow changing SuperAdmin role
-    if (currentUser.role == UserRole.superAdmin) {
-      context.showSnackBar('Cannot modify Super Admin role');
-      return;
-    }
-
-    // Show role selection dialog
-    final newRole = await showDialog<UserRole>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Update User Role'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Current role: ${currentUser.role.displayName}'),
-            const SizedBox(height: 16),
-            ...UserRole.values
-                .where((role) =>
-                    role != UserRole.superAdmin) // Can't assign superAdmin
-                .map(
-                  (role) => ListTile(
-                    title: Text(role.displayName),
-                    onTap: () => Navigator.pop(context, role),
-                  ),
-                ),
-          ],
+    if (!_canManageRole(currentUser?.role, newRole)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You don\'t have permission to change roles'),
+          backgroundColor: AppColors.error,
         ),
-      ),
-    );
+      );
+      return;
+    }
 
-    if (newRole == null) return;
+    setState(() => isLoading = true);
 
     try {
-      final updatedUser = currentUser.copyWith(role: newRole);
-      final result = await ref.read(userRepositoryProvider).updateUser(
-            user: updatedUser,
+      await ref.read(userDataProvider.notifier).updateUserRole(
+            uid: widget.userId,
+            newRole: newRole,
           );
 
-      if (result.isSuccess) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User role updated successfully'),
+            backgroundColor: AppColors.success,
+          ),
+        );
         ref.refresh(getUserProvider(widget.userId));
-      } else {
-        if (context.mounted) {
-          context.showSnackBar(result.errorMessage!);
-        }
       }
     } catch (e) {
-      if (context.mounted) {
-        context.showSnackBar('Failed to update user role');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update role: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
       }
     }
   }
 
   Future<void> _handleToggleActive() async {
-    final currentUserRole = ref.read(userDataProvider).value?.role;
-    if (currentUserRole != UserRole.superAdmin) {
-      context.showSnackBar('Only Super Admin can modify user status');
-      return;
-    }
-
     final currentUser = ref.read(getUserProvider(widget.userId)).value;
     if (currentUser == null) return;
 
-    // Don't allow deactivating SuperAdmin
-    if (currentUser.role == UserRole.superAdmin) {
-      context.showSnackBar('Cannot deactivate Super Admin');
+    final userRole = ref.read(userDataProvider).value?.role;
+    if (!_canManageRole(userRole, currentUser.role)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You don\'t have permission for this action'),
+          backgroundColor: AppColors.error,
+        ),
+      );
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext dialogContext) => AlertDialog(
         title: Text(
           currentUser.isActive ? 'Deactivate User' : 'Activate User',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.bold,
-          ),
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Are you sure you want to ${currentUser.isActive ? 'deactivate' : 'activate'} ${currentUser.name}?',
-          style: GoogleFonts.plusJakartaSans(),
+          'Are you sure you want to ${currentUser.isActive ? 'deactivate' : 'activate'} this user?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: ElevatedButton.styleFrom(
               backgroundColor:
                   currentUser.isActive ? AppColors.error : AppColors.success,
             ),
-            child: Text(
-              currentUser.isActive ? 'Deactivate' : 'Activate',
-              style: const TextStyle(color: Colors.white),
-            ),
+            child: Text(currentUser.isActive ? 'Deactivate' : 'Activate'),
           ),
         ],
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirm == true) {
+      setState(() => isLoading = true);
 
-    try {
-      final updatedUser = currentUser.copyWith(isActive: !currentUser.isActive);
-      final result = await ref.read(userRepositoryProvider).updateUser(
-            user: updatedUser,
-          );
-
-      if (result.isSuccess) {
-        ref.refresh(getUserProvider(widget.userId));
-      } else {
-        if (context.mounted) {
-          context.showSnackBar(result.errorMessage!);
+      try {
+        if (currentUser.isActive) {
+          await ref
+              .read(userDataProvider.notifier)
+              .deactivateUser(currentUser.uid);
+        } else {
+          await ref
+              .read(userDataProvider.notifier)
+              .activateUser(currentUser.uid);
         }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        context.showSnackBar('Failed to update user status');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  '${currentUser.isActive ? 'Deactivated' : 'Activated'} user successfully'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          ref.refresh(getUserProvider(widget.userId));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update user status: ${e.toString()}'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => isLoading = false);
+        }
       }
     }
   }
@@ -286,7 +359,7 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
         initialDate: selectedDate ?? DateTime.now(),
         firstDate: DateTime(1900),
         lastDate: DateTime.now(),
-        builder: (context, child) {
+        builder: (BuildContext context, Widget? child) {
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.light(
@@ -302,30 +375,66 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
       );
 
       if (picked != null && picked != selectedDate) {
-        setState(() {
-          selectedDate = picked;
-        });
-
-        // Automatically save if user updates date without editing other fields
-        if (!isEditing) {
-          final currentUser = ref.read(getUserProvider(widget.userId)).value;
-          if (currentUser == null) return;
-
-          final updatedUser = currentUser.copyWith(dateOfBirth: picked);
-          final result = await ref.read(userRepositoryProvider).updateUser(
-                user: updatedUser,
-              );
-
-          if (result.isFailed && context.mounted) {
-            context.showSnackBar(result.errorMessage!);
-          }
+        setState(() => selectedDate = picked);
+        if (isEditing) {
+          await _handleSave();
         }
       }
     } catch (e) {
-      if (context.mounted) {
-        context.showSnackBar('Failed to update date of birth');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update date: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
+  }
+
+  void _showRoleUpdateDialog(String currentRole) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text(
+          'Update Role',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: RoleConstants.allRoles
+              .where((role) => role != currentRole && role != 'superAdmin')
+              .map(
+                (role) => ListTile(
+                  title: Text(RoleConstants.roleDisplayNames[role] ?? role),
+                  onTap: () {
+                    Navigator.pop(dialogContext);
+                    _handleUpdateRole(role);
+                  },
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(User user) {
+    final currentUserRole = ref.watch(userDataProvider).value?.role;
+
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildUserInfo(user),
+          const SizedBox(height: 24),
+          if (isEditing) _buildEditForm(),
+          const SizedBox(height: 24),
+          if (currentUserRole == 'superAdmin') _buildAdminActions(user),
+        ],
+      ),
+    );
   }
 
   Widget _buildUserInfo(User user) {
@@ -335,20 +444,42 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
         Center(
           child: Stack(
             children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundImage: user.photoUrl != null
-                    ? NetworkImage(user.photoUrl!)
-                    : const AssetImage('assets/profile-placeholder.png')
-                        as ImageProvider,
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.neutral100,
+                  image: user.photoUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(user.photoUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: user.photoUrl == null
+                    ? const Icon(Icons.person,
+                        size: 50, color: AppColors.neutral400)
+                    : null,
               ),
               if (isEditing)
                 Positioned(
                   right: 0,
                   bottom: 0,
-                  child: IconButton(
-                    icon: const Icon(Icons.camera_alt),
-                    onPressed: _handleUpdatePhoto,
+                  child: InkWell(
+                    onTap: _handleUpdatePhoto,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary,
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -363,6 +494,7 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
+                  color: AppColors.neutral900,
                 ),
               ),
               const SizedBox(height: 4),
@@ -385,48 +517,40 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         STITextField(
-          labelText: 'Nama Lengkap',
+          labelText: 'Full Name',
           controller: nameController,
           focusNode: _nameFocus,
           textInputAction: TextInputAction.next,
           onFieldSubmitted: (_) => _phoneFocus.requestFocus(),
           prefixIcon: const Icon(Icons.person_outline),
-          validator: (value) =>
-              value?.isEmpty ?? true ? 'Nama tidak boleh kosong' : null,
+          validator: _validateName,
         ),
         const SizedBox(height: 16),
-
         STITextField(
-          labelText: 'Nomor Telepon',
+          labelText: 'Phone Number',
           controller: phoneController,
           focusNode: _phoneFocus,
           textInputAction: TextInputAction.next,
           onFieldSubmitted: (_) => _addressFocus.requestFocus(),
           prefixIcon: const Icon(Icons.phone_outlined),
           maxLength: 13,
-          validator: (value) {
-            if (value?.isEmpty ?? true) return null; // Optional
-            if (value!.length < 10) return 'Nomor telepon minimal 10 digit';
-            return null;
-          },
+          validator: _validatePhone,
         ),
         const SizedBox(height: 16),
-
         STITextField(
-          labelText: 'Alamat',
+          labelText: 'Address',
           controller: addressController,
           focusNode: _addressFocus,
           textInputAction: TextInputAction.done,
-          onFieldSubmitted: (_) => _handleSave(),
           prefixIcon: const Icon(Icons.location_on_outlined),
           maxLines: 2,
         ),
-        // Date picker
+        const SizedBox(height: 16),
         InkWell(
           onTap: () => _selectDate(context),
           child: InputDecorator(
             decoration: InputDecoration(
-              labelText: 'Tanggal Lahir',
+              labelText: 'Date of Birth',
               prefixIcon: const Icon(Icons.calendar_today),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -435,13 +559,11 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
             child: Text(
               selectedDate != null
                   ? DateFormat('dd MMMM yyyy').format(selectedDate!)
-                  : 'Pilih tanggal lahir',
+                  : 'Select date of birth',
             ),
           ),
         ),
         const SizedBox(height: 24),
-
-        // Save & Cancel buttons
         Row(
           children: [
             Expanded(
@@ -451,7 +573,7 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
                   backgroundColor: AppColors.primary,
                   minimumSize: const Size(double.infinity, 48),
                 ),
-                child: const Text('Simpan'),
+                child: const Text('Save'),
               ),
             ),
             const SizedBox(width: 16),
@@ -461,7 +583,7 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 48),
                 ),
-                child: const Text('Batal'),
+                child: const Text('Cancel'),
               ),
             ),
           ],
@@ -484,19 +606,16 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // Role update button
         OutlinedButton.icon(
-          onPressed: _handleUpdateRole,
+          onPressed: () => _showRoleUpdateDialog(user.role),
           icon: const Icon(Icons.admin_panel_settings),
-          label: Text('Change Role (Current: ${user.role.displayName})'),
+          label: Text(
+              'Change Role (Current: ${RoleConstants.roleDisplayNames[user.role] ?? user.role})'),
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(double.infinity, 48),
           ),
         ),
         const SizedBox(height: 12),
-
-        // Active/Inactive toggle
         ElevatedButton.icon(
           onPressed: _handleToggleActive,
           icon: Icon(user.isActive ? Icons.block : Icons.check_circle),
@@ -511,49 +630,43 @@ class _UserDetailPageState extends ConsumerState<UserDetailPage> {
     );
   }
 
-  Widget _buildContent(User user) {
-    _updateControllers(user);
-    return Form(
-      key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildUserInfo(user),
-          const SizedBox(height: 24),
-          if (isEditing) _buildEditForm(),
-          const SizedBox(height: 24),
-          if (ref.watch(userDataProvider).value?.role == UserRole.superAdmin)
-            _buildAdminActions(user),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(getUserProvider(widget.userId));
+    final currentUserRole = ref.watch(userDataProvider).value?.role;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('User Detail'),
+        title: Text(
+          'User Detail',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+        ),
         actions: [
-          if (!isEditing &&
-              ref.watch(userDataProvider).value?.role == UserRole.superAdmin)
+          if (!isEditing && _canEdit(currentUserRole))
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () => setState(() => isEditing = true),
             ),
         ],
       ),
-      body: userAsync.when(
-        loading: () => const LoadingState(
-          message: 'Loading user details...',
-        ),
-        error: (error, stack) => ErrorState(
-          message: error.toString(),
-          onRetry: () => ref.refresh(getUserProvider(widget.userId)),
-        ),
-        data: (user) => _buildContent(user),
+      body: Stack(
+        children: [
+          userAsync.when(
+            loading: () => const LoadingState(
+              message: 'Loading user details...',
+            ),
+            error: (error, stack) => ErrorState(
+              message: error.toString(),
+              onRetry: () => ref.refresh(getUserProvider(widget.userId)),
+            ),
+            data: (user) => _buildContent(user),
+          ),
+          if (isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ),
     );
   }

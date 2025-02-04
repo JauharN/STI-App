@@ -13,12 +13,16 @@ part 'manage_presensi_provider.g.dart';
 class ManagePresensiState extends _$ManagePresensiState {
   @override
   Future<List<PresensiPertemuan>> build(String programId) async {
-    // Get presensi pertemuan list
     final getAllPresensi = ref.read(getAllPresensiPertemuanProvider);
 
-    final result = await getAllPresensi(
-      GetAllPresensiPertemuanParams(programId: programId),
-    );
+    // Get current user role
+    final user = ref.read(userDataProvider).value;
+    if (user == null) throw Exception('User tidak ditemukan');
+
+    final result = await getAllPresensi(GetAllPresensiPertemuanParams(
+      programId: programId,
+      currentUserRole: user.role, // String role
+    ));
 
     return switch (result) {
       Success(value: final presensi) => presensi,
@@ -26,28 +30,22 @@ class ManagePresensiState extends _$ManagePresensiState {
     };
   }
 
-  // Method untuk hapus presensi
   Future<void> deletePresensi(String presensiId) async {
     state = const AsyncLoading();
-
     try {
-      // Ambil user role dari user yang sedang aktif
       final user = ref.read(userDataProvider).value;
-      if (user == null) {
-        throw Exception('User tidak ditemukan');
-      }
-
-      final currentUserRole = user.role;
+      if (user == null) throw Exception('User tidak ditemukan');
 
       final deletePresensi = ref.read(deletePresensiPertemuanProvider);
       final result = await deletePresensi(
         DeletePresensiPertemuanParams(
           id: presensiId,
-          currentUserRole: currentUserRole, // Tambahan validasi role
+          programId: state.value?.first.programId ?? '',
+          pertemuanKe: state.value?.first.pertemuanKe ?? 0,
+          currentUserRole: user.role, // String role
         ),
       );
 
-      // Refresh list setelah hapus
       if (result is Success) {
         ref.invalidateSelf();
       }
