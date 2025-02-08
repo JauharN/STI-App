@@ -24,15 +24,27 @@ mixin _$ProgresHafalan {
   String get userId => throw _privateConstructorUsedError;
   String get programId =>
       throw _privateConstructorUsedError; // 'TAHFIDZ' atau 'GMM'
-// Fields untuk Tahfidz
+  DateTime get tanggal => throw _privateConstructorUsedError; // Fields Tahfidz
   int? get juz => throw _privateConstructorUsedError;
   int? get halaman => throw _privateConstructorUsedError;
-  int? get ayat => throw _privateConstructorUsedError; // Fields untuk GMM
-  String? get iqroLevel => throw _privateConstructorUsedError;
+  int? get ayat => throw _privateConstructorUsedError;
+  String? get surah => throw _privateConstructorUsedError;
+  String? get statusPenilaian =>
+      throw _privateConstructorUsedError; // Lancar/Belum/Perlu Perbaikan
+// Fields GMM
+  String? get iqroLevel => throw _privateConstructorUsedError; // Level 1-6
   int? get iqroHalaman => throw _privateConstructorUsedError;
+  String? get statusIqro => throw _privateConstructorUsedError; // Lancar/Belum
   String? get mutabaahTarget => throw _privateConstructorUsedError;
-  DateTime get tanggal => throw _privateConstructorUsedError;
+  String? get statusMutabaah =>
+      throw _privateConstructorUsedError; // Tercapai/Belum
   String? get catatan => throw _privateConstructorUsedError;
+  @TimestampConverter()
+  DateTime? get createdAt => throw _privateConstructorUsedError;
+  @TimestampConverter()
+  DateTime? get updatedAt => throw _privateConstructorUsedError;
+  String? get createdBy => throw _privateConstructorUsedError;
+  String? get updatedBy => throw _privateConstructorUsedError;
 
   /// Serializes this ProgresHafalan to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -54,14 +66,22 @@ abstract class $ProgresHafalanCopyWith<$Res> {
       {String id,
       String userId,
       String programId,
+      DateTime tanggal,
       int? juz,
       int? halaman,
       int? ayat,
+      String? surah,
+      String? statusPenilaian,
       String? iqroLevel,
       int? iqroHalaman,
+      String? statusIqro,
       String? mutabaahTarget,
-      DateTime tanggal,
-      String? catatan});
+      String? statusMutabaah,
+      String? catatan,
+      @TimestampConverter() DateTime? createdAt,
+      @TimestampConverter() DateTime? updatedAt,
+      String? createdBy,
+      String? updatedBy});
 }
 
 /// @nodoc
@@ -82,14 +102,22 @@ class _$ProgresHafalanCopyWithImpl<$Res, $Val extends ProgresHafalan>
     Object? id = null,
     Object? userId = null,
     Object? programId = null,
+    Object? tanggal = null,
     Object? juz = freezed,
     Object? halaman = freezed,
     Object? ayat = freezed,
+    Object? surah = freezed,
+    Object? statusPenilaian = freezed,
     Object? iqroLevel = freezed,
     Object? iqroHalaman = freezed,
+    Object? statusIqro = freezed,
     Object? mutabaahTarget = freezed,
-    Object? tanggal = null,
+    Object? statusMutabaah = freezed,
     Object? catatan = freezed,
+    Object? createdAt = freezed,
+    Object? updatedAt = freezed,
+    Object? createdBy = freezed,
+    Object? updatedBy = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -104,6 +132,10 @@ class _$ProgresHafalanCopyWithImpl<$Res, $Val extends ProgresHafalan>
           ? _value.programId
           : programId // ignore: cast_nullable_to_non_nullable
               as String,
+      tanggal: null == tanggal
+          ? _value.tanggal
+          : tanggal // ignore: cast_nullable_to_non_nullable
+              as DateTime,
       juz: freezed == juz
           ? _value.juz
           : juz // ignore: cast_nullable_to_non_nullable
@@ -116,6 +148,14 @@ class _$ProgresHafalanCopyWithImpl<$Res, $Val extends ProgresHafalan>
           ? _value.ayat
           : ayat // ignore: cast_nullable_to_non_nullable
               as int?,
+      surah: freezed == surah
+          ? _value.surah
+          : surah // ignore: cast_nullable_to_non_nullable
+              as String?,
+      statusPenilaian: freezed == statusPenilaian
+          ? _value.statusPenilaian
+          : statusPenilaian // ignore: cast_nullable_to_non_nullable
+              as String?,
       iqroLevel: freezed == iqroLevel
           ? _value.iqroLevel
           : iqroLevel // ignore: cast_nullable_to_non_nullable
@@ -124,17 +164,37 @@ class _$ProgresHafalanCopyWithImpl<$Res, $Val extends ProgresHafalan>
           ? _value.iqroHalaman
           : iqroHalaman // ignore: cast_nullable_to_non_nullable
               as int?,
+      statusIqro: freezed == statusIqro
+          ? _value.statusIqro
+          : statusIqro // ignore: cast_nullable_to_non_nullable
+              as String?,
       mutabaahTarget: freezed == mutabaahTarget
           ? _value.mutabaahTarget
           : mutabaahTarget // ignore: cast_nullable_to_non_nullable
               as String?,
-      tanggal: null == tanggal
-          ? _value.tanggal
-          : tanggal // ignore: cast_nullable_to_non_nullable
-              as DateTime,
+      statusMutabaah: freezed == statusMutabaah
+          ? _value.statusMutabaah
+          : statusMutabaah // ignore: cast_nullable_to_non_nullable
+              as String?,
       catatan: freezed == catatan
           ? _value.catatan
           : catatan // ignore: cast_nullable_to_non_nullable
+              as String?,
+      createdAt: freezed == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      updatedAt: freezed == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      createdBy: freezed == createdBy
+          ? _value.createdBy
+          : createdBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      updatedBy: freezed == updatedBy
+          ? _value.updatedBy
+          : updatedBy // ignore: cast_nullable_to_non_nullable
               as String?,
     ) as $Val);
   }
@@ -152,14 +212,22 @@ abstract class _$$ProgresHafalanImplCopyWith<$Res>
       {String id,
       String userId,
       String programId,
+      DateTime tanggal,
       int? juz,
       int? halaman,
       int? ayat,
+      String? surah,
+      String? statusPenilaian,
       String? iqroLevel,
       int? iqroHalaman,
+      String? statusIqro,
       String? mutabaahTarget,
-      DateTime tanggal,
-      String? catatan});
+      String? statusMutabaah,
+      String? catatan,
+      @TimestampConverter() DateTime? createdAt,
+      @TimestampConverter() DateTime? updatedAt,
+      String? createdBy,
+      String? updatedBy});
 }
 
 /// @nodoc
@@ -178,14 +246,22 @@ class __$$ProgresHafalanImplCopyWithImpl<$Res>
     Object? id = null,
     Object? userId = null,
     Object? programId = null,
+    Object? tanggal = null,
     Object? juz = freezed,
     Object? halaman = freezed,
     Object? ayat = freezed,
+    Object? surah = freezed,
+    Object? statusPenilaian = freezed,
     Object? iqroLevel = freezed,
     Object? iqroHalaman = freezed,
+    Object? statusIqro = freezed,
     Object? mutabaahTarget = freezed,
-    Object? tanggal = null,
+    Object? statusMutabaah = freezed,
     Object? catatan = freezed,
+    Object? createdAt = freezed,
+    Object? updatedAt = freezed,
+    Object? createdBy = freezed,
+    Object? updatedBy = freezed,
   }) {
     return _then(_$ProgresHafalanImpl(
       id: null == id
@@ -200,6 +276,10 @@ class __$$ProgresHafalanImplCopyWithImpl<$Res>
           ? _value.programId
           : programId // ignore: cast_nullable_to_non_nullable
               as String,
+      tanggal: null == tanggal
+          ? _value.tanggal
+          : tanggal // ignore: cast_nullable_to_non_nullable
+              as DateTime,
       juz: freezed == juz
           ? _value.juz
           : juz // ignore: cast_nullable_to_non_nullable
@@ -212,6 +292,14 @@ class __$$ProgresHafalanImplCopyWithImpl<$Res>
           ? _value.ayat
           : ayat // ignore: cast_nullable_to_non_nullable
               as int?,
+      surah: freezed == surah
+          ? _value.surah
+          : surah // ignore: cast_nullable_to_non_nullable
+              as String?,
+      statusPenilaian: freezed == statusPenilaian
+          ? _value.statusPenilaian
+          : statusPenilaian // ignore: cast_nullable_to_non_nullable
+              as String?,
       iqroLevel: freezed == iqroLevel
           ? _value.iqroLevel
           : iqroLevel // ignore: cast_nullable_to_non_nullable
@@ -220,17 +308,37 @@ class __$$ProgresHafalanImplCopyWithImpl<$Res>
           ? _value.iqroHalaman
           : iqroHalaman // ignore: cast_nullable_to_non_nullable
               as int?,
+      statusIqro: freezed == statusIqro
+          ? _value.statusIqro
+          : statusIqro // ignore: cast_nullable_to_non_nullable
+              as String?,
       mutabaahTarget: freezed == mutabaahTarget
           ? _value.mutabaahTarget
           : mutabaahTarget // ignore: cast_nullable_to_non_nullable
               as String?,
-      tanggal: null == tanggal
-          ? _value.tanggal
-          : tanggal // ignore: cast_nullable_to_non_nullable
-              as DateTime,
+      statusMutabaah: freezed == statusMutabaah
+          ? _value.statusMutabaah
+          : statusMutabaah // ignore: cast_nullable_to_non_nullable
+              as String?,
       catatan: freezed == catatan
           ? _value.catatan
           : catatan // ignore: cast_nullable_to_non_nullable
+              as String?,
+      createdAt: freezed == createdAt
+          ? _value.createdAt
+          : createdAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      updatedAt: freezed == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+      createdBy: freezed == createdBy
+          ? _value.createdBy
+          : createdBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      updatedBy: freezed == updatedBy
+          ? _value.updatedBy
+          : updatedBy // ignore: cast_nullable_to_non_nullable
               as String?,
     ));
   }
@@ -243,14 +351,22 @@ class _$ProgresHafalanImpl implements _ProgresHafalan {
       {required this.id,
       required this.userId,
       required this.programId,
+      required this.tanggal,
       this.juz,
       this.halaman,
       this.ayat,
+      this.surah,
+      this.statusPenilaian,
       this.iqroLevel,
       this.iqroHalaman,
+      this.statusIqro,
       this.mutabaahTarget,
-      required this.tanggal,
-      this.catatan});
+      this.statusMutabaah,
+      this.catatan,
+      @TimestampConverter() this.createdAt,
+      @TimestampConverter() this.updatedAt,
+      this.createdBy,
+      this.updatedBy});
 
   factory _$ProgresHafalanImpl.fromJson(Map<String, dynamic> json) =>
       _$$ProgresHafalanImplFromJson(json);
@@ -262,28 +378,50 @@ class _$ProgresHafalanImpl implements _ProgresHafalan {
   @override
   final String programId;
 // 'TAHFIDZ' atau 'GMM'
-// Fields untuk Tahfidz
+  @override
+  final DateTime tanggal;
+// Fields Tahfidz
   @override
   final int? juz;
   @override
   final int? halaman;
   @override
   final int? ayat;
-// Fields untuk GMM
+  @override
+  final String? surah;
+  @override
+  final String? statusPenilaian;
+// Lancar/Belum/Perlu Perbaikan
+// Fields GMM
   @override
   final String? iqroLevel;
+// Level 1-6
   @override
   final int? iqroHalaman;
   @override
+  final String? statusIqro;
+// Lancar/Belum
+  @override
   final String? mutabaahTarget;
   @override
-  final DateTime tanggal;
+  final String? statusMutabaah;
+// Tercapai/Belum
   @override
   final String? catatan;
+  @override
+  @TimestampConverter()
+  final DateTime? createdAt;
+  @override
+  @TimestampConverter()
+  final DateTime? updatedAt;
+  @override
+  final String? createdBy;
+  @override
+  final String? updatedBy;
 
   @override
   String toString() {
-    return 'ProgresHafalan(id: $id, userId: $userId, programId: $programId, juz: $juz, halaman: $halaman, ayat: $ayat, iqroLevel: $iqroLevel, iqroHalaman: $iqroHalaman, mutabaahTarget: $mutabaahTarget, tanggal: $tanggal, catatan: $catatan)';
+    return 'ProgresHafalan(id: $id, userId: $userId, programId: $programId, tanggal: $tanggal, juz: $juz, halaman: $halaman, ayat: $ayat, surah: $surah, statusPenilaian: $statusPenilaian, iqroLevel: $iqroLevel, iqroHalaman: $iqroHalaman, statusIqro: $statusIqro, mutabaahTarget: $mutabaahTarget, statusMutabaah: $statusMutabaah, catatan: $catatan, createdAt: $createdAt, updatedAt: $updatedAt, createdBy: $createdBy, updatedBy: $updatedBy)';
   }
 
   @override
@@ -295,23 +433,58 @@ class _$ProgresHafalanImpl implements _ProgresHafalan {
             (identical(other.userId, userId) || other.userId == userId) &&
             (identical(other.programId, programId) ||
                 other.programId == programId) &&
+            (identical(other.tanggal, tanggal) || other.tanggal == tanggal) &&
             (identical(other.juz, juz) || other.juz == juz) &&
             (identical(other.halaman, halaman) || other.halaman == halaman) &&
             (identical(other.ayat, ayat) || other.ayat == ayat) &&
+            (identical(other.surah, surah) || other.surah == surah) &&
+            (identical(other.statusPenilaian, statusPenilaian) ||
+                other.statusPenilaian == statusPenilaian) &&
             (identical(other.iqroLevel, iqroLevel) ||
                 other.iqroLevel == iqroLevel) &&
             (identical(other.iqroHalaman, iqroHalaman) ||
                 other.iqroHalaman == iqroHalaman) &&
+            (identical(other.statusIqro, statusIqro) ||
+                other.statusIqro == statusIqro) &&
             (identical(other.mutabaahTarget, mutabaahTarget) ||
                 other.mutabaahTarget == mutabaahTarget) &&
-            (identical(other.tanggal, tanggal) || other.tanggal == tanggal) &&
-            (identical(other.catatan, catatan) || other.catatan == catatan));
+            (identical(other.statusMutabaah, statusMutabaah) ||
+                other.statusMutabaah == statusMutabaah) &&
+            (identical(other.catatan, catatan) || other.catatan == catatan) &&
+            (identical(other.createdAt, createdAt) ||
+                other.createdAt == createdAt) &&
+            (identical(other.updatedAt, updatedAt) ||
+                other.updatedAt == updatedAt) &&
+            (identical(other.createdBy, createdBy) ||
+                other.createdBy == createdBy) &&
+            (identical(other.updatedBy, updatedBy) ||
+                other.updatedBy == updatedBy));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, userId, programId, juz,
-      halaman, ayat, iqroLevel, iqroHalaman, mutabaahTarget, tanggal, catatan);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        userId,
+        programId,
+        tanggal,
+        juz,
+        halaman,
+        ayat,
+        surah,
+        statusPenilaian,
+        iqroLevel,
+        iqroHalaman,
+        statusIqro,
+        mutabaahTarget,
+        statusMutabaah,
+        catatan,
+        createdAt,
+        updatedAt,
+        createdBy,
+        updatedBy
+      ]);
 
   /// Create a copy of ProgresHafalan
   /// with the given fields replaced by the non-null parameter values.
@@ -335,14 +508,22 @@ abstract class _ProgresHafalan implements ProgresHafalan {
       {required final String id,
       required final String userId,
       required final String programId,
+      required final DateTime tanggal,
       final int? juz,
       final int? halaman,
       final int? ayat,
+      final String? surah,
+      final String? statusPenilaian,
       final String? iqroLevel,
       final int? iqroHalaman,
+      final String? statusIqro,
       final String? mutabaahTarget,
-      required final DateTime tanggal,
-      final String? catatan}) = _$ProgresHafalanImpl;
+      final String? statusMutabaah,
+      final String? catatan,
+      @TimestampConverter() final DateTime? createdAt,
+      @TimestampConverter() final DateTime? updatedAt,
+      final String? createdBy,
+      final String? updatedBy}) = _$ProgresHafalanImpl;
 
   factory _ProgresHafalan.fromJson(Map<String, dynamic> json) =
       _$ProgresHafalanImpl.fromJson;
@@ -353,23 +534,41 @@ abstract class _ProgresHafalan implements ProgresHafalan {
   String get userId;
   @override
   String get programId; // 'TAHFIDZ' atau 'GMM'
-// Fields untuk Tahfidz
+  @override
+  DateTime get tanggal; // Fields Tahfidz
   @override
   int? get juz;
   @override
   int? get halaman;
   @override
-  int? get ayat; // Fields untuk GMM
+  int? get ayat;
   @override
-  String? get iqroLevel;
+  String? get surah;
+  @override
+  String? get statusPenilaian; // Lancar/Belum/Perlu Perbaikan
+// Fields GMM
+  @override
+  String? get iqroLevel; // Level 1-6
   @override
   int? get iqroHalaman;
   @override
+  String? get statusIqro; // Lancar/Belum
+  @override
   String? get mutabaahTarget;
   @override
-  DateTime get tanggal;
+  String? get statusMutabaah; // Tercapai/Belum
   @override
   String? get catatan;
+  @override
+  @TimestampConverter()
+  DateTime? get createdAt;
+  @override
+  @TimestampConverter()
+  DateTime? get updatedAt;
+  @override
+  String? get createdBy;
+  @override
+  String? get updatedBy;
 
   /// Create a copy of ProgresHafalan
   /// with the given fields replaced by the non-null parameter values.

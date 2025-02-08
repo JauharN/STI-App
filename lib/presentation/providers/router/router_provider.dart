@@ -6,6 +6,9 @@ import '../../pages/admin/presensi/manage_presensi_page/manage_presensi_page.dar
 import '../../pages/admin/user_management/role_management_page.dart';
 import '../../pages/admin/user_management/user_management_page.dart';
 import '../../pages/news_detail_page/news_detail_page.dart';
+import '../../pages/progres_page/admin/edit_progres_page.dart';
+import '../../pages/progres_page/admin/input_progres_page.dart';
+import '../../pages/progres_page/progres_detail_page.dart';
 import '../../pages/shared/forgot_password_page/forgot_password_page.dart';
 import '../../pages/shared/kontak_page/kontak_page.dart';
 import '../../pages/shared/login_page/login_page.dart';
@@ -144,6 +147,37 @@ Raw<GoRouter> router(RouterRef ref) => GoRouter(
               return const UnauthorizedPage();
             }
             return const UserManagementPage();
+          },
+        ),
+        GoRoute(
+          path: '/progres-detail/:id',
+          name: 'progres-detail',
+          builder: (context, state) => ProgresDetailPage(
+            id: state.pathParameters['id'] ?? '',
+          ),
+        ),
+        GoRoute(
+          path: '/input-progres',
+          name: 'input-progres',
+          builder: (context, state) {
+            final userRole = ref.read(userDataProvider).value?.role;
+            if (userRole != 'admin' && userRole != 'superAdmin') {
+              return const UnauthorizedPage();
+            }
+            return const InputProgresPage();
+          },
+        ),
+        GoRoute(
+          path: '/edit-progres/:id',
+          name: 'edit-progres',
+          builder: (context, state) {
+            final userRole = ref.read(userDataProvider).value?.role;
+            if (userRole != 'admin' && userRole != 'superAdmin') {
+              return const UnauthorizedPage();
+            }
+            return EditProgresPage(
+              id: state.pathParameters['id'] ?? '',
+            );
           },
         ),
       ],

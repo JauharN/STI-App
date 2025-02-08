@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import '../../domain/entities/result.dart';
 import '../../domain/entities/progres_hafalan.dart';
 import '../repositories/progres_hafalan_repository.dart';
@@ -13,66 +14,89 @@ class FirebaseProgresHafalanRepository implements ProgresHafalanRepository {
   Future<Result<ProgresHafalan>> createProgresHafalan(
       ProgresHafalan progresHafalan) async {
     try {
-      // Memvalidasi apakah programId sesuai (hanya TAHFIDZ atau GMM)
+      // Validasi program ID
       if (!['TAHFIDZ', 'GMM'].contains(progresHafalan.programId)) {
-        return const Result.failed('Invalid program ID');
+        return const Result.failed('Program ID tidak valid');
       }
 
-      // Validasi kelengkapan data berdasarkan jenis program
-      // Untuk TAHFIDZ harus ada juz, halaman, dan ayat
-      // Untuk GMM harus ada iqroLevel, iqroHalaman, dan mutabaahTarget
+      // Validasi data berdasarkan jenis program
       if (progresHafalan.programId == 'TAHFIDZ') {
+        // Validasi field khusus Tahfidz
         if (progresHafalan.juz == null ||
             progresHafalan.halaman == null ||
-            progresHafalan.ayat == null) {
-          return const Result.failed('Incomplete Tahfidz progress data');
+            progresHafalan.ayat == null ||
+            progresHafalan.surah?.isEmpty == true ||
+            progresHafalan.statusPenilaian?.isEmpty == true) {
+          return const Result.failed('Data Tahfidz tidak lengkap');
         }
-      } else if (progresHafalan.programId == 'GMM') {
+
+        // Validasi status penilaian
+        if (!['Lancar', 'Belum', 'Perlu Perbaikan']
+            .contains(progresHafalan.statusPenilaian)) {
+          return const Result.failed('Status penilaian tidak valid');
+        }
+      } else {
+        // Validasi field khusus GMM
         if (progresHafalan.iqroLevel == null ||
             progresHafalan.iqroHalaman == null ||
-            progresHafalan.mutabaahTarget == null) {
-          return const Result.failed('Incomplete GMM progress data');
+            progresHafalan.statusIqro?.isEmpty == true ||
+            progresHafalan.mutabaahTarget?.isEmpty == true ||
+            progresHafalan.statusMutabaah?.isEmpty == true) {
+          return const Result.failed('Data GMM tidak lengkap');
+        }
+
+        // Validasi status GMM
+        if (!['1', '2', '3', '4', '5', '6']
+            .contains(progresHafalan.iqroLevel)) {
+          return const Result.failed('Level Iqro tidak valid');
+        }
+        if (!['Lancar', 'Belum'].contains(progresHafalan.statusIqro)) {
+          return const Result.failed('Status Iqro tidak valid');
+        }
+        if (!['Tercapai', 'Belum'].contains(progresHafalan.statusMutabaah)) {
+          return const Result.failed('Status Mutabaah tidak valid');
         }
       }
 
-      // Membuat referensi dokumen baru dengan ID otomatis
+      // Create document reference
       DocumentReference<Map<String, dynamic>> documentReference =
           _firestore.collection('progres_hafalan').doc();
 
-      // Menyiapkan data yang akan disimpan
-      // Termasuk ID dokumen dan timestamp pembuatan
-      final progresData = {
+      // Transform dan validate data
+      Map<String, dynamic> data = {
         ...progresHafalan.toJson(),
         'id': documentReference.id,
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      // Menghapus field yang tidak relevan berdasarkan jenis program
-      // TAHFIDZ tidak butuh field GMM dan sebaliknya
-      if (progresHafalan.programId == 'TAHFIDZ') {
-        progresData.remove('iqroLevel');
-        progresData.remove('iqroHalaman');
-        progresData.remove('mutabaahTarget');
-      } else {
-        progresData.remove('juz');
-        progresData.remove('halaman');
-        progresData.remove('ayat');
+      // Remove null values
+      data.removeWhere((key, value) => value == null);
+
+      // Save to Firebase
+      await documentReference.set(data);
+
+      // Get saved data
+      final docSnap = await documentReference.get();
+      if (!docSnap.exists) {
+        return const Result.failed('Gagal menyimpan progres hafalan');
       }
 
-      // Menyimpan data ke Firestore
-      await documentReference.set(progresData);
+      final savedData = docSnap.data()!;
 
-      // Mengambil dan memverifikasi data yang baru disimpan
-      DocumentSnapshot<Map<String, dynamic>> result =
-          await documentReference.get();
+      // Convert timestamps
+      final createdAt = (savedData['createdAt'] as Timestamp?)?.toDate();
+      final updatedAt = (savedData['updatedAt'] as Timestamp?)?.toDate();
 
-      if (result.exists) {
-        return Result.success(ProgresHafalan.fromJson(result.data()!));
-      } else {
-        return const Result.failed('Failed to create progress');
-      }
+      return Result.success(ProgresHafalan.fromJson({
+        ...savedData,
+        'createdAt': createdAt?.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      }));
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to create progress');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
@@ -80,25 +104,55 @@ class FirebaseProgresHafalanRepository implements ProgresHafalanRepository {
   Future<Result<List<ProgresHafalan>>> getProgresHafalanByUserId(
       String userId) async {
     try {
-      // Query untuk mengambil semua progres hafalan seorang user
-      // Diurutkan berdasarkan tanggal terbaru
-      QuerySnapshot<Map<String, dynamic>> querySnapshot = await _firestore
+      // Validasi user ID
+      if (userId.isEmpty) {
+        return const Result.failed('User ID tidak boleh kosong');
+      }
+
+      // Query dengan ordering
+      final querySnapshot = await _firestore
           .collection('progres_hafalan')
           .where('userId', isEqualTo: userId)
           .orderBy('tanggal', descending: true)
           .get();
 
-      // Jika ada data, konversi ke List<ProgresHafalan>
-      if (querySnapshot.docs.isNotEmpty) {
-        List<ProgresHafalan> progressList = querySnapshot.docs
-            .map((doc) => ProgresHafalan.fromJson(doc.data()))
-            .toList();
-        return Result.success(progressList);
-      } else {
-        return const Result.failed('No progress found');
+      if (querySnapshot.docs.isEmpty) {
+        return const Result.success(
+            []); // Return empty list jika tidak ada data
       }
+
+      List<ProgresHafalan> progresList = [];
+
+      for (var doc in querySnapshot.docs) {
+        try {
+          final data = doc.data();
+
+          // Convert timestamps
+          final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+          final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+          final tanggal = (data['tanggal'] as Timestamp).toDate();
+
+          progresList.add(ProgresHafalan.fromJson({
+            ...data,
+            'id': doc.id,
+            'tanggal': tanggal.toIso8601String(),
+            'createdAt': createdAt?.toIso8601String(),
+            'updatedAt': updatedAt?.toIso8601String(),
+          }));
+        } catch (e) {
+          debugPrint('Error parsing document ${doc.id}: $e');
+          continue; // Skip invalid documents
+        }
+      }
+
+      // Sort by tanggal (latest first)
+      progresList.sort((a, b) => b.tanggal.compareTo(a.tanggal));
+
+      return Result.success(progresList);
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to get progress');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
@@ -106,95 +160,326 @@ class FirebaseProgresHafalanRepository implements ProgresHafalanRepository {
   Future<Result<ProgresHafalan>> updateProgresHafalan(
       ProgresHafalan progresHafalan) async {
     try {
-      // Validasi program ID
-      if (!['TAHFIDZ', 'GMM'].contains(progresHafalan.programId)) {
-        return const Result.failed('Invalid program ID');
-      }
-
-      // Membuat referensi ke dokumen yang akan diupdate
+      // Verify document exists
       DocumentReference<Map<String, dynamic>> documentReference =
           _firestore.doc('progres_hafalan/${progresHafalan.id}');
 
-      // Menyiapkan data update termasuk timestamp
-      final updateData = {
+      DocumentSnapshot<Map<String, dynamic>> docSnapshot =
+          await documentReference.get();
+      if (!docSnapshot.exists) {
+        return const Result.failed('Data progres hafalan tidak ditemukan');
+      }
+
+      // Validasi program ID
+      if (!['TAHFIDZ', 'GMM'].contains(progresHafalan.programId)) {
+        return const Result.failed('Program ID tidak valid');
+      }
+
+      // Validasi data berdasarkan jenis program
+      if (progresHafalan.programId == 'TAHFIDZ') {
+        if (progresHafalan.juz == null ||
+            progresHafalan.halaman == null ||
+            progresHafalan.ayat == null ||
+            progresHafalan.surah?.isEmpty == true ||
+            progresHafalan.statusPenilaian?.isEmpty == true) {
+          return const Result.failed('Data Tahfidz tidak lengkap');
+        }
+
+        // Validasi status penilaian
+        if (!['Lancar', 'Belum', 'Perlu Perbaikan']
+            .contains(progresHafalan.statusPenilaian)) {
+          return const Result.failed('Status penilaian tidak valid');
+        }
+      } else {
+        if (progresHafalan.iqroLevel == null ||
+            progresHafalan.iqroHalaman == null ||
+            progresHafalan.statusIqro?.isEmpty == true ||
+            progresHafalan.mutabaahTarget?.isEmpty == true ||
+            progresHafalan.statusMutabaah?.isEmpty == true) {
+          return const Result.failed('Data GMM tidak lengkap');
+        }
+
+        // Validasi status GMM
+        if (!['1', '2', '3', '4', '5', '6']
+            .contains(progresHafalan.iqroLevel)) {
+          return const Result.failed('Level Iqro tidak valid');
+        }
+        if (!['Lancar', 'Belum'].contains(progresHafalan.statusIqro)) {
+          return const Result.failed('Status Iqro tidak valid');
+        }
+        if (!['Tercapai', 'Belum'].contains(progresHafalan.statusMutabaah)) {
+          return const Result.failed('Status Mutabaah tidak valid');
+        }
+      }
+
+      // Prepare update data
+      Map<String, dynamic> updateData = {
         ...progresHafalan.toJson(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      // Menghapus field yang tidak relevan sesuai jenis program
-      if (progresHafalan.programId == 'TAHFIDZ') {
-        updateData.remove('iqroLevel');
-        updateData.remove('iqroHalaman');
-        updateData.remove('mutabaahTarget');
-      } else {
-        updateData.remove('juz');
-        updateData.remove('halaman');
-        updateData.remove('ayat');
-      }
+      // Remove fields yang tidak perlu diupdate
+      updateData.remove('id');
+      updateData.remove('createdAt');
+      updateData.remove('createdBy');
 
-      // Melakukan update data
+      // Remove null values
+      updateData.removeWhere((key, value) => value == null);
+
+      // Update document
       await documentReference.update(updateData);
 
-      // Verifikasi hasil update
-      DocumentSnapshot<Map<String, dynamic>> result =
-          await documentReference.get();
+      // Get updated data
+      final updatedDoc = await documentReference.get();
+      final data = updatedDoc.data()!;
 
-      if (result.exists) {
-        return Result.success(ProgresHafalan.fromJson(result.data()!));
-      } else {
-        return const Result.failed('Progress not found');
-      }
+      // Convert timestamps
+      final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+      final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+      final tanggal = (data['tanggal'] as Timestamp).toDate();
+
+      return Result.success(ProgresHafalan.fromJson({
+        ...data,
+        'id': updatedDoc.id,
+        'tanggal': tanggal.toIso8601String(),
+        'createdAt': createdAt?.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      }));
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to update progress');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
   @override
   Future<Result<void>> deleteProgresHafalan(String progresHafalanId) async {
     try {
-      // Membuat referensi ke dokumen yang akan dihapus
+      // Validasi ID
+      if (progresHafalanId.isEmpty) {
+        return const Result.failed('ID progres hafalan tidak boleh kosong');
+      }
+
+      // Get document reference
       DocumentReference<Map<String, dynamic>> documentReference =
           _firestore.doc('progres_hafalan/$progresHafalanId');
 
-      // Menghapus dokumen
+      // Verify existence
+      DocumentSnapshot<Map<String, dynamic>> docSnapshot =
+          await documentReference.get();
+      if (!docSnapshot.exists) {
+        return const Result.failed('Data progres hafalan tidak ditemukan');
+      }
+
+      // Delete document
       await documentReference.delete();
 
-      // Verifikasi penghapusan
-      DocumentSnapshot<Map<String, dynamic>> result =
+      // Verify deletion
+      DocumentSnapshot<Map<String, dynamic>> verifyDoc =
           await documentReference.get();
-
-      // Jika dokumen tidak ada lagi, berarti berhasil dihapus
-      if (!result.exists) {
+      if (!verifyDoc.exists) {
         return const Result.success(null);
       } else {
-        return const Result.failed('Failed to delete progress');
+        return const Result.failed('Gagal menghapus data progres hafalan');
       }
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to delete progress');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 
   @override
   Future<Result<ProgresHafalan>> getLatestProgresHafalan(String userId) async {
     try {
-      // Query untuk mengambil progres hafalan terbaru dari seorang user
-      // Menggunakan limit(1) untuk mengambil satu dokumen terbaru saja
-      QuerySnapshot<Map<String, dynamic>> querySnapshot = await _firestore
+      // Validasi user ID
+      if (userId.isEmpty) {
+        return const Result.failed('User ID tidak boleh kosong');
+      }
+
+      // Query untuk progres hafalan terbaru dari user
+      final querySnapshot = await _firestore
           .collection('progres_hafalan')
           .where('userId', isEqualTo: userId)
           .orderBy('tanggal', descending: true)
           .limit(1)
           .get();
 
-      // Jika ada data, ambil dokumen pertama (terbaru)
-      if (querySnapshot.docs.isNotEmpty) {
-        return Result.success(
-            ProgresHafalan.fromJson(querySnapshot.docs.first.data()));
-      } else {
-        return const Result.failed('No progress found');
+      // Return null jika tidak ada data
+      if (querySnapshot.docs.isEmpty) {
+        return const Result.failed('Belum ada data progres hafalan');
+      }
+
+      try {
+        final doc = querySnapshot.docs.first;
+        final data = doc.data();
+
+        // Convert timestamps
+        final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+        final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+        final tanggal = (data['tanggal'] as Timestamp).toDate();
+
+        return Result.success(ProgresHafalan.fromJson({
+          ...data,
+          'id': doc.id,
+          'tanggal': tanggal.toIso8601String(),
+          'createdAt': createdAt?.toIso8601String(),
+          'updatedAt': updatedAt?.toIso8601String(),
+        }));
+      } catch (e) {
+        debugPrint('Error parsing progres hafalan: $e');
+        return const Result.failed('Gagal memproses data progres hafalan');
       }
     } on FirebaseException catch (e) {
-      return Result.failed(e.message ?? 'Failed to get latest progress');
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Result<List<ProgresHafalan>>> getProgresHafalanByDateRange({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      // Validasi user ID
+      if (userId.isEmpty) {
+        return const Result.failed('User ID tidak boleh kosong');
+      }
+
+      // Validasi date range
+      if (startDate.isAfter(endDate)) {
+        return const Result.failed(
+            'Tanggal awal tidak boleh setelah tanggal akhir');
+      }
+
+      // Query dengan filter tanggal
+      final querySnapshot = await _firestore
+          .collection('progres_hafalan')
+          .where('userId', isEqualTo: userId)
+          .where('tanggal', isGreaterThanOrEqualTo: startDate)
+          .where('tanggal',
+              isLessThanOrEqualTo: endDate.add(const Duration(days: 1)))
+          .orderBy('tanggal', descending: true)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        return const Result.success(
+            []); // Return empty list jika tidak ada data
+      }
+
+      List<ProgresHafalan> progresList = [];
+
+      for (var doc in querySnapshot.docs) {
+        try {
+          final data = doc.data();
+
+          // Convert timestamps
+          final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+          final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+          final tanggal = (data['tanggal'] as Timestamp).toDate();
+
+          progresList.add(ProgresHafalan.fromJson({
+            ...data,
+            'id': doc.id,
+            'tanggal': tanggal.toIso8601String(),
+            'createdAt': createdAt?.toIso8601String(),
+            'updatedAt': updatedAt?.toIso8601String(),
+          }));
+        } catch (e) {
+          debugPrint('Error parsing document ${doc.id}: $e');
+          continue; // Skip invalid documents
+        }
+      }
+
+      // Sort by tanggal
+      progresList.sort((a, b) => b.tanggal.compareTo(a.tanggal));
+
+      return Result.success(progresList);
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Result<List<ProgresHafalan>>> getProgresHafalanByProgramId(
+      String programId) async {
+    try {
+      // Validasi program ID
+      if (!['TAHFIDZ', 'GMM'].contains(programId)) {
+        return const Result.failed('Program ID tidak valid');
+      }
+
+      // Query untuk get data berdasarkan program
+      final querySnapshot = await _firestore
+          .collection('progres_hafalan')
+          .where('programId', isEqualTo: programId)
+          .orderBy('tanggal', descending: true)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        return const Result.success(
+            []); // Return empty list jika tidak ada data
+      }
+
+      List<ProgresHafalan> progresList = [];
+
+      for (var doc in querySnapshot.docs) {
+        try {
+          final data = doc.data();
+
+          // Convert timestamps
+          final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+          final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+          final tanggal = (data['tanggal'] as Timestamp).toDate();
+
+          // Validasi data berdasarkan jenis program
+          if (programId == 'TAHFIDZ') {
+            if (data['juz'] == null ||
+                data['halaman'] == null ||
+                data['ayat'] == null ||
+                data['surah']?.toString().isEmpty == true ||
+                data['statusPenilaian']?.toString().isEmpty == true) {
+              debugPrint('Invalid TAHFIDZ data for doc ${doc.id}');
+              continue;
+            }
+          } else {
+            // GMM
+            if (data['iqroLevel'] == null ||
+                data['iqroHalaman'] == null ||
+                data['statusIqro']?.toString().isEmpty == true ||
+                data['mutabaahTarget']?.toString().isEmpty == true ||
+                data['statusMutabaah']?.toString().isEmpty == true) {
+              debugPrint('Invalid GMM data for doc ${doc.id}');
+              continue;
+            }
+          }
+
+          progresList.add(ProgresHafalan.fromJson({
+            ...data,
+            'id': doc.id,
+            'tanggal': tanggal.toIso8601String(),
+            'createdAt': createdAt?.toIso8601String(),
+            'updatedAt': updatedAt?.toIso8601String(),
+          }));
+        } catch (e) {
+          debugPrint('Error parsing document ${doc.id}: $e');
+          continue; // Skip invalid documents
+        }
+      }
+
+      // Sort by tanggal (terbaru di atas)
+      progresList.sort((a, b) => b.tanggal.compareTo(a.tanggal));
+
+      return Result.success(progresList);
+    } on FirebaseException catch (e) {
+      return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
+    } catch (e) {
+      return Result.failed('Error: ${e.toString()}');
     }
   }
 }

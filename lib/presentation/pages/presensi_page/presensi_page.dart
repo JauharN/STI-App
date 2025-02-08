@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sti_app/domain/entities/presensi/presensi_summary.dart';
+
+import '../../../domain/entities/presensi/presensi_pertemuan.dart';
 import '../../../domain/entities/user.dart';
-import '../../extensions/extensions.dart';
 import '../../misc/constants.dart';
 import '../../misc/methods.dart';
+import '../../providers/presensi/recent_presensi_activities_provider.dart';
+import '../../providers/program/user_programs_provider.dart';
 import '../../providers/user_data/user_data_provider.dart';
 import '../../widgets/presensi_widget/presensi_program_card_widget.dart';
 
@@ -267,28 +271,261 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
   }
 
   Widget _buildRecentActivitySection(BuildContext context) {
-    // TODO: Implement recent activity
+    final userRole = ref.watch(userDataProvider).value?.role;
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Aktivitas Terkini',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.neutral900,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Aktivitas Terkini',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.neutral900,
+                ),
+              ),
+              if (userRole == 'admin' || userRole == 'superAdmin')
+                TextButton(
+                  onPressed: () => context.pushNamed('presensi-statistics'),
+                  child: Text(
+                    'Lihat Semua',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+            ],
           ),
           verticalSpace(16),
-          // Placeholder untuk recent activity
-          Center(
+          Consumer(
+            builder: (context, ref, _) {
+              final programs = ref.watch(userProgramsControllerProvider);
+              return programs.when(
+                data: (programList) {
+                  if (programList.isEmpty) {
+                    return _buildEmptyState();
+                  }
+                  return _buildActivityList(programList.first.id);
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => Center(
+                  child: Text(
+                    'Error: $error',
+                    style: GoogleFonts.plusJakartaSans(color: AppColors.error),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityList(String programId) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final activitiesAsync =
+            ref.watch(recentPresensiActivitiesControllerProvider(programId));
+
+        return activitiesAsync.when(
+          data: (activities) {
+            if (activities.isEmpty) {
+              return _buildEmptyState();
+            }
+
+            // Get statistics
+            final statistics = ref
+                .read(recentPresensiActivitiesControllerProvider(programId)
+                    .notifier)
+                .getActivityStatistics(activities);
+
+            return Column(
+              children: [
+                // Show statistics
+                _buildStatisticsCard(statistics),
+                const SizedBox(height: 16),
+                // Show activities
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: activities.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) =>
+                      _buildActivityItem(activities[index]),
+                ),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(
             child: Text(
-              'Coming Soon',
-              style: GoogleFonts.plusJakartaSans(
-                color: AppColors.neutral600,
+              'Error: $error',
+              style: GoogleFonts.plusJakartaSans(color: AppColors.error),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityItem(PresensiPertemuan activity) {
+    return InkWell(
+      onTap: () => context.pushNamed(
+        'presensi-detail',
+        pathParameters: {'programId': activity.programId},
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: const Center(
+                child: Icon(
+                  Icons.fact_check_rounded,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pertemuan ke-${activity.pertemuanKe}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.neutral900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Hadir: ${activity.summary.hadir} | Tidak Hadir: ${activity.summary.totalSantri - activity.summary.hadir}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: AppColors.neutral600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  formatDate(activity.tanggal),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: AppColors.neutral600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${activity.summary.persentaseKehadiran.toStringAsFixed(1)}%',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatisticsCard(Map<String, int> statistics) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem(
+            'Total Hadir',
+            '${statistics['totalHadir']}',
+            Icons.check_circle_outline,
+          ),
+          _buildStatItem(
+            'Total Santri',
+            '${statistics['totalSantri']}',
+            Icons.people_outline,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: AppColors.primary),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            color: AppColors.neutral600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.event_note_outlined,
+            size: 48,
+            color: AppColors.neutral400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Belum ada aktivitas presensi',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              color: AppColors.neutral600,
             ),
           ),
         ],

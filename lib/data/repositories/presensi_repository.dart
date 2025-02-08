@@ -38,4 +38,8 @@ abstract interface class PresensiRepository {
   Future<Result<PresensiPertemuan>> updatePresensiPertemuan(
       PresensiPertemuan presensiPertemuan);
   Future<Result<void>> deletePresensiPertemuan(String id);
+  Future<Result<List<PresensiPertemuan>>> getRecentPresensiPertemuan({
+    required String programId,
+    int? limit,
+  });
 }

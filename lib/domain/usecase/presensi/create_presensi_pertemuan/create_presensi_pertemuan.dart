@@ -13,8 +13,9 @@ class CreatePresensiPertemuan
         Usecase<Result<PresensiPertemuan>, CreatePresensiPertemuanParams> {
   final PresensiRepository _presensiRepository;
 
-  CreatePresensiPertemuan({required PresensiRepository presensiRepository})
-      : _presensiRepository = presensiRepository;
+  CreatePresensiPertemuan({
+    required PresensiRepository presensiRepository,
+  }) : _presensiRepository = presensiRepository;
 
   @override
   Future<Result<PresensiPertemuan>> call(
@@ -31,22 +32,19 @@ class CreatePresensiPertemuan
         return const Result.failed('Daftar hadir tidak boleh kosong');
       }
 
-      // Generate summary dari daftar hadir
-      final summary = _generateSummary(params.daftarHadir);
-
-      // Create presensi object
+      // Create presensi object with generated summary
       final presensiPertemuan = PresensiPertemuan(
         id: '', // ID akan digenerate oleh Firebase
         programId: params.programId,
         pertemuanKe: params.pertemuanKe,
         tanggal: params.tanggal,
         daftarHadir: params.daftarHadir,
-        summary: summary,
+        summary: _generateSummary(params.daftarHadir),
         materi: params.materi,
         catatan: params.catatan,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
-        createdBy: params.userId, // Track creator
+        createdBy: params.userId,
         updatedBy: params.userId,
       );
 

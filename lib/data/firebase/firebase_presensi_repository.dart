@@ -486,4 +486,56 @@ class FirebasePresensiRepository implements PresensiRepository {
 
     return presensiList;
   }
+
+  @override
+  Future<Result<List<PresensiPertemuan>>> getRecentPresensiPertemuan({
+    required String programId,
+    int? limit,
+  }) async {
+    try {
+      var query = _firestore
+          .collection('presensi')
+          .where('programId', isEqualTo: programId);
+
+      // Add time filter for last 30 days
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      query = query.where('tanggal', isGreaterThanOrEqualTo: thirtyDaysAgo);
+
+      // Add sorting and limit
+      final querySnapshot = await query
+          .orderBy('tanggal', descending: true)
+          .orderBy('pertemuanKe', descending: true)
+          .limit(limit ?? 5)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        return const Success([]);
+      }
+
+      List<PresensiPertemuan> presensiList = [];
+      for (var doc in querySnapshot.docs) {
+        try {
+          final data = doc.data();
+          final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+          final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+          final tanggal = (data['tanggal'] as Timestamp).toDate();
+
+          presensiList.add(PresensiPertemuan.fromJson({
+            ...data,
+            'id': doc.id,
+            'tanggal': tanggal.toIso8601String(),
+            'createdAt': createdAt?.toIso8601String(),
+            'updatedAt': updatedAt?.toIso8601String(),
+          }));
+        } catch (e) {
+          print('Error parsing document ${doc.id}: $e');
+          continue;
+        }
+      }
+
+      return Success(presensiList);
+    } catch (e) {
+      return Failed('Failed to get recent presensi: ${e.toString()}');
+    }
+  }
 }

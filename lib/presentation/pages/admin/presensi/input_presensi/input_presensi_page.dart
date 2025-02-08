@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,6 +15,12 @@ import '../../../../providers/presensi/santri_list_provider.dart';
 import '../../../../providers/user_data/user_data_provider.dart';
 import '../../../../widgets/presensi_widget/bulk_action_bottom_sheet_widget.dart';
 import '../../../../widgets/presensi_widget/santri_presensi_card_widget.dart';
+
+// Constants untuk reusability dan maintainability
+const int _maxRetries = 3;
+const int _timeoutSeconds = 30;
+const int _maxPertemuan = 8;
+const Duration _retryDelay = Duration(seconds: 1);
 
 // State Providers untuk manajemen status presensi
 final presensiStatusProvider =
@@ -37,12 +42,6 @@ class InputPresensiPage extends ConsumerStatefulWidget {
 }
 
 class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
-  // Constants
-  static const int maxRetries = 3;
-  static const int timeoutSeconds = 30;
-  static const int maxPertemuan = 8;
-  static const Duration retryDelay = Duration(seconds: 1);
-
   // Controllers
   final materiController = TextEditingController();
   final catatanController = TextEditingController();
@@ -67,19 +66,20 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
     super.dispose();
   }
 
-  // Access Control
+  // Access Control - Menggunakan string roles sesuai perbaikan auth
   void _checkAccess() {
     final userRole = ref.read(userDataProvider).value?.role;
     if (!_canInputPresensi(userRole)) {
-      Navigator.pop(context);
-      context
-          .showErrorSnackBar('Anda tidak memiliki akses untuk input presensi');
+      if (context.mounted) {
+        context.pop();
+        context.showErrorSnackBar(
+            'Anda tidak memiliki akses untuk input presensi');
+      }
     }
   }
 
-  bool _canInputPresensi(String? role) {
-    return role == RoleConstants.admin || role == RoleConstants.superAdmin;
-  }
+  bool _canInputPresensi(String? role) =>
+      role == 'admin' || role == 'superAdmin';
 
   // Initialization
   void _initializeDefaults() {
@@ -115,31 +115,29 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
     return true;
   }
 
-  // Error Handling
+  // Error Handling dengan Retry Mechanism
   Future<bool> _handleOperationWithRetry(
-    Future<void> Function() operation, {
-    int maxRetries = maxRetries,
-    int timeoutSeconds = timeoutSeconds,
-  }) async {
+    Future<void> Function() operation,
+  ) async {
     int retryCount = 0;
-    while (retryCount < maxRetries) {
+    while (retryCount < _maxRetries) {
       try {
         await operation().timeout(
-          Duration(seconds: timeoutSeconds),
+          const Duration(seconds: _timeoutSeconds),
           onTimeout: () => throw TimeoutException('Operation timed out'),
         );
         return true;
       } catch (e) {
         retryCount++;
-        if (retryCount == maxRetries) {
+        if (retryCount == _maxRetries) {
           if (mounted) {
             context.showErrorSnackBar(
-              'Operation failed after $maxRetries attempts: ${e.toString()}',
+              'Operation failed after $_maxRetries attempts: ${e.toString()}',
             );
           }
           return false;
         }
-        await Future.delayed(retryDelay * retryCount);
+        await Future.delayed(_retryDelay * retryCount);
       }
     }
     return false;
@@ -189,11 +187,11 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => context.pop(false),
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => context.pop(true),
             child: const Text('Submit'),
           ),
         ],
@@ -215,14 +213,14 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
               pertemuanKe: pertemuanKe,
               tanggal: selectedDate,
               materi: materiController.text.trim(),
-              catatan: catatanController.text.trim(),
               daftarHadir: daftarHadir,
+              catatan: catatanController.text.trim(),
             ),
       );
 
       if (success && mounted) {
         context.showSuccessSnackBar('Presensi berhasil disimpan');
-        Navigator.pop(context);
+        context.pop();
       }
     } finally {
       if (mounted) {
@@ -233,7 +231,6 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
 
   void _showBulkAction() {
     final selectedSantri = ref.read(selectedSantriProvider);
-
     if (selectedSantri.isEmpty) {
       context.showErrorSnackBar('Pilih santri terlebih dahulu');
       return;
@@ -253,14 +250,17 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
                   keterangan;
             }
           }
-          Navigator.pop(context);
+          context.pop();
         },
       ),
     );
   }
 
-  void _updateSantriPresensi(String santriId, String status,
-      {String keterangan = ''}) {
+  void _updateSantriPresensi(
+    String santriId,
+    String status, {
+    String keterangan = '',
+  }) {
     ref.read(presensiStatusProvider(santriId).notifier).state = status;
     if (keterangan.isNotEmpty) {
       ref.read(presensiKeteranganProvider(santriId).notifier).state =
@@ -307,7 +307,7 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
     }
   }
 
-  // Main Build Method
+  // UI Components Build Methods
   @override
   Widget build(BuildContext context) {
     final santriListAsync = ref.watch(santriListProvider(widget.programId));
@@ -357,7 +357,7 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
       centerTitle: true,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: AppColors.neutral900),
-        onPressed: () => Navigator.pop(context),
+        onPressed: () => context.pop(),
       ),
     );
   }
@@ -484,10 +484,10 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
               ),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline),
-                onPressed: pertemuanKe < maxPertemuan
+                onPressed: pertemuanKe < _maxPertemuan
                     ? () => setState(() => pertemuanKe++)
                     : null,
-                color: pertemuanKe < maxPertemuan
+                color: pertemuanKe < _maxPertemuan
                     ? AppColors.primary
                     : AppColors.neutral300,
               ),
@@ -621,8 +621,10 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
                 onStatusChanged: (newStatus) =>
                     _updateSantriPresensi(santri.uid, newStatus),
                 onKeteranganChanged: (newKeterangan) => _updateSantriPresensi(
-                    santri.uid, status,
-                    keterangan: newKeterangan),
+                  santri.uid,
+                  status,
+                  keterangan: newKeterangan,
+                ),
               ),
             ),
           ],
@@ -637,7 +639,6 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
         final daftarHadir = santriList.map((santri) {
           final status = ref.read(presensiStatusProvider(santri.uid));
           final keterangan = ref.read(presensiKeteranganProvider(santri.uid));
-
           final presensiStatus = PresensiStatus.values.firstWhere(
             (e) => e.name.toUpperCase() == status,
             orElse: () => PresensiStatus.hadir,
@@ -646,7 +647,7 @@ class _InputPresensiPageState extends ConsumerState<InputPresensiPage> {
           return SantriPresensi(
             santriId: santri.uid,
             santriName: santri.name,
-            status: presensiStatus, // Gunakan hasil konversi
+            status: presensiStatus,
             keterangan: keterangan,
           );
         }).toList();
