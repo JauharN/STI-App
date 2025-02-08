@@ -85,7 +85,7 @@ class PertemuanListWidget extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
+            const Icon(
               Icons.event_busy_outlined,
               size: 48,
               color: AppColors.neutral400,

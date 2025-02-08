@@ -7,6 +7,7 @@ import '../../../providers/router/router_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';
 import '../../../widgets/sti_bottom_nav_bar_widget.dart';
 import '../../presensi_page/presensi_page.dart';
+import '../../progres_page/progres_page.dart';
 import '../profile_page/profile_page.dart';
 
 class MainPage extends ConsumerStatefulWidget {
@@ -80,10 +81,9 @@ class _MainPageState extends ConsumerState<MainPage> {
     final screens = <Widget>[
       const BerandaPage(),
       if (role == 'santri') const PresensiPage(),
-      const Center(child: Text('Progres Page')), // Placeholder
+      const ProgresPage(), // Ganti placeholder dengan ProgresPage
       const ProfilePage(),
     ];
-
     return screens;
   }
 
@@ -95,7 +95,7 @@ class _MainPageState extends ConsumerState<MainPage> {
       case 1: // Presensi
         return role == 'santri';
       case 2: // Progres
-        return true;
+        return true; // Semua role bisa akses progres
       case 3: // Profile
         return true;
       default:

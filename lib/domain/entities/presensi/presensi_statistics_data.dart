@@ -65,8 +65,9 @@ class PresensiStatisticsData with _$PresensiStatisticsData {
 
 extension PresensiStatisticsDataX on PresensiStatisticsData {
   bool get isValid {
-    if (programId.isEmpty || totalPertemuan <= 0 || totalSantri <= 0)
+    if (programId.isEmpty || totalPertemuan <= 0 || totalSantri <= 0) {
       return false;
+    }
     if (trendKehadiran.isEmpty || santriStats.isEmpty) return false;
     if (santriStats.length != totalSantri) return false;
     return true;
