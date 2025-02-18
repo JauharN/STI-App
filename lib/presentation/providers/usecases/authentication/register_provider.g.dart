@@ -6,7 +6,7 @@ part of 'register_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$registerHash() => r'2f3c4ecd14b98ddf242b03838a09709ad4029120';
+String _$registerHash() => r'73a2b4a1147fd00b4dda0802408c8484ce6bd3b4';
 
 /// See also [register].
 @ProviderFor(register)

@@ -343,7 +343,11 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
       children: [
         _buildInfoRow(
             Icons.people, '${program.enrolledSantriIds.length} Santri'),
-        _buildInfoRow(Icons.person, program.teacherName ?? 'No Teacher'),
+        _buildInfoRow(
+            Icons.person,
+            program.teacherNames.isNotEmpty
+                ? '${program.teacherNames.length} Pengajar'
+                : 'Belum ada pengajar'),
         _buildInfoRow(
             Icons.calendar_today, '${program.totalMeetings} Meetings'),
       ],

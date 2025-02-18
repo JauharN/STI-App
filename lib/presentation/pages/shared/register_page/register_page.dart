@@ -7,7 +7,10 @@ import 'package:intl/intl.dart';
 import '../../../extensions/extensions.dart';
 import '../../../misc/constants.dart';
 import '../../../misc/methods.dart';
+import '../../../providers/program/available_programs_provider.dart'; // Tambahan untuk program selection
 import '../../../providers/user_data/user_data_provider.dart';
+import '../../../utils/exception.dart';
+import '../../../utils/rate_limit_exception.dart';
 import '../../../widgets/sti_text_field_widget.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
@@ -36,11 +39,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final passwordFocusNode = FocusNode();
   final confirmPasswordFocusNode = FocusNode();
 
+  // State variables
   DateTime? selectedDate;
   bool obscurePassword = true;
   bool obscureConfirmPassword = true;
   bool isLoading = false;
   bool isRegistered = false;
+
+  // Tambahan untuk program selection
+  List<String> selectedPrograms = [];
 
   @override
   void dispose() {
@@ -63,6 +70,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     super.dispose();
   }
 
+  // PART 2: Validation & Helper Methods (Line 101-200)
+
   String? _validateRequired(String? value, String fieldName) {
     if (value == null || value.trim().isEmpty) {
       return '$fieldName tidak boleh kosong';
@@ -80,20 +89,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(value.trim())) {
       return 'Format email tidak valid';
-    }
-    return null;
-  }
-
-  String? _validatePhone(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Nomor telepon tidak boleh kosong';
-    }
-    if (value.trim().length < 10 || value.trim().length > 13) {
-      return 'Nomor telepon harus 10-13 digit';
-    }
-    final phoneRegex = RegExp(r'^\+?[\d\-\s]{10,13}$');
-    if (!phoneRegex.hasMatch(value.trim())) {
-      return 'Format nomor telepon tidak valid';
     }
     return null;
   }
@@ -118,9 +113,48 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return null;
   }
 
+  String? _validatePhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Nomor telepon tidak boleh kosong';
+    }
+    if (value.trim().length < 10 || value.trim().length > 13) {
+      return 'Nomor telepon harus 10-13 digit';
+    }
+    final phoneRegex = RegExp(r'^\+?[\d\-\s]{10,13}$');
+    if (!phoneRegex.hasMatch(value.trim())) {
+      return 'Format nomor telepon tidak valid';
+    }
+    return null;
+  }
+
+  // Validasi program selaras dengan repository rules
+  String? _validateProgramSelection() {
+    if (selectedPrograms.isEmpty) {
+      return 'Pilih minimal 1 program';
+    }
+    if (selectedPrograms.length > 3) {
+      return 'Maksimal pilih 3 program';
+    }
+
+    // Validasi kombinasi program yang tidak diperbolehkan
+    if (selectedPrograms.contains('GMM') && selectedPrograms.contains('IFIS')) {
+      return 'Program GMM dan IFIS tidak dapat diambil bersamaan';
+    }
+
+    return null;
+  }
+
   Future<void> _registerUser() async {
     if (!_formKey.currentState!.validate() || isLoading) return;
 
+    // Validasi program selection
+    final programError = _validateProgramSelection();
+    if (programError != null) {
+      context.showErrorSnackBar(programError);
+      return;
+    }
+
+    // Validasi tanggal lahir wajib
     if (selectedDate == null) {
       context.showErrorSnackBar('Tanggal lahir harus diisi');
       return;
@@ -129,12 +163,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     setState(() => isLoading = true);
 
     try {
-      debugPrint('Starting registration with data:');
+      debugPrint('Starting registration process...');
       debugPrint('Email: ${emailController.text.trim()}');
       debugPrint('Name: ${nameController.text.trim()}');
-      debugPrint('Phone: ${phoneController.text.trim()}');
-      debugPrint('Address: ${addressController.text.trim()}');
-      debugPrint('Date of Birth: $selectedDate');
 
       await ref.read(userDataProvider.notifier).register(
             email: emailController.text.trim(),
@@ -143,63 +174,43 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             phoneNumber: phoneController.text.trim(),
             address: addressController.text.trim(),
             dateOfBirth: selectedDate,
+            selectedPrograms: selectedPrograms,
           );
 
-      if (mounted && !isRegistered) {
-        isRegistered = true;
+      if (mounted) {
+        // Tunggu sebentar untuk memastikan data tersimpan
+        await Future.delayed(const Duration(milliseconds: 500));
         context.goNamed('login');
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Registrasi berhasil'),
-                backgroundColor: AppColors.success,
-              ),
-            );
-          }
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registrasi berhasil! Silakan login.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
       }
     } catch (e) {
-      if (mounted && !isRegistered) {
-        debugPrint('Registration error: $e');
-        if (e.toString().contains('UserRole')) {
-          isRegistered = true;
-          context.goNamed('login');
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Registrasi berhasil'),
-                  backgroundColor: AppColors.success,
-                ),
-              );
-            }
-          });
-        } else {
-          context.showErrorSnackBar(_getFormattedErrorMessage(e.toString()));
+      if (mounted) {
+        String errorMessage = 'Terjadi kesalahan saat registrasi';
+
+        if (e is LoginException || e is FormatException) {
+          errorMessage = e.toString();
+        } else if (e is RateLimitException) {
+          errorMessage = e.message;
         }
+
+        debugPrint('Registration error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
       }
     }
-  }
-
-  String _getFormattedErrorMessage(String error) {
-    if (error.contains('email-already-in-use')) {
-      return 'Email sudah terdaftar';
-    }
-    if (error.contains('invalid-email')) {
-      return 'Format email tidak valid';
-    }
-    if (error.contains('weak-password')) {
-      return 'Password terlalu lemah';
-    }
-    if (error.contains('Too many registration attempts')) {
-      return 'Terlalu banyak percobaan. Silakan coba lagi nanti.';
-    }
-    return 'Terjadi kesalahan. Silakan coba lagi.';
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -215,6 +226,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       });
     }
   }
+
+  // PART 4: UI Building Methods Part 1 (Line 301-400)
 
   @override
   Widget build(BuildContext context) {
@@ -245,6 +258,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   _buildPersonalInfoFields(),
                   verticalSpace(16),
                   _buildContactFields(),
+                  verticalSpace(16),
+                  _buildProgramSelection(),
                   verticalSpace(16),
                   _buildPasswordFields(),
                   verticalSpace(32),
@@ -368,6 +383,53 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           validator: (value) => _validateRequired(value, 'Alamat'),
           prefixIcon: const Icon(Icons.location_on_outlined,
               color: AppColors.neutral600),
+        ),
+      ],
+    );
+  }
+
+  // PART 5: UI Building Methods Part 2 (Line 401-482)
+
+  Widget _buildProgramSelection() {
+    // Gunakan available_programs_provider untuk mendapatkan list program
+    final availableProgramsAsync = ref.watch(availableProgramsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pilih Program',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            color: AppColors.neutral600,
+          ),
+        ),
+        verticalSpace(8),
+        availableProgramsAsync.when(
+          data: (programs) => Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: programs.map((program) {
+              final isSelected = selectedPrograms.contains(program.id);
+              return FilterChip(
+                selected: isSelected,
+                label: Text(program.nama),
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      selectedPrograms.add(program.id);
+                    } else {
+                      selectedPrograms.remove(program.id);
+                    }
+                  });
+                },
+                selectedColor: AppColors.primary.withOpacity(0.2),
+                checkmarkColor: AppColors.primary,
+              );
+            }).toList(),
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, __) => const Text('Gagal memuat daftar program'),
         ),
       ],
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sti_app/presentation/extensions/extensions.dart';
 import 'package:sti_app/presentation/misc/constants.dart';
 import 'package:sti_app/presentation/misc/methods.dart';
 
@@ -34,7 +35,7 @@ class ProgramHeaderWidget extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title & Status
+          // Title & Edit Button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -68,7 +69,10 @@ class ProgramHeaderWidget extends ConsumerWidget {
               if (isAdmin)
                 IconButton(
                   onPressed: () {
-                    // TODO: Implement edit program
+                    if (isAdmin) {
+                      context.showSnackBar('Edit Program akan segera hadir');
+                      // TODO: Implement navigation when page is ready
+                    }
                   },
                   icon: const Icon(
                     Icons.edit_outlined,
@@ -79,7 +83,7 @@ class ProgramHeaderWidget extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // Info grid
+          // Info Grid
           Row(
             children: [
               _buildInfoItem(
@@ -106,7 +110,7 @@ class ProgramHeaderWidget extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
           ],
-          if (program.location != null) ...[
+          if (program.location != null && program.location!.isNotEmpty) ...[
             _buildInfoRow(
               icon: Icons.location_on_outlined,
               title: 'Lokasi',
@@ -115,13 +119,18 @@ class ProgramHeaderWidget extends ConsumerWidget {
             const SizedBox(height: 8),
           ],
 
-          // Teacher info
-          if (program.hasTeacher)
+          // Teachers Info
+          if (program.teacherIds.isNotEmpty) ...[
+            _buildTeachersInfo(program.teacherNames),
+            const SizedBox(height: 8),
+          ] else ...[
             _buildInfoRow(
               icon: Icons.person_outline,
               title: 'Pengajar',
-              value: program.teacherName ?? 'Belum ditentukan',
+              value: 'Belum ditentukan',
             ),
+            const SizedBox(height: 8),
+          ],
 
           // Timestamps
           if (program.createdAt != null) ...[
@@ -221,6 +230,52 @@ class ProgramHeaderWidget extends ConsumerWidget {
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTeachersInfo(List<String> teacherNames) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.people_outline, color: AppColors.neutral600, size: 20),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pengajar',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: AppColors.neutral600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: teacherNames
+                    .map((name) => Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            name,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ))
+                    .toList(),
               ),
             ],
           ),

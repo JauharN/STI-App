@@ -25,6 +25,7 @@ mixin _$User {
   String get email => throw _privateConstructorUsedError;
   String get role => throw _privateConstructorUsedError;
   bool get isActive => throw _privateConstructorUsedError;
+  List<String> get enrolledPrograms => throw _privateConstructorUsedError;
   String? get photoUrl => throw _privateConstructorUsedError;
   String? get phoneNumber => throw _privateConstructorUsedError;
   DateTime? get dateOfBirth => throw _privateConstructorUsedError;
@@ -50,6 +51,7 @@ abstract class $UserCopyWith<$Res> {
       String email,
       String role,
       bool isActive,
+      List<String> enrolledPrograms,
       String? photoUrl,
       String? phoneNumber,
       DateTime? dateOfBirth,
@@ -76,6 +78,7 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
     Object? email = null,
     Object? role = null,
     Object? isActive = null,
+    Object? enrolledPrograms = null,
     Object? photoUrl = freezed,
     Object? phoneNumber = freezed,
     Object? dateOfBirth = freezed,
@@ -102,6 +105,10 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
           ? _value.isActive
           : isActive // ignore: cast_nullable_to_non_nullable
               as bool,
+      enrolledPrograms: null == enrolledPrograms
+          ? _value.enrolledPrograms
+          : enrolledPrograms // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       photoUrl: freezed == photoUrl
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
@@ -135,6 +142,7 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
       String email,
       String role,
       bool isActive,
+      List<String> enrolledPrograms,
       String? photoUrl,
       String? phoneNumber,
       DateTime? dateOfBirth,
@@ -158,6 +166,7 @@ class __$$UserImplCopyWithImpl<$Res>
     Object? email = null,
     Object? role = null,
     Object? isActive = null,
+    Object? enrolledPrograms = null,
     Object? photoUrl = freezed,
     Object? phoneNumber = freezed,
     Object? dateOfBirth = freezed,
@@ -184,6 +193,10 @@ class __$$UserImplCopyWithImpl<$Res>
           ? _value.isActive
           : isActive // ignore: cast_nullable_to_non_nullable
               as bool,
+      enrolledPrograms: null == enrolledPrograms
+          ? _value._enrolledPrograms
+          : enrolledPrograms // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       photoUrl: freezed == photoUrl
           ? _value.photoUrl
           : photoUrl // ignore: cast_nullable_to_non_nullable
@@ -206,17 +219,20 @@ class __$$UserImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$UserImpl implements _User {
+class _$UserImpl extends _User {
   _$UserImpl(
       {required this.uid,
       required this.name,
       required this.email,
       this.role = 'santri',
       this.isActive = true,
+      final List<String> enrolledPrograms = const [],
       this.photoUrl,
       this.phoneNumber,
       this.dateOfBirth,
-      this.address});
+      this.address})
+      : _enrolledPrograms = enrolledPrograms,
+        super._();
 
   factory _$UserImpl.fromJson(Map<String, dynamic> json) =>
       _$$UserImplFromJson(json);
@@ -233,6 +249,16 @@ class _$UserImpl implements _User {
   @override
   @JsonKey()
   final bool isActive;
+  final List<String> _enrolledPrograms;
+  @override
+  @JsonKey()
+  List<String> get enrolledPrograms {
+    if (_enrolledPrograms is EqualUnmodifiableListView)
+      return _enrolledPrograms;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_enrolledPrograms);
+  }
+
   @override
   final String? photoUrl;
   @override
@@ -244,7 +270,7 @@ class _$UserImpl implements _User {
 
   @override
   String toString() {
-    return 'User(uid: $uid, name: $name, email: $email, role: $role, isActive: $isActive, photoUrl: $photoUrl, phoneNumber: $phoneNumber, dateOfBirth: $dateOfBirth, address: $address)';
+    return 'User(uid: $uid, name: $name, email: $email, role: $role, isActive: $isActive, enrolledPrograms: $enrolledPrograms, photoUrl: $photoUrl, phoneNumber: $phoneNumber, dateOfBirth: $dateOfBirth, address: $address)';
   }
 
   @override
@@ -258,6 +284,8 @@ class _$UserImpl implements _User {
             (identical(other.role, role) || other.role == role) &&
             (identical(other.isActive, isActive) ||
                 other.isActive == isActive) &&
+            const DeepCollectionEquality()
+                .equals(other._enrolledPrograms, _enrolledPrograms) &&
             (identical(other.photoUrl, photoUrl) ||
                 other.photoUrl == photoUrl) &&
             (identical(other.phoneNumber, phoneNumber) ||
@@ -269,8 +297,18 @@ class _$UserImpl implements _User {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, uid, name, email, role, isActive,
-      photoUrl, phoneNumber, dateOfBirth, address);
+  int get hashCode => Object.hash(
+      runtimeType,
+      uid,
+      name,
+      email,
+      role,
+      isActive,
+      const DeepCollectionEquality().hash(_enrolledPrograms),
+      photoUrl,
+      phoneNumber,
+      dateOfBirth,
+      address);
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.
@@ -288,17 +326,19 @@ class _$UserImpl implements _User {
   }
 }
 
-abstract class _User implements User {
+abstract class _User extends User {
   factory _User(
       {required final String uid,
       required final String name,
       required final String email,
       final String role,
       final bool isActive,
+      final List<String> enrolledPrograms,
       final String? photoUrl,
       final String? phoneNumber,
       final DateTime? dateOfBirth,
       final String? address}) = _$UserImpl;
+  _User._() : super._();
 
   factory _User.fromJson(Map<String, dynamic> json) = _$UserImpl.fromJson;
 
@@ -312,6 +352,8 @@ abstract class _User implements User {
   String get role;
   @override
   bool get isActive;
+  @override
+  List<String> get enrolledPrograms;
   @override
   String? get photoUrl;
   @override

@@ -198,7 +198,6 @@ class _EditPresensiPageState extends ConsumerState<EditPresensiPage> {
   Widget _buildProgramInfo() {
     final program =
         ref.watch(programDetailWithStatsStateProvider(widget.programId));
-
     return program.when(
       data: (programData) => Card(
         child: Padding(
@@ -213,7 +212,9 @@ class _EditPresensiPageState extends ConsumerState<EditPresensiPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text('Pengajar: ${programData.$1.teacherName ?? "-"}'),
+              // Handle multiple teachers atau tampilkan yang pertama jika ada
+              Text(
+                  'Pengajar: ${programData.$1.teacherNames.isNotEmpty ? programData.$1.teacherNames.join(", ") : "-"}'),
               const SizedBox(height: 8),
               Text('Pertemuan ke-$pertemuanKe'),
             ],

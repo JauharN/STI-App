@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sti_app/data/repositories/authentication.dart';
 import 'package:sti_app/data/repositories/user_repository.dart';
 import 'package:sti_app/domain/usecase/usecase.dart';
+import 'package:sti_app/data/repositories/program_repository.dart';
 import '../../../entities/result.dart';
 import '../../../entities/user.dart';
 
@@ -10,39 +11,60 @@ part 'register_params.dart';
 class Register implements Usecase<Result<User>, RegisterParams> {
   final Authentication _authentication;
   final UserRepository _userRepository;
+  final ProgramRepository _programRepository;
 
-  // Rate limiting improvements
-  static const int _maxRegistrationAttempts = 3;
-  static const Duration _rateLimitDuration = Duration(minutes: 30);
+  static const int maxAttempts = 3;
+  static const Duration rateLimitDuration = Duration(minutes: 30);
+
   int _registrationAttempts = 0;
   DateTime? _lastRegistrationAttempt;
 
   Register({
     required Authentication authentication,
     required UserRepository userRepository,
+    required ProgramRepository programRepository,
   })  : _authentication = authentication,
-        _userRepository = userRepository;
+        _userRepository = userRepository,
+        _programRepository = programRepository;
 
   @override
   Future<Result<User>> call(RegisterParams params) async {
     try {
       // Rate limiting check
       if (_isRateLimited()) {
+        debugPrint('Registration rate limited');
         return const Result.failed(
-            'Too many registration attempts. Please try again later.');
+            'Terlalu banyak percobaan registrasi. Silakan tunggu beberapa saat.');
       }
 
       _incrementAttempt();
 
+      // Validate selected programs for santri
+      if (params.role == 'santri') {
+        final programResult =
+            await _validateSelectedPrograms(params.selectedPrograms);
+        if (programResult.isFailed) {
+          debugPrint(
+              'Program validation failed: ${programResult.errorMessage}');
+          return Result.failed(programResult.errorMessage!);
+        }
+      }
+
       debugPrint('Starting registration for email: ${params.sanitizedEmail}');
 
       String uid = '';
+
       try {
         final authResult = await _authentication.register(
           email: params.sanitizedEmail,
           password: params.password,
           name: params.sanitizedName,
-          role: params.role, // Now passing string role
+          role: params.role,
+          selectedPrograms: params.selectedPrograms,
+          photoUrl: params.photoUrl,
+          phoneNumber: params.phoneNumber,
+          address: params.address,
+          dateOfBirth: params.dateOfBirth,
         );
 
         if (authResult.isFailed) {
@@ -63,11 +85,12 @@ class Register implements Usecase<Result<User>, RegisterParams> {
           uid: uid,
           email: params.sanitizedEmail,
           name: params.sanitizedName,
+          role: params.role,
+          selectedPrograms: params.selectedPrograms,
           photoUrl: params.photoUrl,
-          phoneNumber: params.sanitizedPhoneNumber,
-          address: params.sanitizedAddress,
+          phoneNumber: params.phoneNumber,
+          address: params.address,
           dateOfBirth: params.dateOfBirth,
-          role: params.role, // Now passing string role
         );
 
         if (userResult.isSuccess) {
@@ -91,10 +114,26 @@ class Register implements Usecase<Result<User>, RegisterParams> {
     }
   }
 
+  Future<Result<void>> _validateSelectedPrograms(List<String> programs) async {
+    try {
+      // Check program existence and availability
+      for (String programId in programs) {
+        final program = await _programRepository.getProgramById(programId);
+        if (program.isFailed) {
+          return Result.failed('Program $programId tidak ditemukan');
+        }
+      }
+      return const Result.success(null);
+    } catch (e) {
+      return Result.failed('Error validating programs: ${e.toString()}');
+    }
+  }
+
   bool _isRateLimited() {
     if (_lastRegistrationAttempt == null) return false;
-    if (_registrationAttempts >= _maxRegistrationAttempts) {
-      final lockoutEndTime = _lastRegistrationAttempt!.add(_rateLimitDuration);
+
+    if (_registrationAttempts >= maxAttempts) {
+      final lockoutEndTime = _lastRegistrationAttempt!.add(rateLimitDuration);
       if (DateTime.now().isBefore(lockoutEndTime)) {
         return true;
       }

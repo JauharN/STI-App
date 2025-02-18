@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:sti_app/domain/entities/presensi/presensi_summary.dart';
 import 'package:sti_app/domain/entities/presensi/program_detail.dart';
 import '../repositories/program_repository.dart';
@@ -407,6 +408,92 @@ class FirebaseProgramRepository implements ProgramRepository {
       return Result.failed('Firebase Error: ${e.message ?? 'Unknown error'}');
     } catch (e) {
       return Result.failed('Error: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Result<List<Program>>> getAvailablePrograms() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('program')
+          .where('nama', whereIn: ['TAHFIDZ', 'GMM', 'IFIS']).get();
+
+      if (querySnapshot.docs.isEmpty) {
+        return const Result.failed('Program belum diinisialisasi');
+      }
+
+      final programs = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        return Program.fromJson(data);
+      }).toList();
+
+      // Sort berdasarkan urutan tetap
+      programs.sort((a, b) {
+        final order = {'TAHFIDZ': 1, 'GMM': 2, 'IFIS': 3};
+        return (order[a.nama] ?? 4).compareTo(order[b.nama] ?? 4);
+      });
+
+      return Result.success(programs);
+    } catch (e) {
+      debugPrint('Error getting available programs: $e');
+      return Result.failed('Gagal mengambil daftar program: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Result<bool>> validateProgramCombination(
+      List<String> programIds) async {
+    try {
+      // Basic validation
+      if (programIds.isEmpty) {
+        return const Result.failed('Pilih minimal 1 program');
+      }
+
+      if (programIds.length > 3) {
+        return const Result.failed('Maksimal pilih 3 program');
+      }
+
+      // Validate valid programs
+      for (String programId in programIds) {
+        if (!ProgramRepository.isValidProgram(programId)) {
+          return Result.failed('Program $programId tidak valid');
+        }
+      }
+
+      // Check for duplicates
+      if (programIds.toSet().length != programIds.length) {
+        return const Result.failed('Program tidak boleh duplikat');
+      }
+
+      // Validasi kombinasi program
+      if (!ProgramRepository.isValidCombination(programIds)) {
+        return const Result.failed(
+            'Program GMM dan IFIS tidak dapat diambil bersamaan');
+      }
+
+      // Tambahkan urutan validasi yang lebih detail
+      if (programIds.contains('GMM') && programIds.contains('IFIS')) {
+        return const Result.failed(
+            'Program GMM dan IFIS tidak dapat diambil bersamaan. Silahkan pilih salah satu.');
+      }
+
+      debugPrint('Validating program combination: $programIds');
+
+      // Verifikasi program exists di Firestore
+      for (String programId in programIds) {
+        final docSnapshot =
+            await _firestore.collection('program').doc(programId).get();
+
+        if (!docSnapshot.exists) {
+          return Result.failed('Program $programId tidak ditemukan');
+        }
+      }
+
+      return const Result.success(true);
+    } catch (e) {
+      debugPrint('Error validating program combination: $e');
+      return Result.failed(
+          'Gagal memvalidasi kombinasi program: ${e.toString()}');
     }
   }
 }

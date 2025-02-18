@@ -203,11 +203,18 @@ class _ManagePresensiPageState extends ConsumerState<ManagePresensiPage> {
                   children: [
                     _buildProgramInfo(
                       programName: programNameAsync.valueOrNull ?? 'Loading...',
-                      pengajarName: ref
+                      pengajarNames: ref
+                                  .watch(programProvider(widget.programId))
+                                  .valueOrNull
+                                  ?.pengajarNames
+                                  .isNotEmpty ==
+                              true
+                          ? ref
                               .watch(programProvider(widget.programId))
-                              .valueOrNull
-                              ?.pengajarName ??
-                          'Belum ditentukan',
+                              .valueOrNull!
+                              .pengajarNames
+                              .join(", ")
+                          : 'Belum ditentukan',
                       kelas: ref
                               .watch(programProvider(widget.programId))
                               .valueOrNull
@@ -303,7 +310,7 @@ class _ManagePresensiPageState extends ConsumerState<ManagePresensiPage> {
   Widget _buildProgramInfo({
     required String programName,
     String kelas = 'Reguler',
-    String pengajarName = 'Belum ditentukan',
+    String pengajarNames = 'Belum ditentukan',
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -324,7 +331,7 @@ class _ManagePresensiPageState extends ConsumerState<ManagePresensiPage> {
           const Divider(height: 16),
           _buildInfoRow('Kelas', kelas),
           const Divider(height: 16),
-          _buildInfoRow('Pengajar', pengajarName),
+          _buildInfoRow('Pengajar', pengajarNames),
         ],
       ),
     );

@@ -8,6 +8,8 @@ import 'firebase_user_repository.dart';
 
 class FirebaseAuthentication implements Authentication {
   final firebase_auth.FirebaseAuth _firebaseAuth;
+  final FirebaseFirestore _firebaseFirestore;
+  final FirebaseUserRepository _userRepository;
 
   static const int _maxLoginAttempts = 5;
   static const Duration _lockoutDuration = Duration(minutes: 30);
@@ -19,11 +21,36 @@ class FirebaseAuthentication implements Authentication {
   int _registrationAttempts = 0;
   DateTime? _lastRegistrationAttempt;
 
-  FirebaseAuthentication({firebase_auth.FirebaseAuth? firebaseAuth})
-      : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance;
+  FirebaseAuthentication({
+    firebase_auth.FirebaseAuth? firebaseAuth,
+    FirebaseFirestore? firebaseFirestore,
+    FirebaseUserRepository? userRepository,
+  })  : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
+        _firebaseFirestore = firebaseFirestore ?? FirebaseFirestore.instance,
+        _userRepository = userRepository ?? FirebaseUserRepository();
 
   @override
-  String? getLoggedUserId() => _firebaseAuth.currentUser?.uid;
+  String? getLoggedUserId() {
+    try {
+      final currentUser = _firebaseAuth.currentUser;
+      if (currentUser == null) {
+        debugPrint('No authenticated user found');
+        return null;
+      }
+
+      // Verifikasi UID valid
+      if (currentUser.uid.isEmpty) {
+        debugPrint('Invalid UID found for authenticated user');
+        return null;
+      }
+
+      debugPrint('Current user ID: ${currentUser.uid}');
+      return currentUser.uid;
+    } catch (e) {
+      debugPrint('Error getting logged user ID: $e');
+      return null;
+    }
+  }
 
   @override
   Future<Result<String>> register({
@@ -31,80 +58,208 @@ class FirebaseAuthentication implements Authentication {
     required String password,
     required String name,
     required String role,
+    required List<String> selectedPrograms,
+    String? photoUrl,
     String? phoneNumber,
     String? address,
     DateTime? dateOfBirth,
-    String? photoUrl,
   }) async {
     try {
-      // Validate input
-      if (!_isValidEmail(email)) {
-        debugPrint('Invalid email format: $email');
-        return const Result.failed('Invalid email format');
+      // STEP 1: Input Validation
+      final validationResult = await _validateRegistrationInput(
+        email: email,
+        password: password,
+        name: name,
+        role: role,
+        selectedPrograms: selectedPrograms,
+      );
+
+      if (validationResult.isFailed) {
+        debugPrint(
+            'Registration validation failed: ${validationResult.errorMessage}');
+        return Result.failed(validationResult.errorMessage!);
       }
 
-      if (!_isValidPassword(password)) {
-        debugPrint('Password validation failed');
-        return const Result.failed('Password must be at least 6 characters');
-      }
-
-      // Validate role
-      if (!User.isValidRole(role)) {
-        debugPrint('Invalid role provided: $role');
-        return const Result.failed('Invalid role value');
-      }
-
-      // Check rate limiting
-      if (_isRegistrationLimited()) {
-        _incrementRegistrationAttempts();
+      // STEP 2: Rate Limiting Check
+      if (_isRateLimited()) {
+        _incrementRegistrationAttempt();
         debugPrint('Registration rate limited');
         return const Result.failed(
-            'Too many registration attempts. Please try again later.');
+          'Terlalu banyak percobaan registrasi. Silakan tunggu beberapa saat.',
+        );
       }
 
-      debugPrint(
-          'Starting Firebase Auth registration for email: ${email.trim()}');
+      // STEP 3: Firebase Authentication Creation
+      firebase_auth.UserCredential? authCredential;
+      try {
+        debugPrint('Creating Firebase Auth user for email: ${email.trim()}');
+        authCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+          email: email.trim(),
+          password: password,
+        );
 
-      var userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
+        if (authCredential.user == null) {
+          throw Exception('Failed to create authentication user');
+        }
+      } catch (e) {
+        final error = _handleAuthError(e);
+        _incrementRegistrationAttempt();
+        return Result.failed(error);
+      }
 
-      final uid = userCredential.user!.uid;
-      debugPrint('Firebase Auth registration successful for UID: $uid');
+      // STEP 4: Update Auth User Display Name
+      try {
+        await authCredential.user!.updateDisplayName(name.trim());
+      } catch (e) {
+        debugPrint('Warning: Failed to update display name: $e');
+        // Continue as this is not critical
+      }
 
-      // Save to Firestore with all data
-      final userRepo = FirebaseUserRepository();
-      final result = await userRepo.createUser(
-        uid: uid,
-        email: email.trim(),
-        name: name.trim(),
-        role: role,
-        phoneNumber: phoneNumber?.trim(),
-        address: address?.trim(),
-        dateOfBirth: dateOfBirth,
-        photoUrl: photoUrl?.trim(),
-      );
+      // STEP 5: Firestore User Creation
+      try {
+        final uid = authCredential.user!.uid;
+        debugPrint('Creating Firestore user document for UID: $uid');
 
-      if (result.isSuccess) {
-        _resetRegistrationAttempts();
-        debugPrint('User data saved successfully for UID: $uid');
-        return Result.success(uid);
-      } else {
-        debugPrint('Failed to save user data: ${result.errorMessage}');
-        await _cleanupFailedRegistration(userCredential.user);
+        final userResult = await _userRepository.createUser(
+          uid: uid,
+          email: email.trim(),
+          name: name.trim(),
+          role: role,
+          photoUrl: photoUrl?.trim(),
+          phoneNumber: phoneNumber?.trim(),
+          address: address?.trim(),
+          dateOfBirth: dateOfBirth,
+          selectedPrograms: selectedPrograms,
+        );
+
+        if (userResult.isSuccess) {
+          // STEP 6: Send Email Verification
+          try {
+            await authCredential.user!.sendEmailVerification();
+            debugPrint('Verification email sent to: ${email.trim()}');
+          } catch (e) {
+            debugPrint('Warning: Failed to send verification email: $e');
+            // Continue as this is not critical
+          }
+
+          _resetRegistrationAttempts();
+          debugPrint('Successfully created user: $uid');
+          return Result.success(uid);
+        } else {
+          // STEP 7: Rollback if Firestore creation fails
+          await _cleanupFailedRegistration(authCredential.user);
+          debugPrint(
+              'Failed to create Firestore user: ${userResult.errorMessage}');
+          return Result.failed(
+              'Failed to create user profile: ${userResult.errorMessage}');
+        }
+      } catch (e) {
+        // STEP 8: Cleanup on any error during Firestore creation
+        await _cleanupFailedRegistration(authCredential.user);
+        debugPrint('Error creating user profile: $e');
         return Result.failed(
-            'Failed to save user data: ${result.errorMessage}');
+            'Failed to complete registration: ${e.toString()}');
       }
-    } on firebase_auth.FirebaseAuthException catch (e) {
-      _incrementRegistrationAttempts();
-      debugPrint('Firebase Auth registration failed: ${e.message}');
-      return Result.failed(_getRegistrationErrorMessage(e.code));
     } catch (e) {
-      _incrementRegistrationAttempts();
       debugPrint('Unexpected error during registration: $e');
       return Result.failed('Registration failed: ${e.toString()}');
     }
+  }
+
+  // Validation helper
+  Future<Result<void>> _validateRegistrationInput({
+    required String email,
+    required String password,
+    required String name,
+    required String role,
+    required List<String> selectedPrograms,
+  }) async {
+    try {
+      if (!_isValidEmail(email)) {
+        return const Result.failed('Format email tidak valid');
+      }
+
+      if (!_isValidPassword(password)) {
+        return const Result.failed('Password minimal 6 karakter');
+      }
+
+      if (name.trim().isEmpty) {
+        return const Result.failed('Nama tidak boleh kosong');
+      }
+
+      if (!User.isValidRole(role)) {
+        return const Result.failed('Role tidak valid');
+      }
+
+      if (role == 'santri' && selectedPrograms.isEmpty) {
+        return const Result.failed('Santri harus memilih minimal 1 program');
+      }
+
+      // Check if email already exists
+      try {
+        final methods =
+            await _firebaseAuth.fetchSignInMethodsForEmail(email.trim());
+        if (methods.isNotEmpty) {
+          return const Result.failed('Email sudah terdaftar');
+        }
+      } catch (e) {
+        debugPrint('Error checking existing email: $e');
+        // Continue if can't check (might be network error)
+      }
+
+      return const Result.success(null);
+    } catch (e) {
+      return Result.failed('Validation error: ${e.toString()}');
+    }
+  }
+
+  String _handleAuthError(dynamic error) {
+    if (error is firebase_auth.FirebaseAuthException) {
+      switch (error.code) {
+        case 'email-already-in-use':
+          return 'Email sudah terdaftar';
+        case 'invalid-email':
+          return 'Format email tidak valid';
+        case 'operation-not-allowed':
+          return 'Registrasi dengan email/password tidak diizinkan';
+        case 'weak-password':
+          return 'Password terlalu lemah';
+        default:
+          return 'Gagal membuat akun: ${error.message}';
+      }
+    }
+    return 'Terjadi kesalahan saat registrasi';
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email.trim());
+  }
+
+  bool _isValidPassword(String password) {
+    return password.length >= 6;
+  }
+
+  // Rate limiting helpers
+  bool _isRateLimited() {
+    if (_lastRegistrationAttempt == null) return false;
+    if (_registrationAttempts >= _maxRegistrationAttempts) {
+      final lockoutEndTime = _lastRegistrationAttempt!.add(_rateLimitDuration);
+      if (DateTime.now().isBefore(lockoutEndTime)) {
+        return true;
+      }
+      _resetRegistrationAttempts();
+    }
+    return false;
+  }
+
+  void _incrementRegistrationAttempt() {
+    _registrationAttempts++;
+    _lastRegistrationAttempt = DateTime.now();
+  }
+
+  void _resetRegistrationAttempts() {
+    _registrationAttempts = 0;
+    _lastRegistrationAttempt = null;
   }
 
   Future<void> _cleanupFailedRegistration(firebase_auth.User? user) async {
@@ -121,51 +276,6 @@ class FirebaseAuthentication implements Authentication {
         debugPrint('Error signing out after cleanup: $e');
       }
     }
-  }
-
-  String _getRegistrationErrorMessage(String code) {
-    switch (code) {
-      case 'email-already-in-use':
-        return 'Email already registered';
-      case 'invalid-email':
-        return 'Invalid email format';
-      case 'operation-not-allowed':
-        return 'Email/password registration is not enabled';
-      case 'weak-password':
-        return 'Password is too weak';
-      default:
-        return 'Registration failed';
-    }
-  }
-
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email);
-  }
-
-  bool _isValidPassword(String password) {
-    return password.length >= 6;
-  }
-
-  bool _isRegistrationLimited() {
-    if (_lastRegistrationAttempt == null) return false;
-    if (_registrationAttempts >= _maxRegistrationAttempts) {
-      final lockoutEndTime = _lastRegistrationAttempt!.add(_rateLimitDuration);
-      if (DateTime.now().isBefore(lockoutEndTime)) {
-        return true;
-      }
-      _resetRegistrationAttempts();
-    }
-    return false;
-  }
-
-  void _incrementRegistrationAttempts() {
-    _registrationAttempts++;
-    _lastRegistrationAttempt = DateTime.now();
-  }
-
-  void _resetRegistrationAttempts() {
-    _registrationAttempts = 0;
-    _lastRegistrationAttempt = null;
   }
 
   @override
@@ -197,8 +307,8 @@ class FirebaseAuthentication implements Authentication {
             'Terlalu banyak percobaan login. Silakan tunggu beberapa saat.');
       }
 
-      // Normalize email dan validasi input
       final normalizedEmail = email.trim().toLowerCase();
+
       if (!_isValidEmail(normalizedEmail)) {
         debugPrint('Invalid email format: $normalizedEmail');
         return const Result.failed('Format email tidak valid');
@@ -209,12 +319,38 @@ class FirebaseAuthentication implements Authentication {
         return const Result.failed('Password minimal 6 karakter');
       }
 
-      // Increment attempt sebelum mencoba
       _incrementLoginAttempt();
-
       debugPrint('Attempting login for email: $normalizedEmail');
 
       try {
+        // Special handling untuk superadmin
+        if (normalizedEmail == 'superadmin@sti.com') {
+          final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+            email: normalizedEmail,
+            password: password,
+          );
+
+          if (userCredential.user == null) {
+            debugPrint('Superadmin login failed');
+            return const Result.failed('Login gagal. Silakan coba lagi.');
+          }
+
+          final uid = userCredential.user!.uid;
+          final userDoc =
+              await _firebaseFirestore.collection('users').doc(uid).get();
+
+          if (!userDoc.exists || userDoc.data()?['role'] != 'superAdmin') {
+            debugPrint('Invalid superadmin credentials');
+            await _firebaseAuth.signOut();
+            return const Result.failed('Kredensial superadmin tidak valid');
+          }
+
+          _resetLoginAttempts();
+          debugPrint('Superadmin login successful');
+          return Result.success(uid);
+        }
+
+        // Regular user login
         final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
           email: normalizedEmail,
           password: password,
@@ -226,10 +362,8 @@ class FirebaseAuthentication implements Authentication {
         }
 
         final uid = userCredential.user!.uid;
-
-        // Verify user di Firestore
-        final db = FirebaseFirestore.instance;
-        final userDoc = await db.collection('users').doc(uid).get();
+        final userDoc =
+            await _firebaseFirestore.collection('users').doc(uid).get();
 
         if (!userDoc.exists) {
           debugPrint('User document not found in Firestore');
@@ -246,8 +380,14 @@ class FirebaseAuthentication implements Authentication {
               'Akun tidak aktif. Silakan hubungi admin.');
         }
 
-        _resetLoginAttempts(); // Reset hanya setelah login sukses
+        // Validasi role
+        if (!User.isValidRole(userData['role'])) {
+          debugPrint('Invalid role found');
+          await _firebaseAuth.signOut();
+          return const Result.failed('Terjadi kesalahan pada role akun');
+        }
 
+        _resetLoginAttempts();
         debugPrint('Login successful for UID: $uid');
         return Result.success(uid);
       } on firebase_auth.FirebaseAuthException catch (e) {
@@ -257,6 +397,76 @@ class FirebaseAuthentication implements Authentication {
     } catch (e) {
       debugPrint('Unexpected error during login: $e');
       return const Result.failed('Terjadi kesalahan. Silakan coba lagi.');
+    }
+  }
+
+  @override
+  Future<Result<bool>> isSessionValid() async {
+    try {
+      final currentUser = _firebaseAuth.currentUser;
+      if (currentUser == null) {
+        return const Result.success(false);
+      }
+
+      // Reload user untuk mendapatkan status terbaru
+      await currentUser.reload();
+      final idTokenResult = await currentUser.getIdTokenResult(true);
+
+      // Cek expired token
+      if (idTokenResult.expirationTime?.isBefore(DateTime.now()) ?? true) {
+        return const Result.success(false);
+      }
+
+      // Cek status user di Firestore
+      final userDoc = await _firebaseFirestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (!userDoc.exists || !(userDoc.data()?['isActive'] ?? false)) {
+        return const Result.success(false);
+      }
+
+      return const Result.success(true);
+    } catch (e) {
+      debugPrint('Error checking session validity: $e');
+      return const Result.failed('Failed to validate session');
+    }
+  }
+
+  @override
+  Future<Result<void>> refreshToken() async {
+    try {
+      final currentUser = _firebaseAuth.currentUser;
+
+      if (currentUser == null) {
+        return const Result.failed('No authenticated user');
+      }
+
+      try {
+        // Force refresh token
+        await currentUser.getIdToken(true);
+
+        // Verifikasi ulang status user
+        final userDoc = await _firebaseFirestore
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        if (!userDoc.exists || !(userDoc.data()?['isActive'] ?? false)) {
+          // Jika user tidak aktif, force logout
+          await _firebaseAuth.signOut();
+          return const Result.failed('User is not active');
+        }
+
+        return const Result.success(null);
+      } on firebase_auth.FirebaseAuthException catch (e) {
+        debugPrint('Firebase Auth error refreshing token: ${e.message}');
+        return Result.failed('Failed to refresh token: ${e.message}');
+      }
+    } catch (e) {
+      debugPrint('Error refreshing token: $e');
+      return const Result.failed('Unexpected error refreshing token');
     }
   }
 

@@ -26,8 +26,10 @@ mixin _$ProgramDetail {
   List<String> get schedule => throw _privateConstructorUsedError;
   int get totalMeetings => throw _privateConstructorUsedError;
   String? get location => throw _privateConstructorUsedError;
-  String? get teacherId => throw _privateConstructorUsedError;
-  String? get teacherName => throw _privateConstructorUsedError;
+  List<String> get teacherIds =>
+      throw _privateConstructorUsedError; // Ubah ke list
+  List<String> get teacherNames =>
+      throw _privateConstructorUsedError; // Ubah ke list
   List<String> get enrolledSantriIds => throw _privateConstructorUsedError;
   DateTime? get createdAt => throw _privateConstructorUsedError;
   DateTime? get updatedAt => throw _privateConstructorUsedError;
@@ -55,8 +57,8 @@ abstract class $ProgramDetailCopyWith<$Res> {
       List<String> schedule,
       int totalMeetings,
       String? location,
-      String? teacherId,
-      String? teacherName,
+      List<String> teacherIds,
+      List<String> teacherNames,
       List<String> enrolledSantriIds,
       DateTime? createdAt,
       DateTime? updatedAt});
@@ -83,8 +85,8 @@ class _$ProgramDetailCopyWithImpl<$Res, $Val extends ProgramDetail>
     Object? schedule = null,
     Object? totalMeetings = null,
     Object? location = freezed,
-    Object? teacherId = freezed,
-    Object? teacherName = freezed,
+    Object? teacherIds = null,
+    Object? teacherNames = null,
     Object? enrolledSantriIds = null,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
@@ -114,14 +116,14 @@ class _$ProgramDetailCopyWithImpl<$Res, $Val extends ProgramDetail>
           ? _value.location
           : location // ignore: cast_nullable_to_non_nullable
               as String?,
-      teacherId: freezed == teacherId
-          ? _value.teacherId
-          : teacherId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      teacherName: freezed == teacherName
-          ? _value.teacherName
-          : teacherName // ignore: cast_nullable_to_non_nullable
-              as String?,
+      teacherIds: null == teacherIds
+          ? _value.teacherIds
+          : teacherIds // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      teacherNames: null == teacherNames
+          ? _value.teacherNames
+          : teacherNames // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       enrolledSantriIds: null == enrolledSantriIds
           ? _value.enrolledSantriIds
           : enrolledSantriIds // ignore: cast_nullable_to_non_nullable
@@ -153,8 +155,8 @@ abstract class _$$ProgramDetailImplCopyWith<$Res>
       List<String> schedule,
       int totalMeetings,
       String? location,
-      String? teacherId,
-      String? teacherName,
+      List<String> teacherIds,
+      List<String> teacherNames,
       List<String> enrolledSantriIds,
       DateTime? createdAt,
       DateTime? updatedAt});
@@ -179,8 +181,8 @@ class __$$ProgramDetailImplCopyWithImpl<$Res>
     Object? schedule = null,
     Object? totalMeetings = null,
     Object? location = freezed,
-    Object? teacherId = freezed,
-    Object? teacherName = freezed,
+    Object? teacherIds = null,
+    Object? teacherNames = null,
     Object? enrolledSantriIds = null,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
@@ -210,14 +212,14 @@ class __$$ProgramDetailImplCopyWithImpl<$Res>
           ? _value.location
           : location // ignore: cast_nullable_to_non_nullable
               as String?,
-      teacherId: freezed == teacherId
-          ? _value.teacherId
-          : teacherId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      teacherName: freezed == teacherName
-          ? _value.teacherName
-          : teacherName // ignore: cast_nullable_to_non_nullable
-              as String?,
+      teacherIds: null == teacherIds
+          ? _value._teacherIds
+          : teacherIds // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      teacherNames: null == teacherNames
+          ? _value._teacherNames
+          : teacherNames // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       enrolledSantriIds: null == enrolledSantriIds
           ? _value._enrolledSantriIds
           : enrolledSantriIds // ignore: cast_nullable_to_non_nullable
@@ -244,12 +246,14 @@ class _$ProgramDetailImpl implements _ProgramDetail {
       required final List<String> schedule,
       required this.totalMeetings,
       this.location,
-      this.teacherId,
-      this.teacherName,
+      final List<String> teacherIds = const [],
+      final List<String> teacherNames = const [],
       final List<String> enrolledSantriIds = const [],
       this.createdAt = null,
       this.updatedAt = null})
       : _schedule = schedule,
+        _teacherIds = teacherIds,
+        _teacherNames = teacherNames,
         _enrolledSantriIds = enrolledSantriIds;
 
   factory _$ProgramDetailImpl.fromJson(Map<String, dynamic> json) =>
@@ -273,11 +277,29 @@ class _$ProgramDetailImpl implements _ProgramDetail {
   final int totalMeetings;
   @override
   final String? location;
+  final List<String> _teacherIds;
   @override
-  final String? teacherId;
+  @JsonKey()
+  List<String> get teacherIds {
+    if (_teacherIds is EqualUnmodifiableListView) return _teacherIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_teacherIds);
+  }
+
+// Ubah ke list
+  final List<String> _teacherNames;
+// Ubah ke list
   @override
-  final String? teacherName;
+  @JsonKey()
+  List<String> get teacherNames {
+    if (_teacherNames is EqualUnmodifiableListView) return _teacherNames;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_teacherNames);
+  }
+
+// Ubah ke list
   final List<String> _enrolledSantriIds;
+// Ubah ke list
   @override
   @JsonKey()
   List<String> get enrolledSantriIds {
@@ -296,7 +318,7 @@ class _$ProgramDetailImpl implements _ProgramDetail {
 
   @override
   String toString() {
-    return 'ProgramDetail(id: $id, name: $name, description: $description, schedule: $schedule, totalMeetings: $totalMeetings, location: $location, teacherId: $teacherId, teacherName: $teacherName, enrolledSantriIds: $enrolledSantriIds, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ProgramDetail(id: $id, name: $name, description: $description, schedule: $schedule, totalMeetings: $totalMeetings, location: $location, teacherIds: $teacherIds, teacherNames: $teacherNames, enrolledSantriIds: $enrolledSantriIds, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -313,10 +335,10 @@ class _$ProgramDetailImpl implements _ProgramDetail {
                 other.totalMeetings == totalMeetings) &&
             (identical(other.location, location) ||
                 other.location == location) &&
-            (identical(other.teacherId, teacherId) ||
-                other.teacherId == teacherId) &&
-            (identical(other.teacherName, teacherName) ||
-                other.teacherName == teacherName) &&
+            const DeepCollectionEquality()
+                .equals(other._teacherIds, _teacherIds) &&
+            const DeepCollectionEquality()
+                .equals(other._teacherNames, _teacherNames) &&
             const DeepCollectionEquality()
                 .equals(other._enrolledSantriIds, _enrolledSantriIds) &&
             (identical(other.createdAt, createdAt) ||
@@ -335,8 +357,8 @@ class _$ProgramDetailImpl implements _ProgramDetail {
       const DeepCollectionEquality().hash(_schedule),
       totalMeetings,
       location,
-      teacherId,
-      teacherName,
+      const DeepCollectionEquality().hash(_teacherIds),
+      const DeepCollectionEquality().hash(_teacherNames),
       const DeepCollectionEquality().hash(_enrolledSantriIds),
       createdAt,
       updatedAt);
@@ -365,8 +387,8 @@ abstract class _ProgramDetail implements ProgramDetail {
       required final List<String> schedule,
       required final int totalMeetings,
       final String? location,
-      final String? teacherId,
-      final String? teacherName,
+      final List<String> teacherIds,
+      final List<String> teacherNames,
       final List<String> enrolledSantriIds,
       final DateTime? createdAt,
       final DateTime? updatedAt}) = _$ProgramDetailImpl;
@@ -387,9 +409,9 @@ abstract class _ProgramDetail implements ProgramDetail {
   @override
   String? get location;
   @override
-  String? get teacherId;
+  List<String> get teacherIds; // Ubah ke list
   @override
-  String? get teacherName;
+  List<String> get teacherNames; // Ubah ke list
   @override
   List<String> get enrolledSantriIds;
   @override

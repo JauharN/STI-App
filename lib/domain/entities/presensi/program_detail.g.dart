@@ -15,8 +15,14 @@ _$ProgramDetailImpl _$$ProgramDetailImplFromJson(Map<String, dynamic> json) =>
           (json['schedule'] as List<dynamic>).map((e) => e as String).toList(),
       totalMeetings: (json['totalMeetings'] as num).toInt(),
       location: json['location'] as String?,
-      teacherId: json['teacherId'] as String?,
-      teacherName: json['teacherName'] as String?,
+      teacherIds: (json['teacherIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      teacherNames: (json['teacherNames'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       enrolledSantriIds: (json['enrolledSantriIds'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
@@ -37,8 +43,8 @@ Map<String, dynamic> _$$ProgramDetailImplToJson(_$ProgramDetailImpl instance) =>
       'schedule': instance.schedule,
       'totalMeetings': instance.totalMeetings,
       'location': instance.location,
-      'teacherId': instance.teacherId,
-      'teacherName': instance.teacherName,
+      'teacherIds': instance.teacherIds,
+      'teacherNames': instance.teacherNames,
       'enrolledSantriIds': instance.enrolledSantriIds,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),

@@ -7,7 +7,7 @@ part of 'manage_santri_provider.dart';
 // **************************************************************************
 
 String _$manageSantriControllerHash() =>
-    r'fbf15f4ec36ba3f2570f1e5091ee296059ad3aac';
+    r'a8305b83402d3406f0e1acdbead8a57cfce18937';
 
 /// See also [ManageSantriController].
 @ProviderFor(ManageSantriController)

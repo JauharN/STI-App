@@ -10,7 +10,7 @@ import '../../../domain/usecase/authentication/upload_profile_picture/upload_pro
 import '../../../domain/usecase/user_management/activate_user/activate_user.dart';
 import '../../../domain/usecase/user_management/deactivate_user/deactivate_user.dart';
 import '../../../domain/usecase/user_management/update_user_role/update_user_role.dart';
-import '../../utils/login_exception.dart';
+import '../../utils/exception.dart';
 import '../../utils/rate_limit_exception.dart';
 import '../../utils/rate_limit_helper.dart';
 import '../../utils/storage_helper.dart';
@@ -169,49 +169,76 @@ class UserData extends _$UserData {
     required String email,
     required String password,
     required String name,
+    required List<String> selectedPrograms,
     String? phoneNumber,
     String? address,
     DateTime? dateOfBirth,
-    String? photoUrl,
   }) async {
     try {
-      state = const AsyncLoading();
-      debugPrint('Starting registration for: ${email.trim()}');
-
-      // Validasi input dasar
-      if (!_validateRegistrationInput(
-        email: email,
-        password: password,
-        name: name,
-      )) {
-        throw const FormatException(
-            'Please fill in all required fields correctly');
+      // Check rate limiting
+      if (_rateLimitHelper.isLimited) {
+        final remaining = _rateLimitHelper.remainingLimitTime;
+        throw RateLimitException(
+            'Terlalu banyak percobaan registrasi. Silakan coba lagi dalam ${remaining?.inMinutes} menit.');
       }
 
-      final register = ref.read(registerProvider);
-      var result = await register(RegisterParams(
+      // Set loading state
+      state = const AsyncLoading();
+
+      // Track attempt
+      await _rateLimitHelper.incrementAttempt();
+
+      // Validasi input sesuai dengan auth requirements
+      if (email.trim().isEmpty || password.isEmpty || name.trim().isEmpty) {
+        throw const FormatException('Email, password, dan nama harus diisi');
+      }
+
+      // Validasi email format
+      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+      if (!emailRegex.hasMatch(email.trim())) {
+        throw const FormatException('Format email tidak valid');
+      }
+
+      // Validasi password minimal 6 karakter
+      if (password.length < 6) {
+        throw const FormatException('Password minimal 6 karakter');
+      }
+
+      // Validasi program untuk santri
+      if (selectedPrograms.isEmpty) {
+        throw const FormatException('Pilih minimal 1 program');
+      }
+
+      final authResult = await ref.read(registerProvider)(RegisterParams(
         name: name.trim(),
         email: email.trim(),
         password: password,
         phoneNumber: phoneNumber?.trim(),
         address: address?.trim(),
         dateOfBirth: dateOfBirth,
-        photoUrl: photoUrl,
+        selectedPrograms: selectedPrograms,
       ));
 
-      if (result.isSuccess && result.resultValue != null) {
+      if (authResult.isSuccess && authResult.resultValue != null) {
+        // Reset rate limit on success
+        await _rateLimitHelper.reset();
+
+        // Update state and notify
+        state = AsyncData(authResult.resultValue);
+        _notifyStateChange(authResult.resultValue);
         debugPrint(
-            'Registration successful for user: ${result.resultValue?.email}');
-        state = AsyncData(result.resultValue);
-        _notifyStateChange(result.resultValue);
-        _resetRegistrationData();
+            'Registration successful for user: ${authResult.resultValue?.email}');
       } else {
-        debugPrint('Registration failed: ${result.errorMessage}');
-        state = AsyncError(
-            FlutterError(result.errorMessage ?? 'Registration failed'),
-            StackTrace.current);
-        _notifyStateChange(null);
+        // Handle error case
+        debugPrint('Registration failed: ${authResult.errorMessage}');
+        throw RegistrationException(
+            authResult.errorMessage ?? 'Registrasi gagal');
       }
+    } on RateLimitException catch (e) {
+      debugPrint('Rate limit exceeded: ${e.message}');
+      state = AsyncError(FlutterError(e.message), StackTrace.current);
+      _notifyStateChange(null);
+      rethrow;
     } on FormatException catch (e) {
       debugPrint('Validation error: ${e.message}');
       state = AsyncError(FlutterError(e.message), StackTrace.current);
@@ -219,7 +246,7 @@ class UserData extends _$UserData {
     } catch (e) {
       debugPrint('Unexpected error during registration: $e');
       state = AsyncError(
-          FlutterError(_formatRegistrationError(e)), StackTrace.current);
+          FlutterError(_formatErrorMessage(e.toString())), StackTrace.current);
       _notifyStateChange(null);
     }
   }
@@ -230,48 +257,23 @@ class UserData extends _$UserData {
     required String name,
   }) {
     if (email.trim().isEmpty || password.isEmpty || name.trim().isEmpty) {
-      debugPrint('Empty required field detected');
       return false;
     }
-
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(email.trim())) {
-      debugPrint('Invalid email format: $email');
-      return false;
-    }
-
-    if (password.length < 6) {
-      debugPrint('Password too short');
-      return false;
-    }
-
-    if (name.trim().length < 2) {
-      debugPrint('Name too short');
-      return false;
-    }
-
     return true;
   }
 
-  String _formatRegistrationError(Object error) {
-    final message = error.toString().toLowerCase();
-
+  // Helper untuk format error message
+  String _formatRegistrationError(String error) {
+    final message = error.toLowerCase();
     if (message.contains('email-already-in-use')) {
       return 'Email sudah terdaftar';
     }
-
     if (message.contains('invalid-email')) {
       return 'Format email tidak valid';
     }
-
     if (message.contains('weak-password')) {
       return 'Password terlalu lemah';
     }
-
-    if (message.contains('network')) {
-      return 'Koneksi gagal. Periksa internet Anda';
-    }
-
     return 'Terjadi kesalahan saat registrasi. Silakan coba lagi';
   }
 

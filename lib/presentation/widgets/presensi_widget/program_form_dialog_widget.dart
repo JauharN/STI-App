@@ -29,8 +29,8 @@ class _ProgramFormDialogState extends ConsumerState<ProgramFormDialog> {
 
   // State variables
   List<String> selectedDays = [];
-  String? selectedTeacherId;
-  String? selectedTeacherName;
+  List<String> selectedTeacherIds = [];
+  List<String> selectedTeacherNames = [];
   bool isLoading = false;
 
   @override
@@ -63,8 +63,8 @@ class _ProgramFormDialogState extends ConsumerState<ProgramFormDialog> {
         locationController.text = program.lokasi ?? '';
         totalMeetingsController.text =
             program.totalPertemuan?.toString() ?? '8';
-        selectedTeacherId = program.pengajarId;
-        selectedTeacherName = program.pengajarName;
+        selectedTeacherIds = program.pengajarIds;
+        selectedTeacherNames = program.pengajarNames;
         setState(() {
           selectedDays = program.jadwal;
         });
@@ -101,8 +101,8 @@ class _ProgramFormDialogState extends ConsumerState<ProgramFormDialog> {
               schedule: selectedDays,
               totalMeetings: int.parse(totalMeetingsController.text),
               location: locationController.text,
-              teacherId: selectedTeacherId,
-              teacherName: selectedTeacherName,
+              teacherIds: selectedTeacherIds,
+              teacherNames: selectedTeacherNames,
             )
           : await controller.updateProgram(
               programId: widget.programId!,
@@ -111,8 +111,8 @@ class _ProgramFormDialogState extends ConsumerState<ProgramFormDialog> {
               schedule: selectedDays,
               totalMeetings: int.parse(totalMeetingsController.text),
               location: locationController.text,
-              teacherId: selectedTeacherId,
-              teacherName: selectedTeacherName,
+              teacherIds: selectedTeacherIds,
+              teacherNames: selectedTeacherNames,
             );
 
       if (mounted) {
@@ -219,8 +219,8 @@ class _ProgramFormDialogState extends ConsumerState<ProgramFormDialog> {
                 ),
                 verticalSpace(16),
 
-                // Teacher selection
-                _buildTeacherSelection(),
+                // Teachers selection
+                _buildTeachersSelection(),
                 verticalSpace(24),
 
                 // Submit button
@@ -318,7 +318,7 @@ class _ProgramFormDialogState extends ConsumerState<ProgramFormDialog> {
     );
   }
 
-  Widget _buildTeacherSelection() {
+  Widget _buildTeachersSelection() {
     final teachersAsync = ref.watch(availableTeachersProvider);
 
     return Column(
@@ -333,28 +333,29 @@ class _ProgramFormDialogState extends ConsumerState<ProgramFormDialog> {
         ),
         verticalSpace(8),
         teachersAsync.when(
-          data: (teachers) => DropdownButtonFormField<String>(
-            value: selectedTeacherId,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.person),
-            ),
-            hint: const Text('Pilih Pengajar'),
-            items: teachers
-                .map((teacher) => DropdownMenuItem(
-                      value: teacher.uid,
-                      child: Text(teacher.name),
-                    ))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() {
-                  selectedTeacherId = value;
-                  selectedTeacherName =
-                      teachers.firstWhere((t) => t.uid == value).name;
-                });
-              }
-            },
+          data: (teachers) => Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: teachers.map((teacher) {
+              final isSelected = selectedTeacherIds.contains(teacher.uid);
+              return FilterChip(
+                selected: isSelected,
+                label: Text(teacher.name),
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      selectedTeacherIds.add(teacher.uid);
+                      selectedTeacherNames.add(teacher.name);
+                    } else {
+                      selectedTeacherIds.remove(teacher.uid);
+                      selectedTeacherNames.remove(teacher.name);
+                    }
+                  });
+                },
+                selectedColor: AppColors.primary.withOpacity(0.2),
+                checkmarkColor: AppColors.primary,
+              );
+            }).toList(),
           ),
           loading: () => const CircularProgressIndicator(),
           error: (error, stack) => Text(

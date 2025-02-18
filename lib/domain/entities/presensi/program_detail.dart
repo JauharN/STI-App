@@ -6,7 +6,6 @@ part 'program_detail.g.dart';
 @freezed
 class ProgramDetail with _$ProgramDetail {
   static bool canManage(String role) => role == 'admin' || role == 'superAdmin';
-
   static bool canView(String role) => true;
 
   factory ProgramDetail({
@@ -16,8 +15,8 @@ class ProgramDetail with _$ProgramDetail {
     required List<String> schedule,
     required int totalMeetings,
     String? location,
-    String? teacherId,
-    String? teacherName,
+    @Default([]) List<String> teacherIds, // Ubah ke list
+    @Default([]) List<String> teacherNames, // Ubah ke list
     @Default([]) List<String> enrolledSantriIds,
     @Default(null) DateTime? createdAt,
     @Default(null) DateTime? updatedAt,
@@ -30,8 +29,8 @@ class ProgramDetail with _$ProgramDetail {
     required List<String> schedule,
     required int totalMeetings,
     String? location,
-    String? teacherId,
-    String? teacherName,
+    List<String>? teacherIds,
+    List<String>? teacherNames,
     List<String>? enrolledSantriIds,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -45,9 +44,6 @@ class ProgramDetail with _$ProgramDetail {
     if (totalMeetings <= 0) {
       throw ArgumentError('Total pertemuan harus lebih dari 0');
     }
-    if (teacherId != null && teacherId.isEmpty) {
-      throw ArgumentError('ID pengajar tidak valid');
-    }
 
     return ProgramDetail(
       id: id,
@@ -56,8 +52,8 @@ class ProgramDetail with _$ProgramDetail {
       schedule: schedule,
       totalMeetings: totalMeetings,
       location: location,
-      teacherId: teacherId,
-      teacherName: teacherName,
+      teacherIds: teacherIds ?? [],
+      teacherNames: teacherNames ?? [],
       enrolledSantriIds: enrolledSantriIds ?? [],
       createdAt: createdAt ?? DateTime.now(),
       updatedAt: updatedAt ?? DateTime.now(),
@@ -72,10 +68,9 @@ extension ProgramDetailX on ProgramDetail {
   bool get isValid {
     if (id.isEmpty || name.isEmpty || description.isEmpty) return false;
     if (schedule.isEmpty || totalMeetings <= 0) return false;
-    if (teacherId != null && teacherId!.isEmpty) return false;
     return true;
   }
 
-  bool get hasTeacher => teacherId != null && teacherName != null;
+  bool get hasTeachers => teacherIds.isNotEmpty; // Update check
   bool get hasEnrolledSantri => enrolledSantriIds.isNotEmpty;
 }

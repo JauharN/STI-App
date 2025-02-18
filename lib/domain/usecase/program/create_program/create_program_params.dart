@@ -5,8 +5,6 @@ class CreateProgramParams {
   final String deskripsi;
   final List<String> jadwal;
   final String? lokasi;
-  final String? pengajarId;
-  final String? pengajarName;
   final String? kelas;
   final int? totalPertemuan;
   final String currentUserRole;
@@ -17,9 +15,21 @@ class CreateProgramParams {
     required this.jadwal,
     required this.currentUserRole,
     this.lokasi,
-    this.pengajarId,
-    this.pengajarName,
     this.kelas,
     this.totalPertemuan,
-  });
+  }) {
+    // Validasi saat konstruksi
+    if (nama.isEmpty) {
+      throw ArgumentError('Nama program tidak boleh kosong');
+    }
+    if (deskripsi.isEmpty) {
+      throw ArgumentError('Deskripsi program tidak boleh kosong');
+    }
+    if (jadwal.isEmpty) {
+      throw ArgumentError('Jadwal tidak boleh kosong');
+    }
+    if (!['admin', 'superAdmin'].contains(currentUserRole)) {
+      throw ArgumentError('Role tidak valid untuk membuat program');
+    }
+  }
 }

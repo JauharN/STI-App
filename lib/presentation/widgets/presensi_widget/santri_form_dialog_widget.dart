@@ -198,7 +198,7 @@ class _SantriFormDialogState extends ConsumerState<SantriFormDialog> {
               phoneNumber: phoneController.text,
               address: addressController.text,
               dateOfBirth: selectedDate,
-              programIds: selectedPrograms,
+              selectedPrograms: selectedPrograms,
             )
           : await controller.updateSantri(
               santriId: widget.santriId!,

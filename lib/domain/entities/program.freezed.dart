@@ -25,14 +25,15 @@ mixin _$Program {
   String get deskripsi => throw _privateConstructorUsedError;
   List<String> get jadwal => throw _privateConstructorUsedError;
   String? get lokasi => throw _privateConstructorUsedError;
-  String? get pengajarId => throw _privateConstructorUsedError;
-  String? get pengajarName => throw _privateConstructorUsedError;
+  List<String> get pengajarIds => throw _privateConstructorUsedError;
+  List<String> get pengajarNames => throw _privateConstructorUsedError;
   String? get kelas => throw _privateConstructorUsedError;
   int? get totalPertemuan => throw _privateConstructorUsedError;
   @TimestampConverter()
   DateTime? get createdAt => throw _privateConstructorUsedError;
   @TimestampConverter()
   DateTime? get updatedAt => throw _privateConstructorUsedError;
+  List<String> get enrolledSantriIds => throw _privateConstructorUsedError;
 
   /// Serializes this Program to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -54,12 +55,13 @@ abstract class $ProgramCopyWith<$Res> {
       String deskripsi,
       List<String> jadwal,
       String? lokasi,
-      String? pengajarId,
-      String? pengajarName,
+      List<String> pengajarIds,
+      List<String> pengajarNames,
       String? kelas,
       int? totalPertemuan,
       @TimestampConverter() DateTime? createdAt,
-      @TimestampConverter() DateTime? updatedAt});
+      @TimestampConverter() DateTime? updatedAt,
+      List<String> enrolledSantriIds});
 }
 
 /// @nodoc
@@ -82,12 +84,13 @@ class _$ProgramCopyWithImpl<$Res, $Val extends Program>
     Object? deskripsi = null,
     Object? jadwal = null,
     Object? lokasi = freezed,
-    Object? pengajarId = freezed,
-    Object? pengajarName = freezed,
+    Object? pengajarIds = null,
+    Object? pengajarNames = null,
     Object? kelas = freezed,
     Object? totalPertemuan = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? enrolledSantriIds = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -110,14 +113,14 @@ class _$ProgramCopyWithImpl<$Res, $Val extends Program>
           ? _value.lokasi
           : lokasi // ignore: cast_nullable_to_non_nullable
               as String?,
-      pengajarId: freezed == pengajarId
-          ? _value.pengajarId
-          : pengajarId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      pengajarName: freezed == pengajarName
-          ? _value.pengajarName
-          : pengajarName // ignore: cast_nullable_to_non_nullable
-              as String?,
+      pengajarIds: null == pengajarIds
+          ? _value.pengajarIds
+          : pengajarIds // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      pengajarNames: null == pengajarNames
+          ? _value.pengajarNames
+          : pengajarNames // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       kelas: freezed == kelas
           ? _value.kelas
           : kelas // ignore: cast_nullable_to_non_nullable
@@ -134,6 +137,10 @@ class _$ProgramCopyWithImpl<$Res, $Val extends Program>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      enrolledSantriIds: null == enrolledSantriIds
+          ? _value.enrolledSantriIds
+          : enrolledSantriIds // ignore: cast_nullable_to_non_nullable
+              as List<String>,
     ) as $Val);
   }
 }
@@ -151,12 +158,13 @@ abstract class _$$ProgramImplCopyWith<$Res> implements $ProgramCopyWith<$Res> {
       String deskripsi,
       List<String> jadwal,
       String? lokasi,
-      String? pengajarId,
-      String? pengajarName,
+      List<String> pengajarIds,
+      List<String> pengajarNames,
       String? kelas,
       int? totalPertemuan,
       @TimestampConverter() DateTime? createdAt,
-      @TimestampConverter() DateTime? updatedAt});
+      @TimestampConverter() DateTime? updatedAt,
+      List<String> enrolledSantriIds});
 }
 
 /// @nodoc
@@ -177,12 +185,13 @@ class __$$ProgramImplCopyWithImpl<$Res>
     Object? deskripsi = null,
     Object? jadwal = null,
     Object? lokasi = freezed,
-    Object? pengajarId = freezed,
-    Object? pengajarName = freezed,
+    Object? pengajarIds = null,
+    Object? pengajarNames = null,
     Object? kelas = freezed,
     Object? totalPertemuan = freezed,
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
+    Object? enrolledSantriIds = null,
   }) {
     return _then(_$ProgramImpl(
       id: null == id
@@ -205,14 +214,14 @@ class __$$ProgramImplCopyWithImpl<$Res>
           ? _value.lokasi
           : lokasi // ignore: cast_nullable_to_non_nullable
               as String?,
-      pengajarId: freezed == pengajarId
-          ? _value.pengajarId
-          : pengajarId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      pengajarName: freezed == pengajarName
-          ? _value.pengajarName
-          : pengajarName // ignore: cast_nullable_to_non_nullable
-              as String?,
+      pengajarIds: null == pengajarIds
+          ? _value._pengajarIds
+          : pengajarIds // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      pengajarNames: null == pengajarNames
+          ? _value._pengajarNames
+          : pengajarNames // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       kelas: freezed == kelas
           ? _value.kelas
           : kelas // ignore: cast_nullable_to_non_nullable
@@ -229,26 +238,35 @@ class __$$ProgramImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      enrolledSantriIds: null == enrolledSantriIds
+          ? _value._enrolledSantriIds
+          : enrolledSantriIds // ignore: cast_nullable_to_non_nullable
+              as List<String>,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$ProgramImpl implements _Program {
+class _$ProgramImpl extends _Program {
   _$ProgramImpl(
       {required this.id,
       required this.nama,
       required this.deskripsi,
       required final List<String> jadwal,
       this.lokasi,
-      this.pengajarId,
-      this.pengajarName,
+      final List<String> pengajarIds = const [],
+      final List<String> pengajarNames = const [],
       this.kelas,
       this.totalPertemuan,
       @TimestampConverter() this.createdAt,
-      @TimestampConverter() this.updatedAt})
-      : _jadwal = jadwal;
+      @TimestampConverter() this.updatedAt,
+      final List<String> enrolledSantriIds = const []})
+      : _jadwal = jadwal,
+        _pengajarIds = pengajarIds,
+        _pengajarNames = pengajarNames,
+        _enrolledSantriIds = enrolledSantriIds,
+        super._();
 
   factory _$ProgramImpl.fromJson(Map<String, dynamic> json) =>
       _$$ProgramImplFromJson(json);
@@ -270,10 +288,24 @@ class _$ProgramImpl implements _Program {
 
   @override
   final String? lokasi;
+  final List<String> _pengajarIds;
   @override
-  final String? pengajarId;
+  @JsonKey()
+  List<String> get pengajarIds {
+    if (_pengajarIds is EqualUnmodifiableListView) return _pengajarIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_pengajarIds);
+  }
+
+  final List<String> _pengajarNames;
   @override
-  final String? pengajarName;
+  @JsonKey()
+  List<String> get pengajarNames {
+    if (_pengajarNames is EqualUnmodifiableListView) return _pengajarNames;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_pengajarNames);
+  }
+
   @override
   final String? kelas;
   @override
@@ -284,10 +316,19 @@ class _$ProgramImpl implements _Program {
   @override
   @TimestampConverter()
   final DateTime? updatedAt;
+  final List<String> _enrolledSantriIds;
+  @override
+  @JsonKey()
+  List<String> get enrolledSantriIds {
+    if (_enrolledSantriIds is EqualUnmodifiableListView)
+      return _enrolledSantriIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_enrolledSantriIds);
+  }
 
   @override
   String toString() {
-    return 'Program(id: $id, nama: $nama, deskripsi: $deskripsi, jadwal: $jadwal, lokasi: $lokasi, pengajarId: $pengajarId, pengajarName: $pengajarName, kelas: $kelas, totalPertemuan: $totalPertemuan, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Program(id: $id, nama: $nama, deskripsi: $deskripsi, jadwal: $jadwal, lokasi: $lokasi, pengajarIds: $pengajarIds, pengajarNames: $pengajarNames, kelas: $kelas, totalPertemuan: $totalPertemuan, createdAt: $createdAt, updatedAt: $updatedAt, enrolledSantriIds: $enrolledSantriIds)';
   }
 
   @override
@@ -301,17 +342,19 @@ class _$ProgramImpl implements _Program {
                 other.deskripsi == deskripsi) &&
             const DeepCollectionEquality().equals(other._jadwal, _jadwal) &&
             (identical(other.lokasi, lokasi) || other.lokasi == lokasi) &&
-            (identical(other.pengajarId, pengajarId) ||
-                other.pengajarId == pengajarId) &&
-            (identical(other.pengajarName, pengajarName) ||
-                other.pengajarName == pengajarName) &&
+            const DeepCollectionEquality()
+                .equals(other._pengajarIds, _pengajarIds) &&
+            const DeepCollectionEquality()
+                .equals(other._pengajarNames, _pengajarNames) &&
             (identical(other.kelas, kelas) || other.kelas == kelas) &&
             (identical(other.totalPertemuan, totalPertemuan) ||
                 other.totalPertemuan == totalPertemuan) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            const DeepCollectionEquality()
+                .equals(other._enrolledSantriIds, _enrolledSantriIds));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -323,12 +366,13 @@ class _$ProgramImpl implements _Program {
       deskripsi,
       const DeepCollectionEquality().hash(_jadwal),
       lokasi,
-      pengajarId,
-      pengajarName,
+      const DeepCollectionEquality().hash(_pengajarIds),
+      const DeepCollectionEquality().hash(_pengajarNames),
       kelas,
       totalPertemuan,
       createdAt,
-      updatedAt);
+      updatedAt,
+      const DeepCollectionEquality().hash(_enrolledSantriIds));
 
   /// Create a copy of Program
   /// with the given fields replaced by the non-null parameter values.
@@ -346,19 +390,21 @@ class _$ProgramImpl implements _Program {
   }
 }
 
-abstract class _Program implements Program {
+abstract class _Program extends Program {
   factory _Program(
       {required final String id,
       required final String nama,
       required final String deskripsi,
       required final List<String> jadwal,
       final String? lokasi,
-      final String? pengajarId,
-      final String? pengajarName,
+      final List<String> pengajarIds,
+      final List<String> pengajarNames,
       final String? kelas,
       final int? totalPertemuan,
       @TimestampConverter() final DateTime? createdAt,
-      @TimestampConverter() final DateTime? updatedAt}) = _$ProgramImpl;
+      @TimestampConverter() final DateTime? updatedAt,
+      final List<String> enrolledSantriIds}) = _$ProgramImpl;
+  _Program._() : super._();
 
   factory _Program.fromJson(Map<String, dynamic> json) = _$ProgramImpl.fromJson;
 
@@ -373,9 +419,9 @@ abstract class _Program implements Program {
   @override
   String? get lokasi;
   @override
-  String? get pengajarId;
+  List<String> get pengajarIds;
   @override
-  String? get pengajarName;
+  List<String> get pengajarNames;
   @override
   String? get kelas;
   @override
@@ -386,6 +432,8 @@ abstract class _Program implements Program {
   @override
   @TimestampConverter()
   DateTime? get updatedAt;
+  @override
+  List<String> get enrolledSantriIds;
 
   /// Create a copy of Program
   /// with the given fields replaced by the non-null parameter values.

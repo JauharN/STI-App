@@ -24,22 +24,19 @@ class GetProgramDetailWithStats
   Future<Result<(ProgramDetail, PresensiSummary)>> call(
       GetProgramDetailWithStatsParams params) async {
     try {
-      // Role validation
       if (!ProgramDetail.canView(params.currentUserRole)) {
         return const Result.failed(
             'Akses ditolak: Anda tidak memiliki akses untuk melihat detail program');
       }
 
-      // Get program detail
       final programResult =
           await _programRepository.getProgramById(params.programId);
-
       if (programResult.isFailed) {
         return Result.failed(programResult.errorMessage!);
       }
 
-      // Convert Program to ProgramDetail
       final program = programResult.resultValue!;
+
       final programDetail = ProgramDetail(
         id: program.id,
         name: program.nama,
@@ -47,14 +44,13 @@ class GetProgramDetailWithStats
         schedule: program.jadwal,
         totalMeetings: program.totalPertemuan ?? 0,
         location: program.lokasi,
-        teacherId: program.pengajarId,
-        teacherName: program.pengajarName,
-        enrolledSantriIds: [], // Will be populated from user repository if needed
+        teacherIds: program.pengajarIds,
+        teacherNames: program.pengajarNames,
+        enrolledSantriIds: program.enrolledSantriIds,
         createdAt: program.createdAt,
         updatedAt: program.updatedAt,
       );
 
-      // Get presensi summary
       final summaryResult = await _presensiRepository.getPresensiSummary(
         userId: params.requestingUserId,
         programId: params.programId,

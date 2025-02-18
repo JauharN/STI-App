@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../domain/entities/presensi/santri_detail.dart';
 import '../../../../domain/entities/result.dart';
 import '../../../states/manage_santri_state.dart';
+import '../../repositories/program_repository/program_repository_provider.dart';
 import '../../repositories/user_repository/user_repository_provider.dart';
 
 part 'manage_santri_provider.g.dart';
@@ -46,6 +47,7 @@ class ManageSantriController extends _$ManageSantriController {
     required String name,
     required String email,
     required String password,
+    required List<String> selectedPrograms,
     String? photoUrl,
     String? phoneNumber,
     String? address,
@@ -56,6 +58,14 @@ class ManageSantriController extends _$ManageSantriController {
     state = const AsyncValue.loading();
     try {
       final userRepository = ref.read(userRepositoryProvider);
+      final programRepository = ref.read(programRepositoryProvider);
+      final programValidation =
+          await programRepository.validateProgramCombination(selectedPrograms);
+
+      if (programValidation.isFailed) {
+        return Result.failed(programValidation.errorMessage!);
+      }
+
       final uid = const Uuid().v4();
 
       // Create santri user
@@ -64,6 +74,7 @@ class ManageSantriController extends _$ManageSantriController {
         email: email,
         name: name,
         role: role,
+        selectedPrograms: selectedPrograms,
         photoUrl: photoUrl,
         phoneNumber: phoneNumber,
         address: address,

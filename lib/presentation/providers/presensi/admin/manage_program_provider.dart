@@ -35,8 +35,8 @@ class ManageProgramController extends _$ManageProgramController {
                 schedule: program.jadwal,
                 totalMeetings: program.totalPertemuan ?? 8,
                 location: program.lokasi,
-                teacherId: program.pengajarId,
-                teacherName: program.pengajarName,
+                teacherIds: program.pengajarIds,
+                teacherNames: program.pengajarNames,
                 enrolledSantriIds: enrolledSantri.isSuccess
                     ? enrolledSantri.resultValue!.map((s) => s.uid).toList()
                     : [],
@@ -58,8 +58,8 @@ class ManageProgramController extends _$ManageProgramController {
     required List<String> schedule,
     required int totalMeetings,
     String? location,
-    String? teacherId,
-    String? teacherName,
+    List<String>? teacherIds,
+    List<String>? teacherNames,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -72,8 +72,8 @@ class ManageProgramController extends _$ManageProgramController {
           jadwal: schedule,
           totalPertemuan: totalMeetings,
           lokasi: location,
-          pengajarId: teacherId,
-          pengajarName: teacherName,
+          pengajarIds: teacherIds ?? [],
+          pengajarNames: teacherNames ?? [],
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         ),
@@ -96,8 +96,8 @@ class ManageProgramController extends _$ManageProgramController {
     List<String>? schedule,
     int? totalMeetings,
     String? location,
-    String? teacherId,
-    String? teacherName,
+    List<String>? teacherIds,
+    List<String>? teacherNames,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -116,8 +116,9 @@ class ManageProgramController extends _$ManageProgramController {
           totalPertemuan:
               totalMeetings ?? currentProgram.resultValue!.totalPertemuan,
           lokasi: location ?? currentProgram.resultValue!.lokasi,
-          pengajarId: teacherId ?? currentProgram.resultValue!.pengajarId,
-          pengajarName: teacherName ?? currentProgram.resultValue!.pengajarName,
+          pengajarIds: teacherIds ?? currentProgram.resultValue!.pengajarIds,
+          pengajarNames:
+              teacherNames ?? currentProgram.resultValue!.pengajarNames,
           updatedAt: DateTime.now(),
         ),
       );
@@ -197,13 +198,13 @@ class ManageProgramController extends _$ManageProgramController {
 
   Future<Result<void>> updateTeacherAssignment(
     String programId, {
-    required String? teacherId,
-    required String? teacherName,
+    required List<String>? teacherIds,
+    required List<String>? teacherNames,
   }) async {
     return updateProgram(
       programId: programId,
-      teacherId: teacherId,
-      teacherName: teacherName,
+      teacherIds: teacherIds,
+      teacherNames: teacherNames,
     );
   }
 
@@ -217,7 +218,7 @@ class ManageProgramController extends _$ManageProgramController {
             return;
           }
           final filteredList = programList
-              .where((program) => program.teacherId == teacherId)
+              .where((program) => program.teacherIds.contains(teacherId))
               .toList();
           state = AsyncValue.data(ManageProgramState.loaded(filteredList));
         },
@@ -268,7 +269,8 @@ class ManageProgramController extends _$ManageProgramController {
       currentState.whenOrNull(
         loaded: (list) {
           final filtered = switch (filterType) {
-            'has_teacher' => list.where((p) => p.teacherId != null).toList(),
+            'has_teacher' =>
+              list.where((p) => p.teacherIds.isNotEmpty).toList(),
             _ => list,
           };
           state = AsyncValue.data(ManageProgramState.loaded(filtered));
