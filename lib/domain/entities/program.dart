@@ -6,9 +6,13 @@ part 'program.g.dart';
 
 @freezed
 class Program with _$Program {
+  // Constants
+  static const List<String> validPrograms = ['TAHFIDZ', 'GMM', 'IFIS'];
+  static const int maxTeachers = 3;
+
   factory Program({
     required String id,
-    required String nama, // TAHFIDZ, GMM, IFIS
+    required String nama,
     required String deskripsi,
     required List<String> jadwal,
     String? lokasi,
@@ -19,30 +23,43 @@ class Program with _$Program {
     @TimestampConverter() DateTime? createdAt,
     @TimestampConverter() DateTime? updatedAt,
     @Default([]) List<String> enrolledSantriIds,
+    @Default(true) bool isActive,
   }) = _Program;
 
   const Program._();
 
-  // Add helpers untuk validasi
-  bool get hasTeachers => pengajarIds.isNotEmpty;
-
+  // Program Validation
   bool get isValidProgram =>
       id.isNotEmpty &&
       nama.isNotEmpty &&
       deskripsi.isNotEmpty &&
       jadwal.isNotEmpty &&
       totalPertemuan != null &&
-      totalPertemuan! > 0;
+      totalPertemuan! > 0 &&
+      validPrograms.contains(nama.toUpperCase());
 
-  // Helper untuk cek pengajar
+  // Teacher Management
+  bool get hasTeachers => pengajarIds.isNotEmpty;
+
+  bool get canAddMoreTeachers => pengajarIds.length < maxTeachers;
+
   bool hasTeacher(String teacherId) => pengajarIds.contains(teacherId);
 
-  // Helper untuk cek santri
-  bool hasSantri(String santriId) => enrolledSantriIds.contains(santriId);
+  bool isValidTeacherAddition(String teacherId) {
+    if (!canAddMoreTeachers) return false;
+    if (hasTeacher(teacherId)) return false;
+    return true;
+  }
 
-  // Static validators
+  // Santri Management
+  bool get hasSantri => enrolledSantriIds.isNotEmpty;
+
+  bool hasSantriEnrolled(String santriId) =>
+      enrolledSantriIds.contains(santriId);
+
+  // Static Validators
   static bool isValidProgramName(String nama) {
-    return ['TAHFIDZ', 'GMM', 'IFIS'].contains(nama.toUpperCase());
+    return validPrograms.contains(nama.toUpperCase());
   }
 
   static String getProgramDisplayName(String nama) {
@@ -56,6 +73,26 @@ class Program with _$Program {
       default:
         return 'Unknown Program';
     }
+  }
+
+  // Helper untuk validasi jadwal
+  bool isValidSchedule(List<String> jadwalBaru) {
+    // Cek duplikasi hari
+    if (jadwalBaru.toSet().length != jadwalBaru.length) {
+      return false;
+    }
+
+    // Validasi format hari
+    final validDays = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu'
+    ];
+    return jadwalBaru.every((day) => validDays.contains(day));
   }
 
   // Factory untuk JSON serialization

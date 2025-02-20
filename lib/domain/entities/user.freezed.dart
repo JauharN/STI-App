@@ -28,6 +28,7 @@ mixin _$User {
   List<String> get enrolledPrograms => throw _privateConstructorUsedError;
   String? get photoUrl => throw _privateConstructorUsedError;
   String? get phoneNumber => throw _privateConstructorUsedError;
+  @TimestampConverter()
   DateTime? get dateOfBirth => throw _privateConstructorUsedError;
   String? get address => throw _privateConstructorUsedError;
 
@@ -54,7 +55,7 @@ abstract class $UserCopyWith<$Res> {
       List<String> enrolledPrograms,
       String? photoUrl,
       String? phoneNumber,
-      DateTime? dateOfBirth,
+      @TimestampConverter() DateTime? dateOfBirth,
       String? address});
 }
 
@@ -145,7 +146,7 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
       List<String> enrolledPrograms,
       String? photoUrl,
       String? phoneNumber,
-      DateTime? dateOfBirth,
+      @TimestampConverter() DateTime? dateOfBirth,
       String? address});
 }
 
@@ -229,7 +230,7 @@ class _$UserImpl extends _User {
       final List<String> enrolledPrograms = const [],
       this.photoUrl,
       this.phoneNumber,
-      this.dateOfBirth,
+      @TimestampConverter() this.dateOfBirth,
       this.address})
       : _enrolledPrograms = enrolledPrograms,
         super._();
@@ -264,6 +265,7 @@ class _$UserImpl extends _User {
   @override
   final String? phoneNumber;
   @override
+  @TimestampConverter()
   final DateTime? dateOfBirth;
   @override
   final String? address;
@@ -336,7 +338,7 @@ abstract class _User extends User {
       final List<String> enrolledPrograms,
       final String? photoUrl,
       final String? phoneNumber,
-      final DateTime? dateOfBirth,
+      @TimestampConverter() final DateTime? dateOfBirth,
       final String? address}) = _$UserImpl;
   _User._() : super._();
 
@@ -359,6 +361,7 @@ abstract class _User extends User {
   @override
   String? get phoneNumber;
   @override
+  @TimestampConverter()
   DateTime? get dateOfBirth;
   @override
   String? get address;

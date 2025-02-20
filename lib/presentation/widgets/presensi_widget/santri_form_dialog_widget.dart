@@ -436,7 +436,7 @@ class _SantriFormDialogState extends ConsumerState<SantriFormDialog> {
   }
 
   Widget _buildProgramSelection() {
-    final programsAsync = ref.watch(availableProgramsProvider);
+    final programsAsync = ref.watch(availableProgramsStateProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

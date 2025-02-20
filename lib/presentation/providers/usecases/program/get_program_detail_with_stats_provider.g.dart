@@ -7,7 +7,7 @@ part of 'get_program_detail_with_stats_provider.dart';
 // **************************************************************************
 
 String _$getProgramDetailWithStatsHash() =>
-    r'38f033ab769ec1dff0b019914c4f85294b7fad37';
+    r'beb12670877550d70d55c0f756c9f47024d7bacb';
 
 /// See also [getProgramDetailWithStats].
 @ProviderFor(getProgramDetailWithStats)

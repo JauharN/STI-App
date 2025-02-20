@@ -8,6 +8,8 @@ class CreateProgramParams {
   final String? kelas;
   final int? totalPertemuan;
   final String currentUserRole;
+  final List<String>? initialTeacherIds;
+  final List<String>? initialTeacherNames;
 
   CreateProgramParams({
     required this.nama,
@@ -17,6 +19,8 @@ class CreateProgramParams {
     this.lokasi,
     this.kelas,
     this.totalPertemuan,
+    this.initialTeacherIds,
+    this.initialTeacherNames,
   }) {
     // Validasi saat konstruksi
     if (nama.isEmpty) {
@@ -30,6 +34,11 @@ class CreateProgramParams {
     }
     if (!['admin', 'superAdmin'].contains(currentUserRole)) {
       throw ArgumentError('Role tidak valid untuk membuat program');
+    }
+    if (initialTeacherIds != null && initialTeacherNames != null) {
+      if (initialTeacherIds!.length != initialTeacherNames!.length) {
+        throw ArgumentError('Jumlah ID dan nama pengajar harus sama');
+      }
     }
   }
 }

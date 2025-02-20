@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../domain/entities/program.dart';
 import '../../misc/constants.dart';
 import '../../providers/news/news_provider.dart';
+import '../../providers/program/available_programs_provider.dart';
 import '../../providers/user_data/user_data_provider.dart';
 
 class BerandaPage extends ConsumerWidget {
@@ -12,6 +14,9 @@ class BerandaPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(userDataProvider).valueOrNull;
+    final isAdmin = user?.role == 'admin' || user?.role == 'superAdmin';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
@@ -22,13 +27,12 @@ class BerandaPage extends ConsumerWidget {
             pinned: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            leadingWidth: 0, // Remove default leading space
+            leadingWidth: 0,
             leading: Container(),
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Background pattern
                   Container(
                     decoration: const BoxDecoration(
                       image: DecorationImage(
@@ -37,7 +41,6 @@ class BerandaPage extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  // Gradient overlay for better text visibility
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -51,8 +54,7 @@ class BerandaPage extends ConsumerWidget {
                     ),
                   ),
                   Positioned(
-                    top: MediaQuery.of(context).padding.top +
-                        16, // Account for status bar
+                    top: MediaQuery.of(context).padding.top + 16,
                     left: 0,
                     right: 0,
                     child: _buildHeader(ref),
@@ -63,7 +65,7 @@ class BerandaPage extends ConsumerWidget {
             actions: [
               IconButton(
                 onPressed: () {
-                  // Handle notification
+                  // Notification handler
                 },
                 icon: const Icon(
                   Icons.notifications_none_rounded,
@@ -73,14 +75,14 @@ class BerandaPage extends ConsumerWidget {
               const SizedBox(width: 8),
             ],
           ),
-          // Content
           SliverToBoxAdapter(
             child: Container(
               color: const Color(0xFFF8F8DE),
               child: Column(
                 children: [
-                  _buildMenuSection(context),
-                  _buildRecentNews(context, ref),
+                  _buildMenuSection(context, isAdmin),
+                  _buildProgramSection(context, ref, isAdmin),
+                  if (!isAdmin) _buildRecentNews(context, ref),
                 ],
               ),
             ),
@@ -91,6 +93,8 @@ class BerandaPage extends ConsumerWidget {
   }
 
   Widget _buildHeader(WidgetRef ref) {
+    final user = ref.watch(userDataProvider).valueOrNull;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
       child: Column(
@@ -106,7 +110,7 @@ class BerandaPage extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            ref.watch(userDataProvider).valueOrNull?.name ?? '',
+            user?.name ?? '',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -118,7 +122,7 @@ class BerandaPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildMenuSection(BuildContext context) {
+  Widget _buildMenuSection(BuildContext context, bool isAdmin) {
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 24, 24, 24),
       padding: const EdgeInsets.all(20),
@@ -145,25 +149,21 @@ class BerandaPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 4,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.85,
-                children: _buildMenuItems(context),
-              );
-            },
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 4,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 8,
+            childAspectRatio: 0.85,
+            children: _buildMenuItems(context, isAdmin),
           ),
         ],
       ),
     );
   }
 
-  List<Widget> _buildMenuItems(BuildContext context) {
+  List<Widget> _buildMenuItems(BuildContext context, bool isAdmin) {
     final menuItems = [
       (
         'Visi & Misi',
@@ -171,7 +171,12 @@ class BerandaPage extends ConsumerWidget {
         AppColors.primary,
         'visi-misi'
       ),
-      ('Program', Icons.school_rounded, AppColors.secondary, 'program'),
+      (
+        isAdmin ? 'Kelola Program' : 'Program',
+        Icons.school_rounded,
+        AppColors.secondary,
+        isAdmin ? 'manage-program' : 'program'
+      ),
       ('Jadwal', Icons.calendar_today_rounded, AppColors.primary, 'jadwal'),
       ('Presensi', Icons.fact_check_rounded, AppColors.secondary, 'presensi'),
       ('Progres', Icons.trending_up_rounded, AppColors.primary, 'progres'),
@@ -195,6 +200,247 @@ class BerandaPage extends ConsumerWidget {
           ),
         )
         .toList();
+  }
+
+  Widget _buildProgramSection(
+      BuildContext context, WidgetRef ref, bool isAdmin) {
+    final programsAsync = ref.watch(availableProgramsStateProvider);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isAdmin ? 'Program Management' : 'Program Terdaftar',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.neutral900,
+                ),
+              ),
+              if (isAdmin)
+                TextButton.icon(
+                  onPressed: () => context.pushNamed('manage-program'),
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: const Text('Tambah Program'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          programsAsync.when(
+            data: (programs) {
+              if (programs.isEmpty) {
+                return _buildEmptyProgramState(context, isAdmin);
+              }
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: programs.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) =>
+                    _buildProgramCard(context, programs[index], isAdmin),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => Center(
+              child: Text(
+                'Error: ${error.toString()}',
+                style: GoogleFonts.plusJakartaSans(color: AppColors.error),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgramCard(
+    BuildContext context,
+    Program program,
+    bool isAdmin,
+  ) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => context.pushNamed(
+          isAdmin ? 'manage-program-detail' : 'program-detail',
+          pathParameters: {'programId': program.id},
+        ),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          program.nama,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.neutral900,
+                          ),
+                        ),
+                        Text(
+                          program.deskripsi,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            color: AppColors.neutral600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isAdmin)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Teacher Section
+              if (program.pengajarNames.isNotEmpty) ...[
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Pengajar:',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: AppColors.neutral600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: program.pengajarNames
+                      .map((name) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              name,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ] else ...[
+                Text(
+                  'Belum ada pengajar',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: AppColors.neutral600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              // Schedule & Location
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    size: 16,
+                    color: AppColors.neutral600,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Jadwal: ${program.jadwal.join(", ")}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: AppColors.neutral600,
+                    ),
+                  ),
+                ],
+              ),
+              if (program.lokasi != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: AppColors.neutral600,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      program.lokasi!,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: AppColors.neutral600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyProgramState(BuildContext context, bool isAdmin) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.school_outlined,
+              size: 64,
+              color: AppColors.neutral400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isAdmin ? 'Belum ada program' : 'Belum terdaftar di program',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                color: AppColors.neutral600,
+              ),
+            ),
+            if (isAdmin) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () => context.pushNamed('manage-program'),
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Tambah Program Baru'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildRecentNews(BuildContext context, WidgetRef ref) {
@@ -271,7 +517,6 @@ class BerandaPage extends ConsumerWidget {
   }
 }
 
-// MenuCard widget remains the same
 class MenuCard extends StatelessWidget {
   final String title;
   final IconData icon;

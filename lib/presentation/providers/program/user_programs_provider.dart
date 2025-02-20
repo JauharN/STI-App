@@ -22,17 +22,45 @@ class UserProgramsController extends _$UserProgramsController {
     };
   }
 
-  // Method untuk refresh data
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => build());
   }
 
-  // Method untuk filter program
-  List<Program> filterActivePrograms(List<Program> programs) {
-    return programs
-        .where((program) =>
-            program.totalPertemuan != null && program.totalPertemuan! > 0)
-        .toList();
+  List<Program> filterActivePrograms() {
+    return state.valueOrNull
+            ?.where((program) =>
+                program.totalPertemuan != null && program.totalPertemuan! > 0)
+            .toList() ??
+        [];
+  }
+
+  // Filter programs berdasarkan peran
+  List<Program> getProgramsByRole(String role) {
+    if (role == 'santri') {
+      return filterActivePrograms();
+    }
+    return state.valueOrNull ?? [];
+  }
+
+  // Get programs dimana user adalah pengajar
+  List<Program> getProgramsAsTeacher(String userId) {
+    return state.valueOrNull
+            ?.where((program) => program.pengajarIds.contains(userId))
+            .toList() ??
+        [];
+  }
+
+  // Check apakah user terdaftar di program
+  bool isUserEnrolled(String programId) {
+    return state.valueOrNull?.any((program) => program.id == programId) ??
+        false;
+  }
+
+  // Check apakah user adalah pengajar di program
+  bool isUserTeacher(String programId, String userId) {
+    return state.valueOrNull?.any((program) =>
+            program.id == programId && program.pengajarIds.contains(userId)) ??
+        false;
   }
 }

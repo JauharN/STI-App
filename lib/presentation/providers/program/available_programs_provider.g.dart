@@ -6,21 +6,22 @@ part of 'available_programs_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$availableProgramsHash() => r'2dbce31d6f771f1b72471ff05f3ff6d7f0b36a03';
+String _$availableProgramsStateHash() =>
+    r'2d471e5ae1277b3cef002618038d62e3a078bf1d';
 
-/// See also [availablePrograms].
-@ProviderFor(availablePrograms)
-final availableProgramsProvider =
-    AutoDisposeFutureProvider<List<Program>>.internal(
-  availablePrograms,
-  name: r'availableProgramsProvider',
+/// See also [AvailableProgramsState].
+@ProviderFor(AvailableProgramsState)
+final availableProgramsStateProvider = AutoDisposeAsyncNotifierProvider<
+    AvailableProgramsState, List<Program>>.internal(
+  AvailableProgramsState.new,
+  name: r'availableProgramsStateProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$availableProgramsHash,
+      : _$availableProgramsStateHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef AvailableProgramsRef = AutoDisposeFutureProviderRef<List<Program>>;
+typedef _$AvailableProgramsState = AutoDisposeAsyncNotifier<List<Program>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

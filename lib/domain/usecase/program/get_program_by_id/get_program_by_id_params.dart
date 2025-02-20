@@ -7,5 +7,15 @@ class GetProgramByIdParams {
   GetProgramByIdParams({
     required this.programId,
     required this.currentUserRole,
-  });
+  }) {
+    // Validasi input
+    if (programId.isEmpty) {
+      throw ArgumentError('ID program tidak boleh kosong');
+    }
+
+    // Validasi role
+    if (!['admin', 'superAdmin', 'santri'].contains(currentUserRole)) {
+      throw ArgumentError('Role tidak valid');
+    }
+  }
 }

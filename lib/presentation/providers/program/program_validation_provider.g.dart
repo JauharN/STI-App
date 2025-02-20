@@ -1,27 +1,26 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'user_programs_provider.dart';
+part of 'program_validation_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$userProgramsControllerHash() =>
-    r'4332f3901d0528604f32ff41dab5ec656682ea93';
+String _$programValidationHash() => r'd34e71aae421abd2bed7ba72e8432c6677a77bef';
 
-/// See also [UserProgramsController].
-@ProviderFor(UserProgramsController)
-final userProgramsControllerProvider = AutoDisposeAsyncNotifierProvider<
-    UserProgramsController, List<Program>>.internal(
-  UserProgramsController.new,
-  name: r'userProgramsControllerProvider',
+/// See also [ProgramValidation].
+@ProviderFor(ProgramValidation)
+final programValidationProvider =
+    AutoDisposeAsyncNotifierProvider<ProgramValidation, bool>.internal(
+  ProgramValidation.new,
+  name: r'programValidationProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$userProgramsControllerHash,
+      : _$programValidationHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$UserProgramsController = AutoDisposeAsyncNotifier<List<Program>>;
+typedef _$ProgramValidation = AutoDisposeAsyncNotifier<bool>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

@@ -18,9 +18,7 @@ _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
           const [],
       photoUrl: json['photoUrl'] as String?,
       phoneNumber: json['phoneNumber'] as String?,
-      dateOfBirth: json['dateOfBirth'] == null
-          ? null
-          : DateTime.parse(json['dateOfBirth'] as String),
+      dateOfBirth: const TimestampConverter().fromJson(json['dateOfBirth']),
       address: json['address'] as String?,
     );
 
@@ -34,6 +32,6 @@ Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
       'enrolledPrograms': instance.enrolledPrograms,
       'photoUrl': instance.photoUrl,
       'phoneNumber': instance.phoneNumber,
-      'dateOfBirth': instance.dateOfBirth?.toIso8601String(),
+      'dateOfBirth': const TimestampConverter().toJson(instance.dateOfBirth),
       'address': instance.address,
     };

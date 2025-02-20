@@ -24,7 +24,7 @@ final programInitializerProvider =
 
 typedef ProgramInitializerRef = AutoDisposeProviderRef<ProgramInitializer>;
 String _$programInitializationStateHash() =>
-    r'c21bc2bf13f1ad5b5d8e40beb9fa67947b8a3a0f';
+    r'9ac87dcb3b5b79b319a22405a31d4f289cefb00d';
 
 /// See also [ProgramInitializationState].
 @ProviderFor(ProgramInitializationState)

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
 import 'package:sti_app/domain/entities/result.dart';
@@ -21,20 +22,24 @@ class GetProgramById implements Usecase<Result<Program>, GetProgramByIdParams> {
       final result = await _programRepository.getProgramById(params.programId);
 
       if (result.isFailed) {
+        debugPrint('Failed to get program: ${result.errorMessage}');
         return result;
       }
 
-      // Santri hanya bisa lihat program aktif
+      // Validasi program untuk role santri
       if (params.currentUserRole == 'santri') {
         final program = result.resultValue!;
         if (program.totalPertemuan == null || program.totalPertemuan! <= 0) {
+          debugPrint('Program not available for santri: ${params.programId}');
           return const Result.failed('Program tidak tersedia');
         }
       }
 
+      debugPrint('Successfully retrieved program: ${params.programId}');
       return result;
     } catch (e) {
-      return Result.failed('Gagal mengambil detail program: ${e.toString()}');
+      debugPrint('Error getting program: $e');
+      return Result.failed('Gagal mendapatkan detail program: ${e.toString()}');
     }
   }
 }

@@ -6,7 +6,7 @@ part of 'program_santri_list_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$programSantriListHash() => r'26c6cdc7d0a1a7f96eea7c0fd8e1d91468830d7d';
+String _$programSantriListHash() => r'1264112b4dd491774d916cef6d8c163c0382ebe2';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -29,16 +29,25 @@ class _SystemHash {
   }
 }
 
-/// See also [programSantriList].
-@ProviderFor(programSantriList)
+abstract class _$ProgramSantriList
+    extends BuildlessAutoDisposeAsyncNotifier<List<User>> {
+  late final String programId;
+
+  FutureOr<List<User>> build(
+    String programId,
+  );
+}
+
+/// See also [ProgramSantriList].
+@ProviderFor(ProgramSantriList)
 const programSantriListProvider = ProgramSantriListFamily();
 
-/// See also [programSantriList].
+/// See also [ProgramSantriList].
 class ProgramSantriListFamily extends Family<AsyncValue<List<User>>> {
-  /// See also [programSantriList].
+  /// See also [ProgramSantriList].
   const ProgramSantriListFamily();
 
-  /// See also [programSantriList].
+  /// See also [ProgramSantriList].
   ProgramSantriListProvider call(
     String programId,
   ) {
@@ -71,16 +80,14 @@ class ProgramSantriListFamily extends Family<AsyncValue<List<User>>> {
   String? get name => r'programSantriListProvider';
 }
 
-/// See also [programSantriList].
-class ProgramSantriListProvider extends AutoDisposeFutureProvider<List<User>> {
-  /// See also [programSantriList].
+/// See also [ProgramSantriList].
+class ProgramSantriListProvider extends AutoDisposeAsyncNotifierProviderImpl<
+    ProgramSantriList, List<User>> {
+  /// See also [ProgramSantriList].
   ProgramSantriListProvider(
     String programId,
   ) : this._internal(
-          (ref) => programSantriList(
-            ref as ProgramSantriListRef,
-            programId,
-          ),
+          () => ProgramSantriList()..programId = programId,
           from: programSantriListProvider,
           name: r'programSantriListProvider',
           debugGetCreateSourceHash:
@@ -106,13 +113,20 @@ class ProgramSantriListProvider extends AutoDisposeFutureProvider<List<User>> {
   final String programId;
 
   @override
-  Override overrideWith(
-    FutureOr<List<User>> Function(ProgramSantriListRef provider) create,
+  FutureOr<List<User>> runNotifierBuild(
+    covariant ProgramSantriList notifier,
   ) {
+    return notifier.build(
+      programId,
+    );
+  }
+
+  @override
+  Override overrideWith(ProgramSantriList Function() create) {
     return ProviderOverride(
       origin: this,
       override: ProgramSantriListProvider._internal(
-        (ref) => create(ref as ProgramSantriListRef),
+        () => create()..programId = programId,
         from: from,
         name: null,
         dependencies: null,
@@ -124,7 +138,8 @@ class ProgramSantriListProvider extends AutoDisposeFutureProvider<List<User>> {
   }
 
   @override
-  AutoDisposeFutureProviderElement<List<User>> createElement() {
+  AutoDisposeAsyncNotifierProviderElement<ProgramSantriList, List<User>>
+      createElement() {
     return _ProgramSantriListProviderElement(this);
   }
 
@@ -142,14 +157,14 @@ class ProgramSantriListProvider extends AutoDisposeFutureProvider<List<User>> {
   }
 }
 
-mixin ProgramSantriListRef on AutoDisposeFutureProviderRef<List<User>> {
+mixin ProgramSantriListRef on AutoDisposeAsyncNotifierProviderRef<List<User>> {
   /// The parameter `programId` of this provider.
   String get programId;
 }
 
 class _ProgramSantriListProviderElement
-    extends AutoDisposeFutureProviderElement<List<User>>
-    with ProgramSantriListRef {
+    extends AutoDisposeAsyncNotifierProviderElement<ProgramSantriList,
+        List<User>> with ProgramSantriListRef {
   _ProgramSantriListProviderElement(super.provider);
 
   @override

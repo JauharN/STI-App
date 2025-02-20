@@ -1,5 +1,4 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-
 import '../../../data/initializer/program_initializer.dart';
 import '../repositories/program_repository/program_repository_provider.dart';
 import '../usecases/program/create_program_provider.dart';
@@ -23,7 +22,17 @@ class ProgramInitializationState extends _$ProgramInitializationState {
   Future<void> initialize() async {
     if (state) return; // Skip if already initialized
 
-    await ref.read(programInitializerProvider).initializeDefaultPrograms();
-    state = true;
+    try {
+      await ref.read(programInitializerProvider).initializeDefaultPrograms();
+      state = true;
+    } catch (e) {
+      state = false;
+      rethrow; // Let the UI handle the error
+    }
+  }
+
+  // Reset state jika diperlukan (misal untuk testing)
+  void reset() {
+    state = false;
   }
 }

@@ -7,7 +7,7 @@ part of 'program_detail_with_stats_provider.dart';
 // **************************************************************************
 
 String _$programDetailWithStatsStateHash() =>
-    r'161ecee866c13c628f2ce83ecef31d198ba0151a';
+    r'34618debc21288d4fc408c29b122793df8f55818';
 
 /// Copied from Dart SDK
 class _SystemHash {

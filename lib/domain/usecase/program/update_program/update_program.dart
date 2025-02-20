@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
 import 'package:sti_app/domain/entities/result.dart';
@@ -47,6 +48,7 @@ class UpdateProgram implements Usecase<Result<Program>, UpdateProgramParams> {
       // Update in repository
       return await _programRepository.updateProgram(updatedProgram);
     } catch (e) {
+      debugPrint('Error updating program: $e');
       return Result.failed('Gagal memperbarui program: ${e.toString()}');
     }
   }

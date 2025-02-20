@@ -32,18 +32,13 @@ class ProgramDetailWithStatsState extends _$ProgramDetailWithStatsState {
     };
   }
 
+  // Handle refresh untuk update data
   Future<void> refresh() async {
     ref.invalidateSelf();
   }
 
-  // Handle errors with proper UI feedback
-  String? getErrorMessage(Object? error) {
-    if (error == null) return null;
+  // State management untuk loading dan error states
+  bool get isLoading => state.isLoading;
 
-    if (error is Exception) {
-      return error.toString().replaceAll('Exception: ', '');
-    }
-
-    return error.toString();
-  }
+  AsyncValue<(ProgramDetail, PresensiSummary)> get currentState => state;
 }

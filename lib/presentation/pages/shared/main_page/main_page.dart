@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sti_app/presentation/pages/beranda_page/beranda_page.dart';
+import '../../beranda_page/beranda_page.dart';
+import '../../presensi_page/presensi_page.dart';
+import '../../progres_page/progres_page.dart';
+import '../profile_page/profile_page.dart';
 import '../../../extensions/extensions.dart';
 import '../../../misc/constants.dart';
 import '../../../providers/router/router_provider.dart';
 import '../../../providers/user_data/user_data_provider.dart';
 import '../../../widgets/sti_bottom_nav_bar_widget.dart';
-import '../../presensi_page/presensi_page.dart';
-import '../../progres_page/progres_page.dart';
-import '../profile_page/profile_page.dart';
 
 class MainPage extends ConsumerStatefulWidget {
   const MainPage({super.key});
@@ -19,14 +19,6 @@ class MainPage extends ConsumerStatefulWidget {
 
 class _MainPageState extends ConsumerState<MainPage> {
   int selectedIndex = 0;
-
-  // // Define all screens
-  // final List<Widget> _screens = [
-  //   const BerandaPage(),
-  //   const PresensiPage(),
-  //   const Center(child: Text('Progres Page')),
-  //   const ProfilePage(),
-  // ];
 
   void onNavTap(int index) {
     final userRole = ref.read(userDataProvider).value?.role;
@@ -44,6 +36,7 @@ class _MainPageState extends ConsumerState<MainPage> {
   @override
   Widget build(BuildContext context) {
     final userRole = ref.watch(userDataProvider).value?.role;
+    final isAdmin = userRole == 'admin' || userRole == 'superAdmin';
 
     if (userRole == null) {
       return const Scaffold(
@@ -67,37 +60,38 @@ class _MainPageState extends ConsumerState<MainPage> {
       backgroundColor: AppColors.background,
       body: IndexedStack(
         index: selectedIndex,
-        children: _buildScreensForRole(userRole),
+        children: _buildScreensForRole(userRole, isAdmin),
       ),
       bottomNavigationBar: STIBottomNavBar(
         selectedIndex: selectedIndex,
         onTap: onNavTap,
+        role: userRole,
+        isAdmin: isAdmin,
       ),
     );
   }
 
-  List<Widget> _buildScreensForRole(String role) {
-    // Basic screens available for all roles
-    final screens = <Widget>[
-      const BerandaPage(),
-      if (role == 'santri') const PresensiPage(),
-      const ProgresPage(), // Ganti placeholder dengan ProgresPage
-      const ProfilePage(),
+  List<Widget> _buildScreensForRole(String role, bool isAdmin) {
+    return [
+      const BerandaPage(), // Beranda available for all
+      if (!isAdmin) const PresensiPage(), // Presensi only for santri
+      const ProgresPage(), // Progres for all with role-based content
+      const ProfilePage(), // Profile for all
     ];
-    return screens;
   }
 
-  // Helper untuk mengecek apakah role memiliki akses ke screen
   bool _hasAccess(String role, int screenIndex) {
+    final isAdmin = role == 'admin' || role == 'superAdmin';
+
     switch (screenIndex) {
       case 0: // Beranda
-        return true;
+        return true; // All roles can access
       case 1: // Presensi
-        return role == 'santri';
+        return !isAdmin; // Only santri can access
       case 2: // Progres
-        return true; // Semua role bisa akses progres
+        return true; // All roles with different content
       case 3: // Profile
-        return true;
+        return true; // All roles can access
       default:
         return false;
     }

@@ -6,11 +6,15 @@ import '../misc/constants.dart';
 class STIBottomNavBar extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onTap;
+  final String role;
+  final bool isAdmin;
 
   const STIBottomNavBar({
     super.key,
     required this.selectedIndex,
     required this.onTap,
+    required this.role,
+    required this.isAdmin,
   });
 
   @override
@@ -39,11 +43,13 @@ class STIBottomNavBar extends StatelessWidget {
               'Beranda',
               Icons.home_rounded,
             ),
-            _buildNavItem(
-              1,
-              'Presensi',
-              Icons.fact_check_rounded,
-            ),
+            // Tampilkan Presensi hanya untuk non-admin
+            if (!isAdmin)
+              _buildNavItem(
+                1,
+                'Presensi',
+                Icons.fact_check_rounded,
+              ),
             _buildNavItem(
               2,
               'Progres',

@@ -41,18 +41,17 @@ class CreateProgram implements Usecase<Result<Program>, CreateProgramParams> {
         return const Result.failed('Kelas tidak boleh kosong');
       }
 
-      // Create program with empty teacher lists initially
+      // Create program object
       final program = Program(
-        id: params.nama.toUpperCase(), // Use program name as ID
+        id: params.nama.toUpperCase(),
         nama: params.nama.toUpperCase(),
         deskripsi: params.deskripsi,
         jadwal: params.jadwal,
         lokasi: params.lokasi,
-        pengajarIds: [], // Initialize empty list for multiple teachers
-        pengajarNames: [], // Initialize empty list for multiple teachers
+        pengajarIds: params.initialTeacherIds ?? [],
+        pengajarNames: params.initialTeacherNames ?? [],
         kelas: params.kelas,
         totalPertemuan: params.totalPertemuan,
-        enrolledSantriIds: [], // Initialize empty list for santri
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

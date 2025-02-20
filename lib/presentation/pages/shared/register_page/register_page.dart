@@ -388,11 +388,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 
-  // PART 5: UI Building Methods Part 2 (Line 401-482)
-
   Widget _buildProgramSelection() {
     // Gunakan available_programs_provider untuk mendapatkan list program
-    final availableProgramsAsync = ref.watch(availableProgramsProvider);
+    final availableProgramsAsync = ref.watch(availableProgramsStateProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

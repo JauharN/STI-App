@@ -11,6 +11,7 @@ import '../../../../providers/presensi/admin/manage_program_provider.dart';
 import '../../../../providers/user_data/user_data_provider.dart';
 import '../../../../states/manage_program_state.dart';
 import '../../../../widgets/presensi_widget/program_form_dialog_widget.dart';
+import '../../../../widgets/program_widget/program_detail_card.dart';
 
 class ManageProgramPage extends ConsumerStatefulWidget {
   const ManageProgramPage({super.key});
@@ -299,78 +300,12 @@ class _ManageProgramPageState extends ConsumerState<ManageProgramPage> {
         childAspectRatio: 0.8,
       ),
       itemCount: programs.length,
-      itemBuilder: (context, index) => _buildProgramCard(programs[index]),
-    );
-  }
-
-  Widget _buildProgramCard(ProgramDetail program) {
-    return Card(
-      child: InkWell(
-        onTap: () => _showProgramActions(program),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                program.name,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              verticalSpace(8),
-              Text(
-                program.description,
-                style: GoogleFonts.plusJakartaSans(
-                  color: AppColors.neutral600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              verticalSpace(16),
-              _buildProgramInfo(program),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProgramInfo(ProgramDetail program) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow(
-            Icons.people, '${program.enrolledSantriIds.length} Santri'),
-        _buildInfoRow(
-            Icons.person,
-            program.teacherNames.isNotEmpty
-                ? '${program.teacherNames.length} Pengajar'
-                : 'Belum ada pengajar'),
-        _buildInfoRow(
-            Icons.calendar_today, '${program.totalMeetings} Meetings'),
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: AppColors.neutral600),
-          horizontalSpace(8),
-          Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.plusJakartaSans(
-                color: AppColors.neutral600,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
+      itemBuilder: (context, index) => ProgramDetailCard(
+        program: programs[index],
+        isAdmin: true,
+        onTap: () => _showProgramActions(programs[index]),
+        onEdit: () => _showEditProgramDialog(programs[index].id),
+        onDelete: () => _showDeleteConfirmation(programs[index].id),
       ),
     );
   }

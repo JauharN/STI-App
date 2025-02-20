@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sti_app/domain/usecase/usecase.dart';
 import 'package:sti_app/data/repositories/program_repository.dart';
 import 'package:sti_app/domain/entities/result.dart';
@@ -15,6 +16,7 @@ class GetProgramsByUserId
   @override
   Future<Result<List<Program>>> call(GetProgramsByUserIdParams params) async {
     try {
+      // Validasi input
       if (params.userId.isEmpty) {
         return const Result.failed('ID User tidak boleh kosong');
       }
@@ -36,11 +38,21 @@ class GetProgramsByUserId
                 program.totalPertemuan != null && program.totalPertemuan! > 0)
             .toList();
 
+        debugPrint(
+            'Retrieved ${programs.length} active programs for santri: ${params.userId}');
         return Result.success(programs);
+      }
+
+      if (result.isSuccess) {
+        debugPrint(
+            'Retrieved ${result.resultValue!.length} programs for user: ${params.userId}');
+      } else {
+        debugPrint('Failed to get programs: ${result.errorMessage}');
       }
 
       return result;
     } catch (e) {
+      debugPrint('Error getting user programs: $e');
       return Result.failed('Gagal mengambil daftar program: ${e.toString()}');
     }
   }

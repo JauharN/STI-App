@@ -30,6 +30,7 @@ _$ProgramImpl _$$ProgramImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      isActive: json['isActive'] as bool? ?? true,
     );
 
 Map<String, dynamic> _$$ProgramImplToJson(_$ProgramImpl instance) =>
@@ -46,4 +47,5 @@ Map<String, dynamic> _$$ProgramImplToJson(_$ProgramImpl instance) =>
       'createdAt': const TimestampConverter().toJson(instance.createdAt),
       'updatedAt': const TimestampConverter().toJson(instance.updatedAt),
       'enrolledSantriIds': instance.enrolledSantriIds,
+      'isActive': instance.isActive,
     };

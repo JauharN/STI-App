@@ -21,7 +21,7 @@ Program _$ProgramFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$Program {
   String get id => throw _privateConstructorUsedError;
-  String get nama => throw _privateConstructorUsedError; // TAHFIDZ, GMM, IFIS
+  String get nama => throw _privateConstructorUsedError;
   String get deskripsi => throw _privateConstructorUsedError;
   List<String> get jadwal => throw _privateConstructorUsedError;
   String? get lokasi => throw _privateConstructorUsedError;
@@ -34,6 +34,7 @@ mixin _$Program {
   @TimestampConverter()
   DateTime? get updatedAt => throw _privateConstructorUsedError;
   List<String> get enrolledSantriIds => throw _privateConstructorUsedError;
+  bool get isActive => throw _privateConstructorUsedError;
 
   /// Serializes this Program to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -61,7 +62,8 @@ abstract class $ProgramCopyWith<$Res> {
       int? totalPertemuan,
       @TimestampConverter() DateTime? createdAt,
       @TimestampConverter() DateTime? updatedAt,
-      List<String> enrolledSantriIds});
+      List<String> enrolledSantriIds,
+      bool isActive});
 }
 
 /// @nodoc
@@ -91,6 +93,7 @@ class _$ProgramCopyWithImpl<$Res, $Val extends Program>
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
     Object? enrolledSantriIds = null,
+    Object? isActive = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -141,6 +144,10 @@ class _$ProgramCopyWithImpl<$Res, $Val extends Program>
           ? _value.enrolledSantriIds
           : enrolledSantriIds // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      isActive: null == isActive
+          ? _value.isActive
+          : isActive // ignore: cast_nullable_to_non_nullable
+              as bool,
     ) as $Val);
   }
 }
@@ -164,7 +171,8 @@ abstract class _$$ProgramImplCopyWith<$Res> implements $ProgramCopyWith<$Res> {
       int? totalPertemuan,
       @TimestampConverter() DateTime? createdAt,
       @TimestampConverter() DateTime? updatedAt,
-      List<String> enrolledSantriIds});
+      List<String> enrolledSantriIds,
+      bool isActive});
 }
 
 /// @nodoc
@@ -192,6 +200,7 @@ class __$$ProgramImplCopyWithImpl<$Res>
     Object? createdAt = freezed,
     Object? updatedAt = freezed,
     Object? enrolledSantriIds = null,
+    Object? isActive = null,
   }) {
     return _then(_$ProgramImpl(
       id: null == id
@@ -242,6 +251,10 @@ class __$$ProgramImplCopyWithImpl<$Res>
           ? _value._enrolledSantriIds
           : enrolledSantriIds // ignore: cast_nullable_to_non_nullable
               as List<String>,
+      isActive: null == isActive
+          ? _value.isActive
+          : isActive // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -261,7 +274,8 @@ class _$ProgramImpl extends _Program {
       this.totalPertemuan,
       @TimestampConverter() this.createdAt,
       @TimestampConverter() this.updatedAt,
-      final List<String> enrolledSantriIds = const []})
+      final List<String> enrolledSantriIds = const [],
+      this.isActive = true})
       : _jadwal = jadwal,
         _pengajarIds = pengajarIds,
         _pengajarNames = pengajarNames,
@@ -275,7 +289,6 @@ class _$ProgramImpl extends _Program {
   final String id;
   @override
   final String nama;
-// TAHFIDZ, GMM, IFIS
   @override
   final String deskripsi;
   final List<String> _jadwal;
@@ -327,8 +340,12 @@ class _$ProgramImpl extends _Program {
   }
 
   @override
+  @JsonKey()
+  final bool isActive;
+
+  @override
   String toString() {
-    return 'Program(id: $id, nama: $nama, deskripsi: $deskripsi, jadwal: $jadwal, lokasi: $lokasi, pengajarIds: $pengajarIds, pengajarNames: $pengajarNames, kelas: $kelas, totalPertemuan: $totalPertemuan, createdAt: $createdAt, updatedAt: $updatedAt, enrolledSantriIds: $enrolledSantriIds)';
+    return 'Program(id: $id, nama: $nama, deskripsi: $deskripsi, jadwal: $jadwal, lokasi: $lokasi, pengajarIds: $pengajarIds, pengajarNames: $pengajarNames, kelas: $kelas, totalPertemuan: $totalPertemuan, createdAt: $createdAt, updatedAt: $updatedAt, enrolledSantriIds: $enrolledSantriIds, isActive: $isActive)';
   }
 
   @override
@@ -354,7 +371,9 @@ class _$ProgramImpl extends _Program {
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
             const DeepCollectionEquality()
-                .equals(other._enrolledSantriIds, _enrolledSantriIds));
+                .equals(other._enrolledSantriIds, _enrolledSantriIds) &&
+            (identical(other.isActive, isActive) ||
+                other.isActive == isActive));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -372,7 +391,8 @@ class _$ProgramImpl extends _Program {
       totalPertemuan,
       createdAt,
       updatedAt,
-      const DeepCollectionEquality().hash(_enrolledSantriIds));
+      const DeepCollectionEquality().hash(_enrolledSantriIds),
+      isActive);
 
   /// Create a copy of Program
   /// with the given fields replaced by the non-null parameter values.
@@ -403,7 +423,8 @@ abstract class _Program extends Program {
       final int? totalPertemuan,
       @TimestampConverter() final DateTime? createdAt,
       @TimestampConverter() final DateTime? updatedAt,
-      final List<String> enrolledSantriIds}) = _$ProgramImpl;
+      final List<String> enrolledSantriIds,
+      final bool isActive}) = _$ProgramImpl;
   _Program._() : super._();
 
   factory _Program.fromJson(Map<String, dynamic> json) = _$ProgramImpl.fromJson;
@@ -411,7 +432,7 @@ abstract class _Program extends Program {
   @override
   String get id;
   @override
-  String get nama; // TAHFIDZ, GMM, IFIS
+  String get nama;
   @override
   String get deskripsi;
   @override
@@ -434,6 +455,8 @@ abstract class _Program extends Program {
   DateTime? get updatedAt;
   @override
   List<String> get enrolledSantriIds;
+  @override
+  bool get isActive;
 
   /// Create a copy of Program
   /// with the given fields replaced by the non-null parameter values.
