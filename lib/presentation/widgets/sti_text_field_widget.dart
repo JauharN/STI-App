@@ -71,6 +71,8 @@ class STITextField extends StatelessWidget {
         inputFormatters: inputFormatters,
         textInputAction: textInputAction,
         onFieldSubmitted: onFieldSubmitted,
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.left,
         style: const TextStyle(
           color: AppColors.neutral800,
           fontFamily: 'Poppins',

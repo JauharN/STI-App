@@ -24,7 +24,7 @@ _$PresensiStatisticsDataImpl _$$PresensiStatisticsDataImplFromJson(
           .toList(),
       lastUpdated: json['lastUpdated'] == null
           ? null
-          : DateTime.parse(json['lastUpdated'] as String),
+          : const TimestampConverter().fromJson(json['lastUpdated']),
     );
 
 Map<String, dynamic> _$$PresensiStatisticsDataImplToJson(
@@ -36,7 +36,7 @@ Map<String, dynamic> _$$PresensiStatisticsDataImplToJson(
       'trendKehadiran': instance.trendKehadiran,
       'totalByStatus': instance.totalByStatus,
       'santriStats': instance.santriStats,
-      'lastUpdated': instance.lastUpdated?.toIso8601String(),
+      'lastUpdated': const TimestampConverter().toJson(instance.lastUpdated),
     };
 
 const _$PresensiStatusEnumMap = {

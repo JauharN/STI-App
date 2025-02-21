@@ -28,6 +28,7 @@ mixin _$PresensiStatisticsData {
   Map<PresensiStatus, int> get totalByStatus =>
       throw _privateConstructorUsedError;
   List<SantriStatistics> get santriStats => throw _privateConstructorUsedError;
+  @TimestampConverter()
   DateTime? get lastUpdated => throw _privateConstructorUsedError;
 
   /// Serializes this PresensiStatisticsData to a JSON map.
@@ -53,7 +54,7 @@ abstract class $PresensiStatisticsDataCopyWith<$Res> {
       Map<String, double> trendKehadiran,
       Map<PresensiStatus, int> totalByStatus,
       List<SantriStatistics> santriStats,
-      DateTime? lastUpdated});
+      @TimestampConverter() DateTime? lastUpdated});
 }
 
 /// @nodoc
@@ -129,7 +130,7 @@ abstract class _$$PresensiStatisticsDataImplCopyWith<$Res>
       Map<String, double> trendKehadiran,
       Map<PresensiStatus, int> totalByStatus,
       List<SantriStatistics> santriStats,
-      DateTime? lastUpdated});
+      @TimestampConverter() DateTime? lastUpdated});
 }
 
 /// @nodoc
@@ -198,7 +199,7 @@ class _$PresensiStatisticsDataImpl implements _PresensiStatisticsData {
       required final Map<String, double> trendKehadiran,
       required final Map<PresensiStatus, int> totalByStatus,
       required final List<SantriStatistics> santriStats,
-      this.lastUpdated = null})
+      @TimestampConverter() this.lastUpdated = null})
       : _trendKehadiran = trendKehadiran,
         _totalByStatus = totalByStatus,
         _santriStats = santriStats;
@@ -238,6 +239,7 @@ class _$PresensiStatisticsDataImpl implements _PresensiStatisticsData {
 
   @override
   @JsonKey()
+  @TimestampConverter()
   final DateTime? lastUpdated;
 
   @override
@@ -297,13 +299,14 @@ class _$PresensiStatisticsDataImpl implements _PresensiStatisticsData {
 
 abstract class _PresensiStatisticsData implements PresensiStatisticsData {
   factory _PresensiStatisticsData(
-      {required final String programId,
-      required final int totalPertemuan,
-      required final int totalSantri,
-      required final Map<String, double> trendKehadiran,
-      required final Map<PresensiStatus, int> totalByStatus,
-      required final List<SantriStatistics> santriStats,
-      final DateTime? lastUpdated}) = _$PresensiStatisticsDataImpl;
+          {required final String programId,
+          required final int totalPertemuan,
+          required final int totalSantri,
+          required final Map<String, double> trendKehadiran,
+          required final Map<PresensiStatus, int> totalByStatus,
+          required final List<SantriStatistics> santriStats,
+          @TimestampConverter() final DateTime? lastUpdated}) =
+      _$PresensiStatisticsDataImpl;
 
   factory _PresensiStatisticsData.fromJson(Map<String, dynamic> json) =
       _$PresensiStatisticsDataImpl.fromJson;
@@ -321,6 +324,7 @@ abstract class _PresensiStatisticsData implements PresensiStatisticsData {
   @override
   List<SantriStatistics> get santriStats;
   @override
+  @TimestampConverter()
   DateTime? get lastUpdated;
 
   /// Create a copy of PresensiStatisticsData

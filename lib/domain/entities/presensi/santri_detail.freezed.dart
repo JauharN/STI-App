@@ -28,8 +28,11 @@ mixin _$SantriDetail {
   String? get phoneNumber => throw _privateConstructorUsedError;
   String? get address => throw _privateConstructorUsedError;
   bool get isActive => throw _privateConstructorUsedError;
+  @TimestampConverter()
   DateTime? get dateOfBirth => throw _privateConstructorUsedError;
+  @TimestampConverter()
   DateTime? get createdAt => throw _privateConstructorUsedError;
+  @TimestampConverter()
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
   /// Serializes this SantriDetail to a JSON map.
@@ -57,9 +60,9 @@ abstract class $SantriDetailCopyWith<$Res> {
       String? phoneNumber,
       String? address,
       bool isActive,
-      DateTime? dateOfBirth,
-      DateTime? createdAt,
-      DateTime? updatedAt});
+      @TimestampConverter() DateTime? dateOfBirth,
+      @TimestampConverter() DateTime? createdAt,
+      @TimestampConverter() DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -155,9 +158,9 @@ abstract class _$$SantriDetailImplCopyWith<$Res>
       String? phoneNumber,
       String? address,
       bool isActive,
-      DateTime? dateOfBirth,
-      DateTime? createdAt,
-      DateTime? updatedAt});
+      @TimestampConverter() DateTime? dateOfBirth,
+      @TimestampConverter() DateTime? createdAt,
+      @TimestampConverter() DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -246,9 +249,9 @@ class _$SantriDetailImpl implements _SantriDetail {
       this.phoneNumber,
       this.address,
       this.isActive = true,
-      this.dateOfBirth,
-      this.createdAt = null,
-      this.updatedAt = null})
+      @TimestampConverter() this.dateOfBirth,
+      @TimestampConverter() this.createdAt = null,
+      @TimestampConverter() this.updatedAt = null})
       : _enrolledPrograms = enrolledPrograms;
 
   factory _$SantriDetailImpl.fromJson(Map<String, dynamic> json) =>
@@ -279,12 +282,15 @@ class _$SantriDetailImpl implements _SantriDetail {
   @JsonKey()
   final bool isActive;
   @override
+  @TimestampConverter()
   final DateTime? dateOfBirth;
   @override
   @JsonKey()
+  @TimestampConverter()
   final DateTime? createdAt;
   @override
   @JsonKey()
+  @TimestampConverter()
   final DateTime? updatedAt;
 
   @override
@@ -359,9 +365,9 @@ abstract class _SantriDetail implements SantriDetail {
       final String? phoneNumber,
       final String? address,
       final bool isActive,
-      final DateTime? dateOfBirth,
-      final DateTime? createdAt,
-      final DateTime? updatedAt}) = _$SantriDetailImpl;
+      @TimestampConverter() final DateTime? dateOfBirth,
+      @TimestampConverter() final DateTime? createdAt,
+      @TimestampConverter() final DateTime? updatedAt}) = _$SantriDetailImpl;
 
   factory _SantriDetail.fromJson(Map<String, dynamic> json) =
       _$SantriDetailImpl.fromJson;
@@ -383,10 +389,13 @@ abstract class _SantriDetail implements SantriDetail {
   @override
   bool get isActive;
   @override
+  @TimestampConverter()
   DateTime? get dateOfBirth;
   @override
+  @TimestampConverter()
   DateTime? get createdAt;
   @override
+  @TimestampConverter()
   DateTime? get updatedAt;
 
   /// Create a copy of SantriDetail

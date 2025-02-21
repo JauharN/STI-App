@@ -43,13 +43,28 @@ class DetailPresensi with _$DetailPresensi {
       throw ArgumentError('Data pertemuan tidak boleh kosong');
     }
 
+    // Validate all pertemuan dates
+    for (var item in pertemuan) {
+      if (!TimestampConverter.isValidTimestamp(item.tanggal)) {
+        throw ArgumentError(
+            'Tanggal pertemuan ke-${item.pertemuanKe} tidak valid');
+      }
+    }
+
     return DetailPresensi(
       programId: programId,
       programName: programName,
       kelas: kelas,
       pengajarName: pengajarName,
       pertemuan: pertemuan,
-      summary: summary,
+      summary: summary ??
+          PresensiSummary(
+            totalSantri: pertemuan.length,
+            hadir: 0,
+            sakit: 0,
+            izin: 0,
+            alpha: 0,
+          ),
     );
   }
 
@@ -72,6 +87,11 @@ class PresensiDetailItem with _$PresensiDetailItem {
 }
 
 extension DetailPresensiX on DetailPresensi {
+  /// Basic collection properties
+  bool get isEmpty => pertemuan.isEmpty;
+  bool get isNotEmpty => pertemuan.isNotEmpty;
+  int get length => pertemuan.length;
+
   bool get isValid {
     if (programId.isEmpty ||
         programName.isEmpty ||
@@ -80,6 +100,14 @@ extension DetailPresensiX on DetailPresensi {
       return false;
     }
     if (pertemuan.isEmpty) return false;
+
+    // Validate all pertemuan timestamps
+    for (var item in pertemuan) {
+      if (!TimestampConverter.isValidTimestamp(item.tanggal)) {
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -109,20 +137,38 @@ extension DetailPresensiX on DetailPresensi {
       sakit: totalSakit,
       izin: totalIzin,
       alpha: totalAlpha,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
   }
 
-  bool get isEmpty => pertemuan.isEmpty;
-  bool get isNotEmpty => pertemuan.isNotEmpty;
-  int get length => pertemuan.length;
+  /// Get pertemuan sorted by tanggal
+  List<PresensiDetailItem> get sortedPertemuan {
+    final sorted = [...pertemuan];
+    sorted.sort((a, b) => a.tanggal.compareTo(b.tanggal));
+    return sorted;
+  }
 
-  // Helper untuk get pertemuan by ID
-  PresensiDetailItem? getPertemuanById(String id) {
-    final pertemuanKe = int.tryParse(id.split('_').last);
-    if (pertemuanKe == null) return null;
-    return pertemuan.firstWhere(
-      (p) => p.pertemuanKe == pertemuanKe,
-      orElse: () => throw Exception('Pertemuan tidak ditemukan'),
-    );
+  /// Get latest pertemuan based on tanggal
+  PresensiDetailItem? get latestPertemuan {
+    if (pertemuan.isEmpty) return null;
+    return sortedPertemuan.last;
+  }
+
+  /// Get earliest pertemuan based on tanggal
+  PresensiDetailItem? get firstPertemuan {
+    if (pertemuan.isEmpty) return null;
+    return sortedPertemuan.first;
+  }
+
+  /// Get pertemuan by pertemuanKe
+  PresensiDetailItem? getPertemuanByNomor(int nomorPertemuan) {
+    try {
+      return pertemuan.firstWhere(
+        (p) => p.pertemuanKe == nomorPertemuan,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 }

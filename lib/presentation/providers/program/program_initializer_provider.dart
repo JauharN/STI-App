@@ -20,18 +20,17 @@ class ProgramInitializationState extends _$ProgramInitializationState {
   bool build() => false;
 
   Future<void> initialize() async {
-    if (state) return; // Skip if already initialized
+    if (state) return; // Skip jika sudah terinisialisasi
 
     try {
       await ref.read(programInitializerProvider).initializeDefaultPrograms();
       state = true;
     } catch (e) {
       state = false;
-      rethrow; // Let the UI handle the error
+      rethrow;
     }
   }
 
-  // Reset state jika diperlukan (misal untuk testing)
   void reset() {
     state = false;
   }

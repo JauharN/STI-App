@@ -39,14 +39,32 @@ class PresensiSummary with _$PresensiSummary {
       throw ArgumentError('Jumlah status tidak boleh negatif');
     }
 
+    // Standardize timestamps
+    final now = DateTime.now();
+    final standardizedCreatedAt =
+        TimestampConverter.standardizeDateTime(createdAt ?? now);
+    final standardizedUpdatedAt =
+        TimestampConverter.standardizeDateTime(updatedAt ?? now);
+
+    // Validasi timestamps
+    if (standardizedCreatedAt != null &&
+        !TimestampConverter.isValidTimestamp(standardizedCreatedAt)) {
+      throw ArgumentError('Created timestamp tidak valid');
+    }
+
+    if (standardizedUpdatedAt != null &&
+        !TimestampConverter.isValidTimestamp(standardizedUpdatedAt)) {
+      throw ArgumentError('Updated timestamp tidak valid');
+    }
+
     return PresensiSummary(
       totalSantri: totalSantri,
       hadir: hadir,
       sakit: sakit,
       izin: izin,
       alpha: alpha,
-      createdAt: createdAt ?? DateTime.now(),
-      updatedAt: updatedAt ?? DateTime.now(),
+      createdAt: standardizedCreatedAt,
+      updatedAt: standardizedUpdatedAt,
     );
   }
 
@@ -63,6 +81,24 @@ extension PresensiSummaryX on PresensiSummary {
   bool get isValid {
     if (totalSantri <= 0) return false;
     if (hadir < 0 || sakit < 0 || izin < 0 || alpha < 0) return false;
-    return (hadir + sakit + izin + alpha) == totalSantri;
+    if ((hadir + sakit + izin + alpha) != totalSantri) return false;
+
+    // Validasi timestamps jika ada
+    if (createdAt != null && !TimestampConverter.isValidTimestamp(createdAt))
+      return false;
+    if (updatedAt != null && !TimestampConverter.isValidTimestamp(updatedAt))
+      return false;
+
+    return true;
+  }
+
+  Duration? getSinceCreated() {
+    if (createdAt == null) return null;
+    return DateTime.now().difference(createdAt!);
+  }
+
+  Duration? getSinceUpdated() {
+    if (updatedAt == null) return null;
+    return DateTime.now().difference(updatedAt!);
   }
 }

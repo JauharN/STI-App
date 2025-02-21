@@ -7,15 +7,13 @@ part 'progres_hafalan.g.dart';
 @freezed
 class ProgresHafalan with _$ProgresHafalan {
   static bool canManage(String role) => role == 'admin' || role == 'superAdmin';
-
   static bool canView(String role) => true;
 
   factory ProgresHafalan({
     required String id,
     required String userId,
     required String programId, // 'TAHFIDZ' atau 'GMM'
-    required DateTime tanggal,
-
+    @TimestampConverter() required DateTime tanggal,
     // Fields Tahfidz
     int? juz,
     int? halaman,
@@ -62,6 +60,19 @@ class ProgresHafalan with _$ProgresHafalan {
       throw ArgumentError('Invalid program ID');
     }
 
+    // Standardize timestamps
+    final standardizedTanggal = TimestampConverter.standardizeDateTime(tanggal);
+    if (standardizedTanggal == null ||
+        !TimestampConverter.isValidTimestamp(standardizedTanggal)) {
+      throw ArgumentError('Tanggal tidak valid');
+    }
+
+    final now = DateTime.now();
+    final standardizedCreatedAt =
+        TimestampConverter.standardizeDateTime(createdAt ?? now);
+    final standardizedUpdatedAt =
+        TimestampConverter.standardizeDateTime(updatedAt ?? now);
+
     if (programId == 'TAHFIDZ') {
       if (juz == null ||
           halaman == null ||
@@ -71,7 +82,6 @@ class ProgresHafalan with _$ProgresHafalan {
         throw ArgumentError('Incomplete Tahfidz progress data');
       }
 
-      // Validate status penilaian
       if (!['Lancar', 'Belum', 'Perlu Perbaikan'].contains(statusPenilaian)) {
         throw ArgumentError('Invalid status penilaian');
       }
@@ -91,12 +101,10 @@ class ProgresHafalan with _$ProgresHafalan {
         throw ArgumentError('Incomplete GMM progress data');
       }
 
-      // Validate iqro level
       if (!['1', '2', '3', '4', '5', '6'].contains(iqroLevel)) {
         throw ArgumentError('Invalid iqro level');
       }
 
-      // Validate status
       if (!['Lancar', 'Belum'].contains(statusIqro)) {
         throw ArgumentError('Invalid status iqro');
       }
@@ -113,15 +121,11 @@ class ProgresHafalan with _$ProgresHafalan {
       statusPenilaian = null;
     }
 
-    if (tanggal.isAfter(DateTime.now())) {
-      throw ArgumentError('Tanggal tidak boleh di masa depan');
-    }
-
     return ProgresHafalan(
       id: id,
       userId: userId,
       programId: programId,
-      tanggal: tanggal,
+      tanggal: standardizedTanggal,
       juz: juz,
       halaman: halaman,
       ayat: ayat,
@@ -133,8 +137,8 @@ class ProgresHafalan with _$ProgresHafalan {
       mutabaahTarget: mutabaahTarget,
       statusMutabaah: statusMutabaah,
       catatan: catatan,
-      createdAt: createdAt ?? DateTime.now(),
-      updatedAt: updatedAt ?? DateTime.now(),
+      createdAt: standardizedCreatedAt,
+      updatedAt: standardizedUpdatedAt,
       createdBy: createdBy,
       updatedBy: updatedBy,
     );
@@ -147,6 +151,7 @@ class ProgresHafalan with _$ProgresHafalan {
 extension ProgresHafalanX on ProgresHafalan {
   bool get isValid {
     if (userId.isEmpty || programId.isEmpty) return false;
+    if (!TimestampConverter.isValidTimestamp(tanggal)) return false;
 
     if (programId == 'TAHFIDZ') {
       return juz != null &&
@@ -170,6 +175,5 @@ extension ProgresHafalanX on ProgresHafalan {
   }
 
   bool canBeUpdatedBy(String role) => ProgresHafalan.canManage(role);
-
   bool canBeDeletedBy(String role) => ProgresHafalan.canManage(role);
 }

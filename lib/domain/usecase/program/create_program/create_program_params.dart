@@ -10,6 +10,7 @@ class CreateProgramParams {
   final String currentUserRole;
   final List<String>? initialTeacherIds;
   final List<String>? initialTeacherNames;
+  final List<String>? enrolledSantriIds;
 
   CreateProgramParams({
     required this.nama,
@@ -21,6 +22,7 @@ class CreateProgramParams {
     this.totalPertemuan,
     this.initialTeacherIds,
     this.initialTeacherNames,
+    this.enrolledSantriIds,
   }) {
     // Validasi saat konstruksi
     if (nama.isEmpty) {

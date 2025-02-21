@@ -214,12 +214,17 @@ class BerandaPage extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                isAdmin ? 'Program Management' : 'Program Terdaftar',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.neutral900,
+              Expanded(
+                // Mencegah overflow teks di dalam Row
+                child: Text(
+                  isAdmin ? 'Program Management' : 'Program Terdaftar',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.neutral900,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
               if (isAdmin)
@@ -236,13 +241,17 @@ class BerandaPage extends ConsumerWidget {
               if (programs.isEmpty) {
                 return _buildEmptyProgramState(context, isAdmin);
               }
-              return ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: programs.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) =>
-                    _buildProgramCard(context, programs[index], isAdmin),
+              return SizedBox(
+                width: double
+                    .infinity, // Membatasi ListView agar tidak lebih lebar dari parent
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: programs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) =>
+                      _buildProgramCard(context, programs[index], isAdmin),
+                ),
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),

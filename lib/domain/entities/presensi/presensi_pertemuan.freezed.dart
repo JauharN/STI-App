@@ -277,10 +277,10 @@ class _$PresensiPertemuanImpl implements _PresensiPertemuan {
       required this.summary,
       this.materi,
       this.catatan,
-      @TimestampConverter() this.createdAt = null,
-      @TimestampConverter() this.updatedAt = null,
-      this.createdBy = null,
-      this.updatedBy = null})
+      @TimestampConverter() this.createdAt,
+      @TimestampConverter() this.updatedAt,
+      this.createdBy,
+      this.updatedBy})
       : _daftarHadir = daftarHadir;
 
   factory _$PresensiPertemuanImpl.fromJson(Map<String, dynamic> json) =>
@@ -310,18 +310,14 @@ class _$PresensiPertemuanImpl implements _PresensiPertemuan {
   @override
   final String? catatan;
   @override
-  @JsonKey()
   @TimestampConverter()
   final DateTime? createdAt;
   @override
-  @JsonKey()
   @TimestampConverter()
   final DateTime? updatedAt;
   @override
-  @JsonKey()
   final String? createdBy;
   @override
-  @JsonKey()
   final String? updatedBy;
 
   @override

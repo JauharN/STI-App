@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sti_app/domain/entities/presensi/presensi_summary.dart';
 
 import '../../../domain/entities/presensi/presensi_pertemuan.dart';
+import '../../../domain/entities/presensi/presensi_summary.dart';
 import '../../../domain/entities/user.dart';
 import '../../misc/constants.dart';
 import '../../misc/methods.dart';
 import '../../providers/presensi/recent_presensi_activities_provider.dart';
-import '../../providers/program/user_programs_provider.dart';
+import '../../providers/program/available_programs_provider.dart';
 import '../../providers/user_data/user_data_provider.dart';
 import '../../widgets/presensi_widget/presensi_program_card_widget.dart';
 
@@ -26,6 +26,10 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
     return role == RoleConstants.admin || role == RoleConstants.superAdmin;
   }
 
+  bool _canInputPresensi(String? role) {
+    return _canManagePresensi(role);
+  }
+
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(userDataProvider);
@@ -33,14 +37,10 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
     return userAsync.when(
       data: (user) => _buildContent(context, user),
       loading: () => const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       ),
       error: (error, stack) => Scaffold(
-        body: Center(
-          child: Text('Error: ${error.toString()}'),
-        ),
+        body: Center(child: Text('Error: ${error.toString()}')),
       ),
     );
   }
@@ -151,29 +151,23 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
 
     return [
       IconButton(
-        onPressed: () => context.pushNamed('input-presensi'),
-        icon: const Icon(
-          Icons.add_circle_outline,
-          color: Colors.white,
-        ),
+        onPressed: () => context.pushNamed('input-presensi',
+            pathParameters: {'programId': 'TAHFIDZ'}),
+        icon: const Icon(Icons.add_circle_outline, color: Colors.white),
       ),
       IconButton(
-        onPressed: () => context.pushNamed('manage-presensi'),
-        icon: const Icon(
-          Icons.history,
-          color: Colors.white,
+        onPressed: () => context.pushNamed(
+          'manage-presensi',
+          pathParameters: {'programId': 'TAHFIDZ'},
         ),
+        icon: const Icon(Icons.history, color: Colors.white),
       ),
       const SizedBox(width: 8),
     ];
   }
 
   Widget _buildProgramSection(BuildContext context, bool isAdmin, User? user) {
-    final programs = [
-      {'id': 'TAHFIDZ', 'title': 'TAHFIDZ'},
-      {'id': 'GMM', 'title': 'GMM'},
-      {'id': 'IFIS', 'title': 'IFIS'},
-    ];
+    final programsAsync = ref.watch(availableProgramsStateProvider);
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -199,19 +193,39 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
             ),
           ),
           verticalSpace(24),
-          ...programs.map((program) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: PresensiProgramCard(
-                  title: program['title']!,
-                  userId: user?.uid ?? '',
-                  programId: program['id']!,
-                  onTap: () => _navigateToProgram(
-                    context,
-                    isAdmin,
-                    program['id']!,
-                  ),
-                ),
-              )),
+          programsAsync.when(
+            data: (programs) {
+              if (programs.isEmpty) {
+                return _buildEmptyState(isAdmin
+                    ? 'Belum ada program yang dikelola'
+                    : 'Belum terdaftar di program');
+              }
+              return Column(
+                children: programs.map((program) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: PresensiProgramCard(
+                      title: program.nama,
+                      userId: user?.uid ?? '',
+                      programId: program.id,
+                      onTap: () => _navigateToProgram(
+                        context,
+                        isAdmin,
+                        program.id,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => Center(
+              child: Text(
+                'Error: $error',
+                style: GoogleFonts.plusJakartaSans(color: AppColors.error),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -263,7 +277,10 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
             title: 'Kelola Presensi',
             subtitle: 'Edit atau hapus data presensi',
             color: AppColors.secondary,
-            onTap: () => context.pushNamed('manage-presensi'),
+            onTap: () => context.pushNamed(
+              'manage-presensi',
+              pathParameters: {'programId': 'TAHFIDZ'},
+            ),
           ),
         ],
       ),
@@ -289,7 +306,7 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
                   color: AppColors.neutral900,
                 ),
               ),
-              if (userRole == 'admin' || userRole == 'superAdmin')
+              if (_canManagePresensi(userRole))
                 TextButton(
                   onPressed: () => context.pushNamed('presensi-statistics'),
                   child: Text(
@@ -304,75 +321,67 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
             ],
           ),
           verticalSpace(16),
-          Consumer(
-            builder: (context, ref, _) {
-              final programs = ref.watch(userProgramsControllerProvider);
-              return programs.when(
-                data: (programList) {
-                  if (programList.isEmpty) {
-                    return _buildEmptyState();
-                  }
-                  return _buildActivityList(programList.first.id);
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => Center(
-                  child: Text(
-                    'Error: $error',
-                    style: GoogleFonts.plusJakartaSans(color: AppColors.error),
-                  ),
-                ),
-              );
-            },
-          ),
+          _buildRecentActivities(),
         ],
       ),
     );
   }
 
+  Widget _buildRecentActivities() {
+    final availableProgramsAsync = ref.watch(availableProgramsStateProvider);
+
+    return availableProgramsAsync.when(
+      data: (programs) {
+        if (programs.isEmpty) {
+          return _buildEmptyState('Belum ada aktivitas presensi');
+        }
+
+        // Use first program as default
+        return _buildActivityList(programs.first.id);
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(
+        child: Text('Error: $error',
+            style: GoogleFonts.plusJakartaSans(color: AppColors.error)),
+      ),
+    );
+  }
+
   Widget _buildActivityList(String programId) {
-    return Consumer(
-      builder: (context, ref, _) {
-        final activitiesAsync =
-            ref.watch(recentPresensiActivitiesControllerProvider(programId));
+    final activitiesAsync =
+        ref.watch(recentPresensiActivitiesControllerProvider(programId));
 
-        return activitiesAsync.when(
-          data: (activities) {
-            if (activities.isEmpty) {
-              return _buildEmptyState();
-            }
+    return activitiesAsync.when(
+      data: (activities) {
+        if (activities.isEmpty) {
+          return _buildEmptyState('Belum ada aktivitas presensi');
+        }
 
-            // Get statistics
-            final statistics = ref
-                .read(recentPresensiActivitiesControllerProvider(programId)
-                    .notifier)
-                .getActivityStatistics(activities);
+        final statistics = ref
+            .read(
+                recentPresensiActivitiesControllerProvider(programId).notifier)
+            .getActivityStatistics(activities);
 
-            return Column(
-              children: [
-                // Show statistics
-                _buildStatisticsCard(statistics),
-                const SizedBox(height: 16),
-                // Show activities
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: activities.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) =>
-                      _buildActivityItem(activities[index]),
-                ),
-              ],
-            );
-          },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(
-            child: Text(
-              'Error: $error',
-              style: GoogleFonts.plusJakartaSans(color: AppColors.error),
+        return Column(
+          children: [
+            _buildStatisticsCard(statistics),
+            verticalSpace(16),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: activities.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) =>
+                  _buildActivityItem(activities[index]),
             ),
-          ),
+          ],
         );
       },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(
+        child: Text('Error: $error',
+            style: GoogleFonts.plusJakartaSans(color: AppColors.error)),
+      ),
     );
   }
 
@@ -394,10 +403,7 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(
-                child: Icon(
-                  Icons.fact_check_rounded,
-                  color: AppColors.primary,
-                ),
+                child: Icon(Icons.fact_check_rounded, color: AppColors.primary),
               ),
             ),
             const SizedBox(width: 12),
@@ -510,7 +516,7 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(String message) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -522,11 +528,12 @@ class _PresensiPageState extends ConsumerState<PresensiPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Belum ada aktivitas presensi',
+            message,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16,
               color: AppColors.neutral600,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

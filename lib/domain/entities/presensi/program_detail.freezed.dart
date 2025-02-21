@@ -26,12 +26,12 @@ mixin _$ProgramDetail {
   List<String> get schedule => throw _privateConstructorUsedError;
   int get totalMeetings => throw _privateConstructorUsedError;
   String? get location => throw _privateConstructorUsedError;
-  List<String> get teacherIds =>
-      throw _privateConstructorUsedError; // Ubah ke list
-  List<String> get teacherNames =>
-      throw _privateConstructorUsedError; // Ubah ke list
+  List<String> get teacherIds => throw _privateConstructorUsedError;
+  List<String> get teacherNames => throw _privateConstructorUsedError;
   List<String> get enrolledSantriIds => throw _privateConstructorUsedError;
+  @TimestampConverter()
   DateTime? get createdAt => throw _privateConstructorUsedError;
+  @TimestampConverter()
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
   /// Serializes this ProgramDetail to a JSON map.
@@ -60,8 +60,8 @@ abstract class $ProgramDetailCopyWith<$Res> {
       List<String> teacherIds,
       List<String> teacherNames,
       List<String> enrolledSantriIds,
-      DateTime? createdAt,
-      DateTime? updatedAt});
+      @TimestampConverter() DateTime? createdAt,
+      @TimestampConverter() DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -158,8 +158,8 @@ abstract class _$$ProgramDetailImplCopyWith<$Res>
       List<String> teacherIds,
       List<String> teacherNames,
       List<String> enrolledSantriIds,
-      DateTime? createdAt,
-      DateTime? updatedAt});
+      @TimestampConverter() DateTime? createdAt,
+      @TimestampConverter() DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -249,8 +249,8 @@ class _$ProgramDetailImpl implements _ProgramDetail {
       final List<String> teacherIds = const [],
       final List<String> teacherNames = const [],
       final List<String> enrolledSantriIds = const [],
-      this.createdAt = null,
-      this.updatedAt = null})
+      @TimestampConverter() this.createdAt = null,
+      @TimestampConverter() this.updatedAt = null})
       : _schedule = schedule,
         _teacherIds = teacherIds,
         _teacherNames = teacherNames,
@@ -286,9 +286,7 @@ class _$ProgramDetailImpl implements _ProgramDetail {
     return EqualUnmodifiableListView(_teacherIds);
   }
 
-// Ubah ke list
   final List<String> _teacherNames;
-// Ubah ke list
   @override
   @JsonKey()
   List<String> get teacherNames {
@@ -297,9 +295,7 @@ class _$ProgramDetailImpl implements _ProgramDetail {
     return EqualUnmodifiableListView(_teacherNames);
   }
 
-// Ubah ke list
   final List<String> _enrolledSantriIds;
-// Ubah ke list
   @override
   @JsonKey()
   List<String> get enrolledSantriIds {
@@ -311,9 +307,11 @@ class _$ProgramDetailImpl implements _ProgramDetail {
 
   @override
   @JsonKey()
+  @TimestampConverter()
   final DateTime? createdAt;
   @override
   @JsonKey()
+  @TimestampConverter()
   final DateTime? updatedAt;
 
   @override
@@ -390,8 +388,8 @@ abstract class _ProgramDetail implements ProgramDetail {
       final List<String> teacherIds,
       final List<String> teacherNames,
       final List<String> enrolledSantriIds,
-      final DateTime? createdAt,
-      final DateTime? updatedAt}) = _$ProgramDetailImpl;
+      @TimestampConverter() final DateTime? createdAt,
+      @TimestampConverter() final DateTime? updatedAt}) = _$ProgramDetailImpl;
 
   factory _ProgramDetail.fromJson(Map<String, dynamic> json) =
       _$ProgramDetailImpl.fromJson;
@@ -409,14 +407,16 @@ abstract class _ProgramDetail implements ProgramDetail {
   @override
   String? get location;
   @override
-  List<String> get teacherIds; // Ubah ke list
+  List<String> get teacherIds;
   @override
-  List<String> get teacherNames; // Ubah ke list
+  List<String> get teacherNames;
   @override
   List<String> get enrolledSantriIds;
   @override
+  @TimestampConverter()
   DateTime? get createdAt;
   @override
+  @TimestampConverter()
   DateTime? get updatedAt;
 
   /// Create a copy of ProgramDetail

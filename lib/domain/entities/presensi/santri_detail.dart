@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:sti_app/domain/entities/json_converters.dart';
 
 part 'santri_detail.freezed.dart';
 part 'santri_detail.g.dart';
@@ -17,9 +18,9 @@ class SantriDetail with _$SantriDetail {
     String? phoneNumber,
     String? address,
     @Default(true) bool isActive,
-    DateTime? dateOfBirth,
-    @Default(null) DateTime? createdAt,
-    @Default(null) DateTime? updatedAt,
+    @TimestampConverter() DateTime? dateOfBirth,
+    @TimestampConverter() @Default(null) DateTime? createdAt,
+    @TimestampConverter() @Default(null) DateTime? updatedAt,
   }) = _SantriDetail;
 
   factory SantriDetail.validated({
@@ -38,11 +39,42 @@ class SantriDetail with _$SantriDetail {
     if (id.isEmpty || name.isEmpty || email.isEmpty) {
       throw ArgumentError('ID, nama, dan email tidak boleh kosong');
     }
+
     if (!email.contains('@')) {
       throw ArgumentError('Format email tidak valid');
     }
+
     if (enrolledPrograms.isEmpty) {
       throw ArgumentError('Santri harus terdaftar minimal di satu program');
+    }
+
+    // Standardize timestamps
+    final standardizedDateOfBirth = dateOfBirth != null
+        ? TimestampConverter.standardizeDateTime(dateOfBirth)
+        : null;
+
+    final now = DateTime.now();
+    final standardizedCreatedAt =
+        TimestampConverter.standardizeDateTime(createdAt ?? now);
+    final standardizedUpdatedAt =
+        TimestampConverter.standardizeDateTime(updatedAt ?? now);
+
+    // Validate date of birth if provided
+    if (standardizedDateOfBirth != null) {
+      if (!TimestampConverter.isValidTimestamp(standardizedDateOfBirth)) {
+        throw ArgumentError('Tanggal lahir tidak valid');
+      }
+
+      final minimumAge = now.subtract(const Duration(days: 365 * 5));
+      final maximumAge = now.subtract(const Duration(days: 365 * 50));
+
+      if (standardizedDateOfBirth.isAfter(minimumAge)) {
+        throw ArgumentError('Umur minimal 5 tahun');
+      }
+
+      if (standardizedDateOfBirth.isBefore(maximumAge)) {
+        throw ArgumentError('Umur tidak valid');
+      }
     }
 
     return SantriDetail(
@@ -54,9 +86,9 @@ class SantriDetail with _$SantriDetail {
       phoneNumber: phoneNumber,
       address: address,
       isActive: isActive,
-      dateOfBirth: dateOfBirth,
-      createdAt: createdAt ?? DateTime.now(),
-      updatedAt: updatedAt ?? DateTime.now(),
+      dateOfBirth: standardizedDateOfBirth,
+      createdAt: standardizedCreatedAt,
+      updatedAt: standardizedUpdatedAt,
     );
   }
 
@@ -69,6 +101,13 @@ extension SantriDetailX on SantriDetail {
     if (id.isEmpty || name.isEmpty || email.isEmpty) return false;
     if (!email.contains('@')) return false;
     if (enrolledPrograms.isEmpty) return false;
+
+    // Date of birth validation if exists
+    if (dateOfBirth != null &&
+        !TimestampConverter.isValidTimestamp(dateOfBirth!)) {
+      return false;
+    }
+
     return true;
   }
 

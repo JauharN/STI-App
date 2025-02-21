@@ -50,6 +50,7 @@ class CreateProgram implements Usecase<Result<Program>, CreateProgramParams> {
         lokasi: params.lokasi,
         pengajarIds: params.initialTeacherIds ?? [],
         pengajarNames: params.initialTeacherNames ?? [],
+        enrolledSantriIds: params.enrolledSantriIds ?? [],
         kelas: params.kelas,
         totalPertemuan: params.totalPertemuan,
         createdAt: DateTime.now(),

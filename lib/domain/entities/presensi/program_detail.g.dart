@@ -29,10 +29,10 @@ _$ProgramDetailImpl _$$ProgramDetailImplFromJson(Map<String, dynamic> json) =>
           const [],
       createdAt: json['createdAt'] == null
           ? null
-          : DateTime.parse(json['createdAt'] as String),
+          : const TimestampConverter().fromJson(json['createdAt']),
       updatedAt: json['updatedAt'] == null
           ? null
-          : DateTime.parse(json['updatedAt'] as String),
+          : const TimestampConverter().fromJson(json['updatedAt']),
     );
 
 Map<String, dynamic> _$$ProgramDetailImplToJson(_$ProgramDetailImpl instance) =>
@@ -46,6 +46,6 @@ Map<String, dynamic> _$$ProgramDetailImplToJson(_$ProgramDetailImpl instance) =>
       'teacherIds': instance.teacherIds,
       'teacherNames': instance.teacherNames,
       'enrolledSantriIds': instance.enrolledSantriIds,
-      'createdAt': instance.createdAt?.toIso8601String(),
-      'updatedAt': instance.updatedAt?.toIso8601String(),
+      'createdAt': const TimestampConverter().toJson(instance.createdAt),
+      'updatedAt': const TimestampConverter().toJson(instance.updatedAt),
     };

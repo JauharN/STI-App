@@ -25,8 +25,19 @@ class ProgramInitializer {
         deskripsi: 'Program Tahfidz Al-Quran',
         jadwal: ['Senin', 'Rabu', 'Jumat'],
         lokasi: 'Ruang Tahfidz',
-        pengajarIds: [],
-        pengajarNames: [],
+        pengajarIds: [
+          'yZk1pbuY3QZqA4oRw7Wic6wjTrk2', // umai.tahfidz
+          'tORqeCIHy7av6ZycrXZnnKQlbwh1', // bagja.tahfidz
+          'PjssA7Y295bDxJPgeDO5nKnJGw12', // alia.tahfidz
+          'w46Q1ekCj3frtcTbALvQiPS5YSB3', // nada.tahfidz
+        ],
+        pengajarNames: [
+          'Ustadzah Umai',
+          'Ustadz Bagja',
+          'Ustadzah Alia',
+          'Ustadzah Nada',
+        ],
+        enrolledSantriIds: ['chp06iSzC0afAOQpC2JDgm3WGfI3'], // jauhar22
         kelas: 'Reguler',
         totalPertemuan: 8,
         createdAt: DateTime.now(),
@@ -35,11 +46,20 @@ class ProgramInitializer {
       Program(
         id: 'GMM',
         nama: 'GMM',
-        deskripsi: 'Program Generasi Menghafal Mandiri',
+        deskripsi: 'Program Gerakan Maghrib Mengaji',
         jadwal: ['Selasa', 'Kamis', 'Sabtu'],
         lokasi: 'Ruang GMM',
-        pengajarIds: [],
-        pengajarNames: [],
+        pengajarIds: [
+          'BMSoJS9pCWOabwu3hadWfCzUkWz2', // ajeng.gmm
+          'zgXrFf8pikcbfVSwv662sVjx8yr1', // fadhel.gmm
+          'LoTeAZencVhEIjbqIW4SqnboQhx1', // aul.gmm
+        ],
+        pengajarNames: [
+          'Ustadzah Ajeng',
+          'Ustadz Fadhel',
+          'Ustadzah Aul',
+        ],
+        enrolledSantriIds: ['chp06iSzC0afAOQpC2JDgm3WGfI3'], // jauhar22
         kelas: 'Reguler',
         totalPertemuan: 8,
         createdAt: DateTime.now(),
@@ -48,11 +68,20 @@ class ProgramInitializer {
       Program(
         id: 'IFIS',
         nama: 'IFIS',
-        deskripsi: 'Program Islamic Foundation and Islamic Studies',
+        deskripsi: 'Program Madrasah Diniyah Taqmiliyah Ibnu Farobi',
         jadwal: ['Senin', 'Kamis'],
         lokasi: 'Ruang IFIS',
-        pengajarIds: [],
-        pengajarNames: [],
+        pengajarIds: [
+          'Uc3BSYjzBZeuHqWwcqRPZDaR32g1', // lina.ifis
+          'E1CYPlXNhwSXoNtbcmAY7nYFxm33', // tina.ifis
+          'g7Kass4TtndcXZ55Yyu2oAUaCZy1', // wulan.ifis
+        ],
+        pengajarNames: [
+          'Ustadzah Lina',
+          'Ustadzah Tina',
+          'Ustadzah Wulan',
+        ],
+        enrolledSantriIds: ['chp06iSzC0afAOQpC2JDgm3WGfI3'], // jauhar22
         kelas: 'Reguler',
         totalPertemuan: 8,
         createdAt: DateTime.now(),
@@ -62,18 +91,19 @@ class ProgramInitializer {
 
     for (var program in defaultPrograms) {
       try {
-        // Validasi dan cek program existing
         final existingProgram = await _checkExistingProgram(program.id);
+
         if (existingProgram) {
-          await _updateProgram(program);
-          continue;
-        }
-
-        // Create program baru
-        final result = await _createNewProgram(program);
-
-        if (result) {
-          await _setupProgramCollections(program.id);
+          // Update dengan data lengkap jika sudah ada
+          await _updateProgramData(program);
+          logger.i('Program ${program.nama} updated with complete data');
+        } else {
+          // Create baru dengan data lengkap
+          final result = await _createNewProgram(program);
+          if (result) {
+            await _setupProgramCollections(program.id);
+            logger.i('Program ${program.nama} created with complete data');
+          }
         }
       } catch (e) {
         logger.e('Error initializing ${program.nama}: $e');
@@ -81,23 +111,21 @@ class ProgramInitializer {
     }
   }
 
-  Future<bool> _checkExistingProgram(String programId) async {
-    final result = await _programRepository.getProgramById(programId);
-    return result.isSuccess;
-  }
-
-  Future<void> _updateProgram(Program program) async {
+  Future<void> _updateProgramData(Program program) async {
     try {
       final updateResult = await _programRepository.updateProgram(program);
-      if (updateResult.isSuccess) {
-        logger.i('Updated program: ${program.nama}');
-      } else {
+      if (!updateResult.isSuccess) {
         logger.e(
             'Failed to update ${program.nama}: ${updateResult.errorMessage}');
       }
     } catch (e) {
-      logger.e('Error updating program: $e');
+      logger.e('Error updating program data: $e');
     }
+  }
+
+  Future<bool> _checkExistingProgram(String programId) async {
+    final result = await _programRepository.getProgramById(programId);
+    return result.isSuccess;
   }
 
   Future<bool> _createNewProgram(Program program) async {
@@ -111,16 +139,13 @@ class ProgramInitializer {
           currentUserRole: 'superAdmin',
           totalPertemuan: program.totalPertemuan,
           kelas: program.kelas,
+          initialTeacherIds: program.pengajarIds, // Ganti nama parameter
+          initialTeacherNames: program.pengajarNames, // Ganti nama parameter
+          enrolledSantriIds: program.enrolledSantriIds, // Tambahkan ini
         ),
       );
 
-      if (result.isSuccess) {
-        logger.i('Created program: ${program.nama}');
-        return true;
-      } else {
-        logger.e('Failed to create ${program.nama}: ${result.errorMessage}');
-        return false;
-      }
+      return result.isSuccess;
     } catch (e) {
       logger.e('Error creating program: $e');
       return false;

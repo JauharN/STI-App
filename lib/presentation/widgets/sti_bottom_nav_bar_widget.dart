@@ -43,13 +43,11 @@ class STIBottomNavBar extends StatelessWidget {
               'Beranda',
               Icons.home_rounded,
             ),
-            // Tampilkan Presensi hanya untuk non-admin
-            if (!isAdmin)
-              _buildNavItem(
-                1,
-                'Presensi',
-                Icons.fact_check_rounded,
-              ),
+            _buildNavItem(
+              1,
+              'Presensi',
+              Icons.fact_check_rounded,
+            ),
             _buildNavItem(
               2,
               'Progres',

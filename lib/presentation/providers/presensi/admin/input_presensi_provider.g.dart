@@ -7,7 +7,7 @@ part of 'input_presensi_provider.dart';
 // **************************************************************************
 
 String _$isValidPresensiInputHash() =>
-    r'f75b1e1e1e902b25837752ae66ca544d9a4d0137';
+    r'2370732a7ae020c80cd6fe826906ab9ba45e26d2';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -207,7 +207,7 @@ class _IsValidPresensiInputProviderElement
 }
 
 String _$inputPresensiControllerHash() =>
-    r'5c25c7b72eceebf5ad7e5dbcbaf6fb1e5289a569';
+    r'dee237dff077f3e5d55fdadffb214c44a69d7d9a';
 
 /// See also [InputPresensiController].
 @ProviderFor(InputPresensiController)

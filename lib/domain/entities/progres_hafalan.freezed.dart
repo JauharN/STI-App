@@ -24,6 +24,7 @@ mixin _$ProgresHafalan {
   String get userId => throw _privateConstructorUsedError;
   String get programId =>
       throw _privateConstructorUsedError; // 'TAHFIDZ' atau 'GMM'
+  @TimestampConverter()
   DateTime get tanggal => throw _privateConstructorUsedError; // Fields Tahfidz
   int? get juz => throw _privateConstructorUsedError;
   int? get halaman => throw _privateConstructorUsedError;
@@ -66,7 +67,7 @@ abstract class $ProgresHafalanCopyWith<$Res> {
       {String id,
       String userId,
       String programId,
-      DateTime tanggal,
+      @TimestampConverter() DateTime tanggal,
       int? juz,
       int? halaman,
       int? ayat,
@@ -212,7 +213,7 @@ abstract class _$$ProgresHafalanImplCopyWith<$Res>
       {String id,
       String userId,
       String programId,
-      DateTime tanggal,
+      @TimestampConverter() DateTime tanggal,
       int? juz,
       int? halaman,
       int? ayat,
@@ -351,7 +352,7 @@ class _$ProgresHafalanImpl implements _ProgresHafalan {
       {required this.id,
       required this.userId,
       required this.programId,
-      required this.tanggal,
+      @TimestampConverter() required this.tanggal,
       this.juz,
       this.halaman,
       this.ayat,
@@ -379,6 +380,7 @@ class _$ProgresHafalanImpl implements _ProgresHafalan {
   final String programId;
 // 'TAHFIDZ' atau 'GMM'
   @override
+  @TimestampConverter()
   final DateTime tanggal;
 // Fields Tahfidz
   @override
@@ -508,7 +510,7 @@ abstract class _ProgresHafalan implements ProgresHafalan {
       {required final String id,
       required final String userId,
       required final String programId,
-      required final DateTime tanggal,
+      @TimestampConverter() required final DateTime tanggal,
       final int? juz,
       final int? halaman,
       final int? ayat,
@@ -535,6 +537,7 @@ abstract class _ProgresHafalan implements ProgresHafalan {
   @override
   String get programId; // 'TAHFIDZ' atau 'GMM'
   @override
+  @TimestampConverter()
   DateTime get tanggal; // Fields Tahfidz
   @override
   int? get juz;

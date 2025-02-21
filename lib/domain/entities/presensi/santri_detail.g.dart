@@ -18,15 +18,13 @@ _$SantriDetailImpl _$$SantriDetailImplFromJson(Map<String, dynamic> json) =>
       phoneNumber: json['phoneNumber'] as String?,
       address: json['address'] as String?,
       isActive: json['isActive'] as bool? ?? true,
-      dateOfBirth: json['dateOfBirth'] == null
-          ? null
-          : DateTime.parse(json['dateOfBirth'] as String),
+      dateOfBirth: const TimestampConverter().fromJson(json['dateOfBirth']),
       createdAt: json['createdAt'] == null
           ? null
-          : DateTime.parse(json['createdAt'] as String),
+          : const TimestampConverter().fromJson(json['createdAt']),
       updatedAt: json['updatedAt'] == null
           ? null
-          : DateTime.parse(json['updatedAt'] as String),
+          : const TimestampConverter().fromJson(json['updatedAt']),
     );
 
 Map<String, dynamic> _$$SantriDetailImplToJson(_$SantriDetailImpl instance) =>
@@ -39,7 +37,7 @@ Map<String, dynamic> _$$SantriDetailImplToJson(_$SantriDetailImpl instance) =>
       'phoneNumber': instance.phoneNumber,
       'address': instance.address,
       'isActive': instance.isActive,
-      'dateOfBirth': instance.dateOfBirth?.toIso8601String(),
-      'createdAt': instance.createdAt?.toIso8601String(),
-      'updatedAt': instance.updatedAt?.toIso8601String(),
+      'dateOfBirth': const TimestampConverter().toJson(instance.dateOfBirth),
+      'createdAt': const TimestampConverter().toJson(instance.createdAt),
+      'updatedAt': const TimestampConverter().toJson(instance.updatedAt),
     };

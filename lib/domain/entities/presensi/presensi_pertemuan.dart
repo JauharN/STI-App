@@ -9,7 +9,6 @@ part 'presensi_pertemuan.g.dart';
 @freezed
 class PresensiPertemuan with _$PresensiPertemuan {
   static bool canManage(String role) => role == 'admin' || role == 'superAdmin';
-
   static bool canView(String role) => true;
 
   factory PresensiPertemuan({
@@ -21,10 +20,10 @@ class PresensiPertemuan with _$PresensiPertemuan {
     required PresensiSummary summary,
     String? materi,
     String? catatan,
-    @TimestampConverter() @Default(null) DateTime? createdAt,
-    @TimestampConverter() @Default(null) DateTime? updatedAt,
-    @Default(null) String? createdBy,
-    @Default(null) String? updatedBy,
+    @TimestampConverter() DateTime? createdAt,
+    @TimestampConverter() DateTime? updatedAt,
+    String? createdBy,
+    String? updatedBy,
   }) = _PresensiPertemuan;
 
   factory PresensiPertemuan.validated({
@@ -41,13 +40,12 @@ class PresensiPertemuan with _$PresensiPertemuan {
     String? createdBy,
     String? updatedBy,
   }) {
-    // Validasi sama seperti sebelumnya
     if (pertemuanKe <= 0) {
       throw ArgumentError('Nomor pertemuan harus positif');
     }
 
-    if (tanggal.isAfter(DateTime.now())) {
-      throw ArgumentError('Tanggal tidak boleh di masa depan');
+    if (!TimestampConverter.isValidTimestamp(tanggal)) {
+      throw ArgumentError('Tanggal pertemuan tidak valid');
     }
 
     if (daftarHadir.isEmpty) {
@@ -70,17 +68,29 @@ class PresensiPertemuan with _$PresensiPertemuan {
       }
     }
 
+    // Standardize timestamps
+    final standardizedTanggal = TimestampConverter.standardizeDateTime(tanggal);
+    if (standardizedTanggal == null) {
+      throw ArgumentError('Gagal memformat tanggal pertemuan');
+    }
+
+    final now = DateTime.now();
+    final standardizedCreatedAt =
+        TimestampConverter.standardizeDateTime(createdAt ?? now);
+    final standardizedUpdatedAt =
+        TimestampConverter.standardizeDateTime(updatedAt ?? now);
+
     return PresensiPertemuan(
       id: id,
       programId: programId,
       pertemuanKe: pertemuanKe,
-      tanggal: tanggal,
+      tanggal: standardizedTanggal,
       daftarHadir: daftarHadir,
       summary: summary,
       materi: materi,
       catatan: catatan,
-      createdAt: createdAt ?? DateTime.now(),
-      updatedAt: updatedAt ?? DateTime.now(),
+      createdAt: standardizedCreatedAt,
+      updatedAt: standardizedUpdatedAt,
       createdBy: createdBy,
       updatedBy: updatedBy,
     );
@@ -93,7 +103,7 @@ class PresensiPertemuan with _$PresensiPertemuan {
 extension PresensiPertemuanX on PresensiPertemuan {
   bool get isValid {
     if (pertemuanKe <= 0) return false;
-    if (tanggal.isAfter(DateTime.now())) return false;
+    if (!TimestampConverter.isValidTimestamp(tanggal)) return false;
     if (daftarHadir.isEmpty) return false;
     if (!summary.isValid) return false;
     if (summary.totalSantri != daftarHadir.length) return false;
@@ -102,4 +112,14 @@ extension PresensiPertemuanX on PresensiPertemuan {
 
   bool canBeUpdatedBy(String role) => PresensiPertemuan.canManage(role);
   bool canBeDeletedBy(String role) => PresensiPertemuan.canManage(role);
+
+  Duration? getSinceCreated() {
+    if (createdAt == null) return null;
+    return DateTime.now().difference(createdAt!);
+  }
+
+  Duration? getSinceUpdated() {
+    if (updatedAt == null) return null;
+    return DateTime.now().difference(updatedAt!);
+  }
 }

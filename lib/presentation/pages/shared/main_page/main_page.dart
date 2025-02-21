@@ -23,6 +23,7 @@ class _MainPageState extends ConsumerState<MainPage> {
   void onNavTap(int index) {
     final userRole = ref.read(userDataProvider).value?.role;
 
+    // Validasi akses berdasarkan role
     if (!_hasAccess(userRole ?? '', index)) {
       context.showErrorSnackBar('Anda tidak memiliki akses ke halaman ini');
       return;
@@ -74,24 +75,23 @@ class _MainPageState extends ConsumerState<MainPage> {
   List<Widget> _buildScreensForRole(String role, bool isAdmin) {
     return [
       const BerandaPage(), // Beranda available for all
-      if (!isAdmin) const PresensiPage(), // Presensi only for santri
-      const ProgresPage(), // Progres for all with role-based content
+      const PresensiPage(),
+      const ProgresPage(), // Progres for all
       const ProfilePage(), // Profile for all
     ];
   }
 
   bool _hasAccess(String role, int screenIndex) {
-    final isAdmin = role == 'admin' || role == 'superAdmin';
-
+    // Validasi akses per screen berdasarkan role
     switch (screenIndex) {
       case 0: // Beranda
-        return true; // All roles can access
+        return true; // Semua role bisa akses
       case 1: // Presensi
-        return !isAdmin; // Only santri can access
+        return true; // Semua role bisa akses
       case 2: // Progres
-        return true; // All roles with different content
+        return true; // Semua role bisa akses dengan konten berbeda
       case 3: // Profile
-        return true; // All roles can access
+        return true; // Semua role bisa akses
       default:
         return false;
     }
